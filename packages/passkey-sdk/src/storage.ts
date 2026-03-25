@@ -58,3 +58,11 @@ export function activateAccount(contractId: string): void {
   removePendingAccount(contractId);
   saveAccount(contractId);
 }
+
+export function saveAccountName(contractId: string, name: string): void {
+  localStorage.setItem(`g2c:names:${contractId}`, name);
+}
+
+export function loadAccountName(contractId: string): string | null {
+  return localStorage.getItem(`g2c:names:${contractId}`);
+}

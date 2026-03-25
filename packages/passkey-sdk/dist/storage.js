@@ -41,4 +41,10 @@ export function activateAccount(contractId) {
     removePendingAccount(contractId);
     saveAccount(contractId);
 }
+export function saveAccountName(contractId, name) {
+    localStorage.setItem(`g2c:names:${contractId}`, name);
+}
+export function loadAccountName(contractId) {
+    return localStorage.getItem(`g2c:names:${contractId}`);
+}
 //# sourceMappingURL=storage.js.map

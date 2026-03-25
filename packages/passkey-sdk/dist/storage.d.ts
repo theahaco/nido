@@ -13,4 +13,6 @@ export declare function savePendingAccount(contractId: string, secretKey: string
 export declare function loadPendingAccounts(): PendingAccount[];
 export declare function removePendingAccount(contractId: string): void;
 export declare function activateAccount(contractId: string): void;
+export declare function saveAccountName(contractId: string, name: string): void;
+export declare function loadAccountName(contractId: string): string | null;
 //# sourceMappingURL=storage.d.ts.map

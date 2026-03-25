@@ -57,6 +57,34 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       </div>
     </section>
 
+    <!-- Name section -->
+    <section id="name-section" class="hidden">
+      <h2>Account Name</h2>
+      <div id="name-display" class="hidden">
+        <div class="account-card">
+          <div class="account-field">
+            <span class="account-label">Name</span>
+            <code id="account-name" class="account-address"></code>
+          </div>
+          <div class="account-field">
+            <span class="account-label">Shareable URL</span>
+            <a id="name-url" class="name-link"></a>
+          </div>
+        </div>
+      </div>
+      <div id="name-claim" class="hidden">
+        <p class="info">Claim a human-readable name for your account. Names are 1-15 characters, lowercase letters and digits only.</p>
+        <div class="field">
+          <label for="name-input">Name</label>
+          <input id="name-input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
+        </div>
+        <div class="field" style="margin-top:0.5rem">
+          <button id="claim-name-btn">Claim Name</button>
+        </div>
+        <div id="name-result" class="progress" style="display:none"></div>
+      </div>
+    </section>
+
     <!-- Shown when a passkey is already registered -->
     <section id="passkey-info-section" class="hidden">
       <h2>Passkey</h2>
@@ -284,6 +312,18 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   .button-link:hover {
     background: #5a2a7b;
   }
+
+  .name-link {
+    color: #5bc0de;
+    font-family: monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    text-decoration: underline;
+  }
+
+  .name-link:hover {
+    color: #7dd4ed;
+  }
 </style>
 
 <script>
@@ -293,35 +333,87 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     Address,
     Contract,
     TransactionBuilder,
+    Transaction,
     Account,
+    Operation,
+    Keypair,
     rpc,
+    nativeToScVal,
     scValToNative,
   } from "@stellar/stellar-sdk";
   import {
     parseRegistration,
     derToCompact,
+    buildAuthHash,
+    getAuthEntry,
+    injectPasskeySignature,
+    computeAccountAddress,
     buf2hex,
     hex2buf,
     buf2base64url,
     contractIdFromHostname,
+    isContractId,
+    nameFromHostname,
+    resolveNameCached,
     stripSubdomain,
+    accountUrl,
     saveCredential as sdkSaveCredential,
     loadCredential as sdkLoadCredential,
+    saveAccountName,
+    loadAccountName,
   } from "@g2c/passkey-sdk";
   import { formatSignResult } from "../../lib/formatting";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
+  const NAME_REGISTRY_ID = "CDVVRZAVXTUQLS5LCGUP3H26RGOIUFKNE2UEJ6CAWYMBWY5LNORF6POX";
 
-  // --- State ---
-
-  const hostname = window.location.hostname;
-  const contractId = contractIdFromHostname(hostname);
-  const rpId = hostname;
+  // --- URL params (needed early for signing mode detection) ---
 
   const params = new URLSearchParams(window.location.search);
   const signHashParam = params.get("sign");
   const callbackUrl = params.get("callback");
   const isSigningMode = signHashParam && callbackUrl;
+
+  // --- State ---
+
+  const hostname = window.location.hostname;
+  let contractId = contractIdFromHostname(hostname);
+  const rpId = hostname;
+
+  // --- Name resolution ---
+  // If the subdomain is a human-readable name (not a 56-char contract ID),
+  // resolve it to a contract ID. Stay on the name subdomain for shareability.
+  // Only redirect to contract-ID subdomain when signing (passkey RP ID binding).
+
+  const detectedName = nameFromHostname(hostname);
+  if (detectedName && !isContractId(detectedName)) {
+    try {
+      const resolved = await resolveNameCached(
+        RPC_URL,
+        NAME_REGISTRY_ID,
+        detectedName,
+        "Test SDF Network ; September 2015"
+      );
+      if (resolved) {
+        if (isSigningMode) {
+          // Redirect to contract-ID subdomain for passkey auth
+          const rootHost = stripSubdomain(window.location.host);
+          const target = accountUrl(rootHost, resolved, window.location.pathname + window.location.search);
+          window.location.replace(window.location.protocol + target);
+          throw new Error("redirecting");
+        }
+        // Stay on name subdomain — use resolved ID for all operations
+        contractId = resolved;
+      } else {
+        document.getElementById("error-box")!.textContent = `Name "${detectedName}" not found in the registry.`;
+        document.getElementById("error-box")!.style.display = "block";
+      }
+    } catch (err: any) {
+      if (err.message === "redirecting") throw err;
+      document.getElementById("error-box")!.textContent = `Failed to resolve name: ${err.message}`;
+      document.getElementById("error-box")!.style.display = "block";
+    }
+  }
 
   function saveCredential(credentialId: Uint8Array, publicKey: Uint8Array) {
     sdkSaveCredential(contractId!, credentialId, publicKey);
@@ -695,5 +787,249 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     });
   } else {
     document.getElementById("xlm-balance")!.textContent = "—";
+  }
+
+  // --- Name section ---
+
+  if (contractId && !isSigningMode) {
+    const $nameSection = document.getElementById("name-section")!;
+    const $nameDisplay = document.getElementById("name-display")!;
+    const $nameClaim = document.getElementById("name-claim")!;
+    const $claimBtn = document.getElementById("claim-name-btn") as HTMLButtonElement;
+    const $nameInput = document.getElementById("name-input") as HTMLInputElement;
+    const $nameResult = document.getElementById("name-result")!;
+
+    $nameSection.classList.remove("hidden");
+
+    // Check if this account already has a name (from localStorage)
+    const existingName = loadAccountName(contractId);
+    if (existingName) {
+      $nameDisplay.classList.remove("hidden");
+      document.getElementById("account-name")!.textContent = existingName;
+      const rootHost = stripSubdomain(window.location.host);
+      const nameLink = document.getElementById("name-url") as HTMLAnchorElement;
+      const nameHref = accountUrl(rootHost, existingName, "/account/");
+      nameLink.textContent = nameHref.replace(/^\/\//, "");
+      nameLink.href = nameHref;
+    } else {
+      $nameClaim.classList.remove("hidden");
+    }
+
+    // Helper: lazily compute verifier address (needs Buffer polyfill)
+    let _verifierAddress: string | null = null;
+    async function getVerifierAddress(): Promise<string> {
+      if (_verifierAddress) return _verifierAddress;
+      const { Buffer } = await import("buffer");
+      const FACTORY_ID = "CDDMELYHOSD6M2T53F5DUYCXDS3VVOQ72E4KZMMZP37GQWII2WRKM2CC";
+      const VERIFIER_HASH = Buffer.from([
+        0xb9,0x39,0x33,0x11,0xf9,0x7b,0x49,0x8f,0xbb,0x89,0x76,0xec,0x50,0xdd,0x85,0x85,
+        0xdd,0x99,0xad,0x44,0x3b,0x8f,0x13,0xec,0x5f,0x75,0x19,0x86,0x72,0x9f,0x99,0xbe,
+      ]);
+      _verifierAddress = computeAccountAddress(FACTORY_ID, VERIFIER_HASH, Networks.TESTNET);
+      return _verifierAddress;
+    }
+
+    // Helper: lazily get funded keypair for tx submission
+    async function getNameKeypair(): Promise<Keypair> {
+      const stored = localStorage.getItem("g2c:name-keypair");
+      if (stored) return Keypair.fromSecret(stored);
+      const kp = Keypair.random();
+      const resp = await fetch(`https://friendbot.stellar.org?addr=${kp.publicKey()}`);
+      if (!resp.ok) throw new Error(`Friendbot funding failed: ${resp.statusText}`);
+      localStorage.setItem("g2c:name-keypair", kp.secret());
+      return kp;
+    }
+
+    // Claim name button
+    $claimBtn.addEventListener("click", async () => {
+      clearError();
+      const name = $nameInput.value.trim().toLowerCase();
+
+      if (!name || !/^[a-z][a-z0-9]*$/.test(name) || name.length > 15) {
+        showError("Name must be 1-15 characters, lowercase letters and digits only, starting with a letter.");
+        return;
+      }
+
+      try {
+        $claimBtn.disabled = true;
+        $claimBtn.textContent = "Registering...";
+        $nameResult.style.display = "block";
+        $nameResult.textContent = "Loading...";
+
+        // Load Buffer polyfill — needed by buildAuthHash and other SDK functions
+        const { Buffer: B } = await import("buffer");
+        if (typeof globalThis.Buffer === "undefined") {
+          (globalThis as any).Buffer = B;
+        }
+
+        $nameResult.textContent = "Funding transaction keypair...";
+        const keypair = await getNameKeypair();
+        const server = new rpc.Server(RPC_URL);
+
+        $nameResult.textContent = "Building transaction...";
+
+        const sourceAccount = await server
+          .getAccount(keypair.publicKey())
+          .then((res: Account) => new Account(res.accountId(), res.sequenceNumber()));
+
+        const simTx = new TransactionBuilder(sourceAccount, {
+          fee: "10000000",
+          networkPassphrase: Networks.TESTNET,
+        })
+          .addOperation(
+            Operation.invokeContractFunction({
+              contract: NAME_REGISTRY_ID,
+              function: "register",
+              args: [
+                Address.fromString(contractId).toScVal(),
+                nativeToScVal(name, { type: "string" }),
+              ],
+            })
+          )
+          .setTimeout(300)
+          .build();
+
+        $nameResult.textContent = "Simulating transaction...";
+        const sim = await server.simulateTransaction(simTx);
+
+        if (rpc.Api.isSimulationError(sim)) {
+          throw new Error(`Simulation failed — name may already be taken. ${sim.error}`);
+        }
+
+        const successSim = sim as rpc.Api.SimulateTransactionSuccessResponse;
+
+        // Extract auth entry and compute hash for passkey signing
+        const authEntry = getAuthEntry(successSim);
+        const lastLedger = successSim.latestLedger;
+        const authHash = buildAuthHash(authEntry, Networks.TESTNET, lastLedger);
+        const authHashHex = buf2hex(authHash);
+
+        // Assemble the transaction with simulation results so auth entries
+        // are baked into the XDR (needed by injectPasskeySignature later)
+        const assembled = rpc.assembleTransaction(simTx, successSim).build();
+
+        // Store assembled transaction data for after signing redirect
+        localStorage.setItem("g2c:name-txXdr", assembled.toXDR());
+        localStorage.setItem("g2c:name-lastLedger", lastLedger.toString());
+        localStorage.setItem("g2c:name-pending", name);
+
+        $nameResult.textContent = "Redirecting for passkey signature...";
+
+        // Redirect to the signing flow on this same account page
+        const callback = `${window.location.protocol}//${window.location.host}/account/?nameresult=1`;
+        const signUrl = `/account/?sign=${authHashHex}&callback=${encodeURIComponent(callback)}`;
+        window.location.href = signUrl;
+      } catch (err: any) {
+        showError(`Name claim failed: ${err.message}`);
+        $nameResult.style.display = "none";
+      } finally {
+        $claimBtn.disabled = false;
+        $claimBtn.textContent = "Claim Name";
+      }
+    });
+
+    // --- Handle return from signing (name registration) ---
+
+    if (params.get("nameresult") === "1") {
+      const authenticatorData = params.get("authenticatorData");
+      const clientDataJSON = params.get("clientDataJSON");
+      const signatureHex = params.get("signature");
+      const publicKeyHex = params.get("publicKey");
+
+      if (params.get("error")) {
+        showError("Name registration was denied.");
+      } else if (authenticatorData && clientDataJSON && signatureHex && publicKeyHex) {
+        (async () => {
+          $nameResult.style.display = "block";
+          try {
+            // Load Buffer polyfill — needed by injectPasskeySignature and other SDK functions
+            const { Buffer: B } = await import("buffer");
+            if (typeof globalThis.Buffer === "undefined") {
+              (globalThis as any).Buffer = B;
+            }
+
+            const txXdr = localStorage.getItem("g2c:name-txXdr");
+            const lastLedgerStr = localStorage.getItem("g2c:name-lastLedger");
+            const pendingName = localStorage.getItem("g2c:name-pending");
+            const keypairSecret = localStorage.getItem("g2c:name-keypair");
+
+            if (!txXdr || !lastLedgerStr || !keypairSecret || !pendingName) {
+              throw new Error("Missing stored transaction data. Please try again.");
+            }
+
+            const lastLedger = parseInt(lastLedgerStr, 10);
+            const keypair = Keypair.fromSecret(keypairSecret);
+            const verifierAddr = await getVerifierAddress();
+
+            // Reconstruct transaction from stored XDR
+            const authTxn = TransactionBuilder.fromXDR(txXdr, Networks.TESTNET) as Transaction;
+
+            // Inject passkey signature
+            injectPasskeySignature(
+              authTxn,
+              {
+                authenticatorData: hex2buf(authenticatorData),
+                clientDataJson: hex2buf(clientDataJSON),
+                signature: hex2buf(signatureHex),
+              },
+              verifierAddr,
+              hex2buf(publicKeyHex),
+              lastLedger
+            );
+
+            // Re-simulate with real signature
+            $nameResult.textContent = "Simulating signed transaction...";
+            const server = new rpc.Server(RPC_URL);
+            const sim = await server.simulateTransaction(authTxn);
+
+            if (rpc.Api.isSimulationError(sim) || rpc.Api.isSimulationRestore(sim)) {
+              throw new Error(`Re-simulation failed: ${"error" in sim ? sim.error : "restore needed"}`);
+            }
+
+            // Assemble and sign with source keypair
+            const finalTx = rpc.assembleTransaction(authTxn, sim).build();
+            finalTx.sign(keypair);
+
+            // Submit
+            $nameResult.textContent = "Submitting transaction...";
+            const sendResult = await server.sendTransaction(finalTx);
+
+            if (sendResult.status === "ERROR") {
+              throw new Error(`Transaction rejected: ${sendResult.errorResult?.toXDR("base64") ?? "unknown"}`);
+            }
+
+            // Poll for confirmation
+            $nameResult.textContent = "Waiting for confirmation...";
+            let getResult = await server.getTransaction(sendResult.hash);
+            while (getResult.status === "NOT_FOUND") {
+              await new Promise((r) => setTimeout(r, 1500));
+              getResult = await server.getTransaction(sendResult.hash);
+            }
+
+            if (getResult.status === "SUCCESS") {
+              saveAccountName(contractId, pendingName);
+
+              // Clean up stored transaction data
+              localStorage.removeItem("g2c:name-txXdr");
+              localStorage.removeItem("g2c:name-lastLedger");
+              localStorage.removeItem("g2c:name-pending");
+
+              // Redirect to the claimed name's subdomain
+              const rootHost = stripSubdomain(window.location.host);
+              $nameResult.textContent = `Name "${pendingName}" registered! Redirecting...`;
+              const nameUrl = accountUrl(rootHost, pendingName, "/account/");
+              setTimeout(() => {
+                window.location.href = `${window.location.protocol}${nameUrl}`;
+              }, 1500);
+            } else {
+              throw new Error(`Transaction failed: ${getResult.status}`);
+            }
+          } catch (err: any) {
+            showError(`Name registration failed: ${err.message}`);
+            $nameResult.style.display = "none";
+          }
+        })();
+      }
+    }
   }
 </script>
