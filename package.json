@@ -1,4 +1,10 @@
 {
   "private": true,
-  "workspaces": ["packages/*", "packages/contract-bindings/*"]
+  "workspaces": [
+    "packages/*",
+    "packages/contract-bindings/*"
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
 }

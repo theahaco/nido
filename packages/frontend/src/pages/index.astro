@@ -118,11 +118,21 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     border-color: #2a5090;
   }
 
+  .account-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .account-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #e0e0e0;
+  }
+
   .account-address {
     font-family: monospace;
     font-size: 0.72rem;
-    color: #e0e0e0;
-    flex: 1;
+    color: #8899aa;
     min-width: 0;
   }
 
@@ -138,7 +148,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   import { Client } from "factory";
   import {
     accountUrl,
+    contractIdFromHostname,
+    isContractId,
+    nameFromHostname,
+    resolveNameCached,
+    stripSubdomain,
     loadAccounts,
+    loadAccountName,
     loadPendingAccounts,
     savePendingAccount,
     activateAccount,
@@ -147,6 +163,29 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const FACTORY_CONTRACT_ID = "CDDMELYHOSD6M2T53F5DUYCXDS3VVOQ72E4KZMMZP37GQWII2WRKM2CC";
   const RPC_URL = "https://soroban-testnet.stellar.org";
   const FRIENDBOT_URL = "https://friendbot.stellar.org";
+  const NAME_REGISTRY_ID = "CDVVRZAVXTUQLS5LCGUP3H26RGOIUFKNE2UEJ6CAWYMBWY5LNORF6POX";
+
+  // --- Name resolution redirect (if visiting via name subdomain) ---
+
+  const hostname = window.location.hostname;
+  const detectedName = nameFromHostname(hostname);
+
+  if (detectedName && !isContractId(detectedName)) {
+    // On a name subdomain — redirect to /account/ on the same subdomain
+    // (keeps the shareable name URL intact)
+    resolveNameCached(
+      RPC_URL,
+      NAME_REGISTRY_ID,
+      detectedName,
+      "Test SDF Network ; September 2015"
+    ).then((resolved) => {
+      if (resolved) {
+        window.location.replace("/account/");
+      }
+    }).catch(() => {
+      // Name not found — continue showing the home page
+    });
+  }
 
   const $createBtn = document.getElementById("create-btn") as HTMLButtonElement;
   const $progressInfo = document.getElementById("progress-info")!;
@@ -169,20 +208,36 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   // --- Show active accounts ---
 
   function addAccountRow(contractId: string) {
+    const name = loadAccountName(contractId);
+
     const a = document.createElement("a");
     a.className = "account-row";
-    a.href = accountUrl(window.location.host, contractId, "/account/");
+    // Link to name subdomain if available, otherwise contract-ID subdomain
+    a.href = name
+      ? accountUrl(window.location.host, name, "/account/")
+      : accountUrl(window.location.host, contractId, "/account/");
 
-    const addr = document.createElement("span");
+    const info = document.createElement("div");
+    info.className = "account-info";
+
+    if (name) {
+      const nameEl = document.createElement("div");
+      nameEl.className = "account-name";
+      nameEl.textContent = name;
+      info.appendChild(nameEl);
+    }
+
+    const addr = document.createElement("div");
     addr.className = "account-address";
     addr.textContent = contractId;
     addr.title = contractId;
+    info.appendChild(addr);
 
     const arrow = document.createElement("span");
     arrow.className = "account-arrow";
     arrow.textContent = "\u2192";
 
-    a.appendChild(addr);
+    a.appendChild(info);
     a.appendChild(arrow);
     $accountsList.appendChild(a);
     $accountsSection.classList.remove("hidden");

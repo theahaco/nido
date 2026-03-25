@@ -1,5 +1,12 @@
 const PREVIEW_SEP = "--pr-";
 /**
+ * Check if a subdomain string looks like a Stellar contract ID.
+ * Contract IDs are exactly 56 characters starting with C.
+ */
+export function isContractId(subdomain) {
+    return subdomain.length === 56 && /^[cC]/i.test(subdomain);
+}
+/**
  * Extract contract ID from a subdomain hostname.
  * Handles both production and preview URLs:
  *   "cabc1234.mysoroban.xyz"             → "CABC1234"
@@ -14,6 +21,29 @@ export function contractIdFromHostname(hostname) {
     const sepIndex = sub.indexOf(PREVIEW_SEP);
     const raw = sepIndex !== -1 ? sub.slice(0, sepIndex) : sub;
     return raw ? raw.toUpperCase() : null;
+}
+/**
+ * Extract a human-readable name from a subdomain hostname.
+ * Returns null if the subdomain is a contract ID, empty, or a preview prefix.
+ *   "alice.mysoroban.xyz"               → "alice"
+ *   "alice--pr-10.mysoroban.xyz"        → "alice"
+ *   "cabc1234...mysoroban.xyz"          → null (contract ID)
+ *   "pr-10.mysoroban.xyz"              → null (preview root)
+ */
+export function nameFromHostname(hostname) {
+    const parts = hostname.split(".");
+    if (parts.length <= 1)
+        return null;
+    const sub = parts[0];
+    const sepIndex = sub.indexOf(PREVIEW_SEP);
+    const raw = sepIndex !== -1 ? sub.slice(0, sepIndex) : sub;
+    if (!raw)
+        return null;
+    if (isContractId(raw))
+        return null;
+    if (/^pr-\d+$/.test(sub))
+        return null;
+    return raw.toLowerCase();
 }
 /**
  * Build a protocol-relative URL with the contract ID as subdomain.

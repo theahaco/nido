@@ -34,10 +34,14 @@ export {
 } from "./encoding.js";
 
 export {
+  isContractId,
   contractIdFromHostname,
+  nameFromHostname,
   accountUrl,
   stripSubdomain,
 } from "./url.js";
+
+export { resolveName, resolveNameCached } from "./resolve.js";
 
 export type { PendingAccount } from "./storage.js";
 
@@ -50,4 +54,6 @@ export {
   loadPendingAccounts,
   removePendingAccount,
   activateAccount,
+  saveAccountName,
+  loadAccountName,
 } from "./storage.js";
