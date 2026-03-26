@@ -4,8 +4,8 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 
 <BaseLayout title="Contract Account Wallet">
   <div class="page-header">
-    <h1>Contract Account Wallet</h1>
-    <a id="home-link" class="home-btn">Home</a>
+    <h1>Wallet</h1>
+    <a id="home-link" class="home-btn">&larr; Home</a>
   </div>
 
   <div id="error-box" class="error" style="display:none"></div>
@@ -13,13 +13,13 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   <!-- Signing mode UI -->
   <div id="signing-mode" class="hidden">
     <div class="signing-request">
-      <h2>Signature Request</h2>
-      <div>From: <span class="origin" id="sign-origin"></span></div>
-      <div class="hash">Hash: <code id="sign-hash"></code></div>
+      <h2>// Signature Request</h2>
+      <div class="sign-field"><span class="sign-label">FROM:</span> <span class="origin" id="sign-origin"></span></div>
+      <div class="sign-field"><span class="sign-label">HASH:</span> <code id="sign-hash"></code></div>
     </div>
 
     <div id="sign-needs-register">
-      <p class="info">No passkey registered yet. Register one first, then you can approve the request.</p>
+      <p class="info">No passkey registered. Register one first, then approve the request.</p>
       <div class="field">
         <button id="sign-register-btn">Register Passkey</button>
       </div>
@@ -38,42 +38,39 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   <!-- Home mode UI -->
   <div id="home-mode" class="hidden">
     <section id="account-section">
-      <h2>Account</h2>
+      <h2>// Account</h2>
       <div class="account-card">
         <div class="account-field">
-          <span class="account-label">Address</span>
+          <span class="account-label">ADDRESS</span>
           <div class="address-row">
             <code id="contract-id" class="account-address"></code>
             <button id="copy-btn" class="copy-btn" title="Copy address">Copy</button>
           </div>
         </div>
         <div class="account-field">
-          <span class="account-label">Balance</span>
+          <span class="account-label">BALANCE</span>
           <span id="xlm-balance" class="balance-value">loading...</span>
         </div>
         <div class="account-links">
-          <a id="explorer-link" class="explorer-link" target="_blank" rel="noopener" style="display:none">View on Stellar Expert</a>
+          <a id="explorer-link" class="explorer-link" target="_blank" rel="noopener" style="display:none">View on Stellar Expert &rarr;</a>
         </div>
       </div>
     </section>
 
     <!-- Name section -->
     <section id="name-section" class="hidden">
-      <h2>Account Name</h2>
+      <h2>// Account Name</h2>
       <div id="name-display" class="hidden">
-        <div class="account-card">
-          <div class="account-field">
-            <span class="account-label">Name</span>
-            <code id="account-name" class="account-address"></code>
-          </div>
-          <div class="account-field">
-            <span class="account-label">Shareable URL</span>
+        <div class="name-card">
+          <div class="name-big" id="account-name"></div>
+          <div class="name-url-box">
+            <span class="account-label">SHAREABLE URL</span>
             <a id="name-url" class="name-link"></a>
           </div>
         </div>
       </div>
       <div id="name-claim" class="hidden">
-        <p class="info">Claim a human-readable name for your account. Names are 1-15 characters, lowercase letters and digits only.</p>
+        <p class="info">Claim a human-readable name. 1-15 characters, lowercase letters and digits only.</p>
         <div class="field">
           <label for="name-input">Name</label>
           <input id="name-input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
@@ -87,15 +84,15 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 
     <!-- Shown when a passkey is already registered -->
     <section id="passkey-info-section" class="hidden">
-      <h2>Passkey</h2>
+      <h2>// Passkey</h2>
       <div class="passkey-details">
-        <div class="passkey-status">Registered</div>
+        <div class="passkey-status">REGISTERED</div>
         <div class="passkey-field">
-          <span class="passkey-label">Public Key</span>
+          <span class="passkey-label">PUBLIC KEY</span>
           <code id="passkey-pubkey" class="passkey-value"></code>
         </div>
         <div class="passkey-field">
-          <span class="passkey-label">Credential ID</span>
+          <span class="passkey-label">CREDENTIAL ID</span>
           <code id="passkey-cred-id" class="passkey-value"></code>
         </div>
         <div class="passkey-field">
@@ -112,7 +109,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 
     <!-- Shown when no passkey is registered -->
     <section id="register-section" class="hidden">
-      <h2>Register Passkey</h2>
+      <h2>// Register Passkey</h2>
       <p class="info">Creates a new passkey bound to this contract's subdomain.</p>
       <div class="field">
         <button id="register-btn">Register Passkey</button>
@@ -121,25 +118,25 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     </section>
 
     <section id="sign-section">
-      <h2>Try It out</h2>
+      <h2>// Try It Out</h2>
       <p class="info">Want to see how it works?
           Eventually, other stellar dApps will redirect to this domain when you need to sign a transaction.
           For now you can invoke a contract or sign arbitrary data below.
      </p>
-      <h3>Invoke a contract</h3>
+      <h3>Invoke a Contract</h3>
       <p class="info">Set a status message on-chain via your smart account.</p>
       <div class="field">
-        <a id="status-message-link" class="button-link">Status Message</a>
+        <a id="status-message-link" class="button-link">Status Message &rarr;</a>
       </div>
       <h3>Sign a Hash</h3>
       <p class="info">Authenticate with your passkey to sign a 32-byte hash (e.g. a transaction hash).</p>
       <div class="field">
         <label for="hash-input">Hash to sign (64 hex chars)</label>
-        <input id="hash-input" placeholder="e.g. a1b2c3d...64 hex characters" maxlength="64" />
+        <input id="hash-input" placeholder="a1b2c3d...64 hex characters" maxlength="64" />
       </div>
       <div class="field" style="margin-top:0.5rem">
         <button id="sign-btn" disabled>Sign</button>
-        <button id="random-hash-btn" style="margin-left:0.5rem; font-size:0.8rem">Random hash</button>
+        <button id="random-hash-btn" style="margin-left:0.5rem; font-size:0.75rem">Random Hash</button>
       </div>
       <pre id="sign-result" style="display:none"></pre>
     </section>
@@ -147,37 +144,41 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 </BaseLayout>
 
 <style>
-  body {
-    background: #1a1a2e;
-  }
-
   .page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
   }
 
+  .page-header h1 {
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    border-bottom: 4px solid #000000;
+    padding-bottom: 0.5rem;
+  }
 
   button.primary {
-    background: #1a6b3a;
-    border-color: #1a8b4a;
-    font-size: 1.1rem;
-    padding: 0.7rem 2rem;
+    background: #ffff00;
+    color: #000000;
+    border: 4px solid #000000;
+    font-size: 1rem;
+    padding: 1rem 2.5rem;
   }
 
   button.primary:hover {
-    background: #1a8b4a;
+    background: #000000;
+    color: #ffff00;
   }
 
   .account-card {
-    background: #0a2040;
-    border: 1px solid #1a3060;
-    border-radius: 6px;
-    padding: 1rem;
+    background: #ffffff;
+    border: 4px solid #000000;
+    padding: 1.5rem;
   }
 
   .account-field {
-    margin-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
   }
 
   .account-field:last-of-type {
@@ -185,144 +186,230 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   }
 
   .account-label {
-    color: #8899aa;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    color: #000000;
     display: block;
-    font-size: 0.8rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 0.4rem;
+    border-bottom: 2px solid #000000;
+    padding-bottom: 0.25rem;
   }
 
   .address-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
   .account-address {
-    color: #c0d0e0;
+    color: #ffffff;
     word-break: break-all;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
 
   .copy-btn {
-    background: #1a3060;
-    color: #8899aa;
-    border: 1px solid #2a4070;
-    padding: 0.2rem 0.5rem;
-    border-radius: 3px;
+    background: #ffffff;
+    color: #000000;
+    border: 4px solid #000000;
+    padding: 0.35rem 0.75rem;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
     white-space: nowrap;
     flex-shrink: 0;
+    border-radius: 0;
   }
 
   .copy-btn:hover {
-    background: #2a4070;
-    color: #c0d0e0;
+    background: #ffff00;
+    color: #000000;
   }
 
   .balance-value {
-    font-family: monospace;
-    font-size: 1.3rem;
-    color: #e0e0e0;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 700;
+    color: #000000;
+    line-height: 1;
   }
 
   .account-links {
-    margin-top: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 3px solid #000000;
   }
 
   .explorer-link {
-    color: #5bc0de;
+    color: #000000;
     text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 3px;
     font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .explorer-link:hover {
-    color: #7dd4ed;
+    background: #ffff00;
   }
 
   .signing-request {
-    background: #1a2a1a;
-    border: 1px solid #2a4a2a;
-    border-radius: 6px;
-    padding: 1rem;
-    margin: 1rem 0;
+    background: #000000;
+    color: #ffffff;
+    border: 4px solid #000000;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
   }
 
-  .signing-request .origin {
-    color: #80b0e0;
-    font-size: 0.9rem;
+  .signing-request h2 {
+    color: #ffff00;
+    margin-bottom: 1rem;
+    border-bottom-color: #ffff00;
   }
 
-  .signing-request .hash {
-    font-family: monospace;
+  .sign-field {
+    font-family: 'Space Mono', 'Courier New', monospace;
     font-size: 0.8rem;
-    color: #c0c0c0;
-    margin: 0.75rem 0;
+    margin: 0.5rem 0;
     word-break: break-all;
   }
 
+  .sign-label {
+    font-weight: 700;
+    color: #ffff00;
+    letter-spacing: 0.1em;
+  }
+
+  .signing-request .origin {
+    color: #ffffff;
+    font-size: 0.85rem;
+  }
+
+  .signing-request code {
+    background: transparent;
+    color: #ffffff;
+    padding: 0;
+    font-size: 0.7rem;
+  }
+
   .passkey-details {
-    background: #0a2040;
-    border: 1px solid #1a3060;
-    border-radius: 6px;
-    padding: 0.75rem 1rem;
+    background: #ffffff;
+    border: 4px solid #000000;
+    padding: 1.25rem 1.5rem;
   }
 
   .passkey-status {
-    color: #6fcf97;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    color: #000000;
+    background: #ffff00;
+    display: inline-block;
+    padding: 0.3rem 0.85rem;
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+    border: 3px solid #000000;
   }
 
   .passkey-field {
-    margin: 0.4rem 0;
+    margin: 0.75rem 0;
     font-size: 0.85rem;
   }
 
   .passkey-label {
-    color: #8899aa;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    color: #000000;
     display: block;
-    margin-bottom: 0.15rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 0.25rem;
   }
 
   .passkey-value {
-    color: #c0d0e0;
+    color: #ffffff;
     word-break: break-all;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
   }
 
   .rp-explainer {
-    margin-top: 0.75rem;
+    margin-top: 1rem;
     margin-bottom: 0;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    border-top: 3px solid #000000;
+    padding-top: 0.75rem;
   }
 
   .button-link {
     display: inline-block;
-    background: #4a1a6b;
-    color: #e0e0e0;
-    border: 1px solid #6a2a8b;
-    padding: 0.5rem 1.2rem;
-    border-radius: 4px;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    background: #ffff00;
+    color: #000000;
+    border: 4px solid #000000;
+    padding: 1rem 2rem;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     text-decoration: none;
+    border-radius: 0;
   }
 
   .button-link:hover {
-    background: #5a2a7b;
+    background: #000000;
+    color: #ffff00;
+  }
+
+  .name-card {
+    background: #ffffff;
+    border: 4px solid #000000;
+    padding: 1.5rem;
+  }
+
+  .name-big {
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #000000;
+    line-height: 0.9;
+    margin-bottom: 1.25rem;
+    word-break: break-all;
+    letter-spacing: -0.03em;
+  }
+
+  .name-url-box {
+    background: #ffff00;
+    border: 4px solid #000000;
+    padding: 1rem 1.25rem;
+  }
+
+  .name-url-box .account-label {
+    margin-bottom: 0.3rem;
+    border-bottom-color: #000000;
   }
 
   .name-link {
-    color: #5bc0de;
-    font-family: monospace;
-    font-size: 0.85rem;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    color: #000000;
+    font-size: 0.8rem;
     word-break: break-all;
     text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 3px;
+    font-weight: 700;
   }
 
   .name-link:hover {
-    color: #7dd4ed;
+    background: #000000;
+    color: #ffff00;
   }
 </style>
 
@@ -786,7 +873,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       document.getElementById("xlm-balance")!.textContent = "unavailable";
     });
   } else {
-    document.getElementById("xlm-balance")!.textContent = "—";
+    document.getElementById("xlm-balance")!.textContent = "\u2014";
   }
 
   // --- Name section ---

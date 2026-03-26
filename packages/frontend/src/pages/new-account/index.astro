@@ -3,24 +3,18 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout title="G2C — Set Up Passkey">
-  <h1>Set Up Your Account</h1>
-  <p class="info">
-    Register a passkey to secure your smart account, then deploy it on-chain.
-    Your passkey (fingerprint, face, or security key) will be the only way to authorize transactions.
-  </p>
+  <h1>Set Up Account</h1>
+  <p class="info">Register a passkey. Deploy on-chain. Your passkey is the only key. No recovery. No compromise.</p>
 
   <div id="status-bar">
-    <div>Account: <code id="contract-id"></code></div>
+    <span class="status-label">CONTRACT:</span> <code id="contract-id"></code>
   </div>
 
   <div id="error-box" class="error" style="display:none"></div>
 
   <section>
-    <h2>1. Register Passkey</h2>
-    <p class="info">
-      Your browser will prompt you to create a passkey.
-      This passkey is bound to your account and will be used to sign all future transactions.
-    </p>
+    <h2>01 // Register Passkey</h2>
+    <p class="info">Your browser will prompt you to create a passkey bound to your account.</p>
     <div class="field">
       <button id="register-btn">Register Passkey</button>
     </div>
@@ -28,7 +22,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   </section>
 
   <section id="deploy-section" class="hidden">
-    <h2>2. Deploy Account</h2>
+    <h2>02 // Deploy Account</h2>
     <p class="info">Publish your passkey-secured smart account to the Stellar network.</p>
     <div class="field">
       <button id="deploy-btn" class="primary">Deploy Account</button>
@@ -37,62 +31,94 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   </section>
 
   <section id="done-section" class="hidden">
-    <h2>Account Ready</h2>
-    <p class="info">Your smart account is live. Use your passkey to sign transactions.</p>
+    <h2>// Account Live</h2>
+    <p class="info">Your smart account is deployed. Use your passkey to sign transactions.</p>
     <div class="field">
-      <a id="account-link" class="button-link">Go to Account</a>
+      <a id="account-link" class="button-link">Go to Account &rarr;</a>
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  body {
-    background: #1a1a2e;
+  h1 {
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    letter-spacing: -0.04em;
+    border-bottom: 4px solid #000000;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
   button.primary {
-    background: #1a6b3a;
-    border-color: #1a8b4a;
-    font-size: 1.1rem;
-    padding: 0.7rem 2rem;
+    background: #ffff00;
+    color: #000000;
+    border: 4px solid #000000;
+    font-size: 1rem;
+    padding: 1rem 2.5rem;
   }
 
   button.primary:hover {
-    background: #1a8b4a;
+    background: #000000;
+    color: #ffff00;
   }
 
   #status-bar {
-    background: #0a2040;
-    border: 1px solid #1a3060;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    margin: 1rem 0;
-    font-size: 0.85rem;
+    background: #000000;
+    color: #ffffff;
+    border: 4px solid #000000;
+    padding: 1rem 1.25rem;
+    margin: 1.5rem 0;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: 0.75rem;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  .status-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #ffff00;
+  }
+
+  #status-bar code {
+    background: transparent;
+    color: #ffffff;
+    padding: 0;
+    font-size: 0.75rem;
   }
 
   .button-link {
     display: inline-block;
-    background: #1a6b3a;
-    color: #e0e0e0;
-    border: 1px solid #1a8b4a;
-    padding: 0.5rem 1.2rem;
-    border-radius: 4px;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    background: #ffff00;
+    color: #000000;
+    border: 4px solid #000000;
+    padding: 1rem 2rem;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     text-decoration: none;
+    border-radius: 0;
   }
 
   .button-link:hover {
-    background: #1a8b4a;
+    background: #000000;
+    color: #ffff00;
   }
 
   #deploy-result a {
-    color: #5bc0de;
+    color: #ffffff;
     text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 3px;
+    font-weight: 700;
   }
 
   #deploy-result a:hover {
-    color: #7dd4ed;
+    background: #ffff00;
+    color: #000000;
   }
 </style>
 

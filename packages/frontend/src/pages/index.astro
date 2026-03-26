@@ -4,28 +4,29 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
 <BaseLayout title="G2C — Smart Accounts">
   <div class="page-header">
-    <h1>G2C Smart Accounts</h1>
+    <div class="title-block">
+      <h1>G2C</h1>
+      <div class="title-rule"></div>
+      <div class="subtitle">Smart Accounts on Stellar</div>
+    </div>
     <a href="https://github.com/theahaco/g2c" target="_blank" rel="noopener" class="github-link" title="View on GitHub">
-      <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
   </div>
-  <p class="info">
-    Create a Stellar smart account secured by your device's passkey (fingerprint, face, or security key).
-    No seed phrases or private keys to manage — your passkey <em>is</em> your wallet.
-  </p>
+  <div class="manifesto-block">
+    <p class="manifesto">Your passkey is your wallet. No seed phrases. No private keys. Raw cryptographic ownership via WebAuthn.</p>
+  </div>
 
   <div id="error-box" class="error" style="display:none"></div>
 
   <section id="accounts-section" class="hidden">
-    <h2>Your Accounts</h2>
+    <h2>// Your Accounts</h2>
     <div id="accounts-list"></div>
   </section>
 
   <section>
-    <h2>Create New Account</h2>
-    <p class="info">
-      Prepares a new smart account on Stellar testnet. You'll register a passkey in the next step to secure it.
-    </p>
+    <h2>// Create New Account</h2>
+    <p class="info">Deploys a passkey-secured smart account on Stellar testnet. One button. One passkey. Done.</p>
     <div class="field">
       <button id="create-btn">Create Account</button>
     </div>
@@ -33,89 +34,128 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   </section>
 
   <section id="passkey-section" class="hidden">
-    <h2>Set Up Passkey</h2>
-    <p class="info">
-      Your account address is ready. Continue to register a passkey and activate your account on-chain.
-    </p>
+    <h2>// Passkey Setup Required</h2>
+    <p class="info">Account address generated. Register a passkey to activate it on-chain.</p>
     <pre id="c-address-result"></pre>
     <div class="field">
-      <a id="setup-link" class="button-link">Register Passkey & Deploy</a>
+      <a id="setup-link" class="button-link">Register Passkey & Deploy &rarr;</a>
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  body {
-    background: #1a1a2e;
-  }
-
   .page-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    margin-bottom: 0;
+  }
+
+  .title-block {
+    flex: 1;
   }
 
   .page-header h1 {
     margin: 0;
+    font-size: clamp(4rem, 12vw, 9rem);
+    line-height: 0.85;
+    letter-spacing: -0.06em;
+  }
+
+  .title-rule {
+    width: 100%;
+    height: 0;
+    border-top: 4px solid #000000;
+    margin: 0.75rem 0;
   }
 
   .github-link {
-    color: #8899aa;
-    transition: color 0.15s;
+    color: #000000;
+    border: 4px solid #000000;
+    padding: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    background: #ffffff;
+    flex-shrink: 0;
+    margin-top: 0.25rem;
   }
 
   .github-link:hover {
-    color: #e0e0e0;
+    background: #ffff00;
+    color: #000000;
+  }
+
+  .subtitle {
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: #000000;
+  }
+
+  .manifesto-block {
+    border-bottom: 4px solid #000000;
+    padding: 1.25rem 0;
+    margin-bottom: 0;
+  }
+
+  .manifesto {
+    font-size: 0.9rem;
+    color: #000000;
+    line-height: 1.6;
+    font-weight: 400;
+    max-width: 60ch;
   }
 
   .button-link {
     display: inline-block;
-    background: #1a6b3a;
-    color: #e0e0e0;
-    border: 1px solid #1a8b4a;
-    padding: 0.5rem 1.2rem;
-    border-radius: 4px;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    background: #ffff00;
+    color: #000000;
+    border: 4px solid #000000;
+    padding: 1rem 2rem;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     text-decoration: none;
+    border-radius: 0;
   }
 
   .button-link:hover {
-    background: #1a8b4a;
-  }
-
-  .progress {
-    background: #0a2040;
-    border: 1px solid #1a3060;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: #8899aa;
+    background: #000000;
+    color: #ffff00;
   }
 
   #accounts-list {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin: 0.75rem 0;
+    gap: 0;
+    margin: 1rem 0;
   }
 
   .account-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    background: #0a2040;
-    border: 1px solid #1a3060;
-    border-radius: 6px;
-    padding: 0.6rem 0.85rem;
+    gap: 1rem;
+    background: #ffffff;
+    border: 4px solid #000000;
+    border-bottom: none;
+    padding: 1.25rem;
     text-decoration: none;
-    transition: border-color 0.15s, background 0.15s;
+    color: #000000;
+  }
+
+  .account-row:last-child {
+    border-bottom: 4px solid #000000;
   }
 
   .account-row:hover {
-    background: #0d2850;
-    border-color: #2a5090;
+    background: #ffff00;
   }
 
   .account-info {
@@ -124,21 +164,28 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   }
 
   .account-name {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #e0e0e0;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 700;
+    color: #000000;
+    text-transform: uppercase;
+    line-height: 1;
   }
 
   .account-address {
-    font-family: monospace;
-    font-size: 0.72rem;
-    color: #8899aa;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: 0.6rem;
+    color: #555555;
     min-width: 0;
+    word-break: break-all;
+    margin-top: 0.35rem;
+    letter-spacing: 0.02em;
   }
 
   .account-arrow {
-    color: #5bc0de;
-    font-size: 1rem;
+    color: #000000;
+    font-size: 2rem;
+    font-weight: 700;
     flex-shrink: 0;
   }
 </style>

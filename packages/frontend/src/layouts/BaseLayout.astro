@@ -11,15 +11,24 @@ const { title } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <title>{title}</title>
   </head>
   <body>
     <a id="preview-banner" style="display:none" target="_blank" rel="noopener"></a>
     <div id="webview-warning" style="display:none">
-      <p>Passkeys are not supported in in-app browsers.</p>
+      <p>PASSKEYS NOT SUPPORTED IN IN-APP BROWSERS.</p>
       <p>Tap the menu (<strong>&middot;&middot;&middot;</strong>) and choose <strong>"Open in Safari"</strong> or <strong>"Open in Browser"</strong>.</p>
     </div>
-    <slot />
+    <div class="brutalist-container">
+      <slot />
+      <footer class="brutalist-footer">
+        <div class="footer-grid"></div>
+        <div class="footer-text">G2C // STELLAR TESTNET // RAW CRYPTOGRAPHIC OWNERSHIP</div>
+      </footer>
+    </div>
   </body>
 </html>
 
@@ -32,37 +41,62 @@ const { title } = Astro.props;
     left: 0;
     right: 0;
     display: none;
-    background: #e11d48;
-    color: #fff;
-    font-size: 0.95rem;
+    background: #ff0000;
+    color: #ffffff;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
     font-weight: 700;
     padding: 0.5rem 1rem;
     text-align: center;
     text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     z-index: 9999;
+    border-bottom: 4px solid #000000;
   }
-
   #preview-banner:hover {
-    background: #be123c;
+    background: #000000;
+    color: #ffff00;
   }
-
   body:has(#preview-banner[style*="display: block"]) {
-    padding-top: 2.2rem;
+    padding-top: 2.5rem;
   }
 
   #webview-warning {
-    background: #78350f;
-    border: 1px solid #a16207;
-    border-radius: 6px;
-    color: #fef3c7;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-    line-height: 1.5;
+    background: #ffff00;
+    border: 4px solid #000000;
+    color: #000000;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.6;
+    text-transform: uppercase;
   }
+  #webview-warning p { margin: 0.25rem 0; }
 
-  #webview-warning p {
-    margin: 0.25rem 0;
+  .brutalist-footer {
+    margin-top: 4rem;
+    border-top: 4px solid #000000;
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+  }
+  .footer-grid {
+    width: 100%;
+    height: 2rem;
+    background:
+      repeating-linear-gradient(90deg, #000 0, #000 1px, transparent 1px, transparent 2rem);
+    opacity: 0.08;
+    margin-bottom: 1rem;
+  }
+  .footer-text {
+    font-family: 'Space Mono', 'Courier New', monospace;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #888888;
   }
 </style>
 
