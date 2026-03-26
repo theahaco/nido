@@ -1,9 +1,89 @@
+<<<<<<< ours
+<<<<<<< ours
+/* ===================================
+   G2C — Clean, Light Design System
+   Inspired by Scaffold Stellar
+   =================================== */
+
+:root {
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+  --color-text: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #2563eb;
+  --color-accent-light: #eff6ff;
+  --color-accent-badge: #dbeafe;
+  --color-success: #10b981;
+  --color-success-light: #ecfdf5;
+  --color-success-border: #a7f3d0;
+  --color-error: #ef4444;
+  --color-error-light: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fffbeb;
+  --color-code-bg: #f3f4f6;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', 'Courier New', monospace;
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+||||||| ancestor
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
+=======
+/* ===================================
+   G2C BRUTALIST DESIGN SYSTEM
+   Raw. Bold. Unapologetic.
+   =================================== */
+>>>>>>> theirs
+||||||| ancestor
+/* ===================================
+   G2C BRUTALIST DESIGN SYSTEM
+   Raw. Bold. Unapologetic.
+   =================================== */
+=======
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+>>>>>>> theirs
 
+<<<<<<< ours
+<<<<<<< ours
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  padding: var(--space-xl);
+  margin: 0;
+  line-height: 1.6;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+||||||| ancestor
 body {
   font-family: system-ui, sans-serif;
   max-width: 640px;
@@ -11,7 +91,27 @@ body {
   padding: 0 1rem;
   color: #e0e0e0;
 }
+=======
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+>>>>>>> theirs
+||||||| ancestor
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+=======
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  color: #e0e0e0;
+}
+>>>>>>> theirs
 
+<<<<<<< ours
+<<<<<<< ours
+@media (min-width: 768px) {
+  body { padding: var(--space-2xl) var(--space-xl); }
+}
+||||||| ancestor
 code {
   background: #16213e;
   padding: 0.15rem 0.4rem;
@@ -19,7 +119,33 @@ code {
   font-size: 0.85rem;
   word-break: break-all;
 }
+=======
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+>>>>>>> theirs
+||||||| ancestor
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+=======
+code {
+  background: #16213e;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+>>>>>>> theirs
 
+<<<<<<< ours
+<<<<<<< ours
+h1 {
+  font-family: var(--font-sans);
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--color-text);
+||||||| ancestor
 button {
   background: #0f3460;
   color: #e0e0e0;
@@ -28,17 +154,109 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.95rem;
+=======
+body {
+  font-family: 'Space Mono', 'Courier New', monospace;
+  background: #ffffff;
+  color: #000000;
+  padding: 2rem;
+  margin: 0;
+  line-height: 1.4;
+>>>>>>> theirs
+||||||| ancestor
+body {
+  font-family: 'Space Mono', 'Courier New', monospace;
+  background: #ffffff;
+  color: #000000;
+  padding: 2rem;
+  margin: 0;
+  line-height: 1.4;
+=======
+button {
+  background: #0f3460;
+  color: #e0e0e0;
+  border: 1px solid #1a1a5e;
+  padding: 0.5rem 1.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+>>>>>>> theirs
 }
 
+<<<<<<< ours
+<<<<<<< ours
+h2 {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+||||||| ancestor
 button:hover {
   background: #1a4a80;
+=======
+@media (min-width: 768px) {
+  body { padding: 3rem 4rem; }
+>>>>>>> theirs
+||||||| ancestor
+@media (min-width: 768px) {
+  body { padding: 3rem 4rem; }
+=======
+button:hover {
+  background: #1a4a80;
+>>>>>>> theirs
 }
 
+<<<<<<< ours
+<<<<<<< ours
+h3 {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+||||||| ancestor
 button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+=======
+h1 { font-family: 'Space Mono', 'Courier New', monospace; font-size: clamp(2rem, 5vw, 4rem); font-weight: 700; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.05; color: #000000; }
+h2 { font-family: 'Space Mono', 'Courier New', monospace; font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #000000; margin-bottom: 0.5rem; }
+h3 { font-family: 'Space Mono', 'Courier New', monospace; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #000000; margin-bottom: 0.5rem; }
+p { font-size: 0.85rem; line-height: 1.5; }
+>>>>>>> theirs
 
+<<<<<<< ours
+p { font-size: 0.9375rem; line-height: 1.6; }
+||||||| ancestor
+h1 { font-family: 'Space Mono', 'Courier New', monospace; font-size: clamp(2rem, 5vw, 4rem); font-weight: 700; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1.05; color: #000000; }
+h2 { font-family: 'Space Mono', 'Courier New', monospace; font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #000000; margin-bottom: 0.5rem; }
+h3 { font-family: 'Space Mono', 'Courier New', monospace; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #000000; margin-bottom: 0.5rem; }
+p { font-size: 0.85rem; line-height: 1.5; }
+=======
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+>>>>>>> theirs
+
+<<<<<<< ours
+a { color: var(--color-accent); text-decoration: none; transition: color 0.15s ease; }
+a:hover { color: var(--color-accent-hover); text-decoration: underline; }
+
+code {
+  font-family: var(--font-mono);
+  background: var(--color-code-bg);
+  color: var(--color-text);
+  padding: 0.15rem 0.4rem;
+  font-size: 0.8rem;
+  word-break: break-all;
+  border-radius: var(--radius-sm);
+}
+||||||| ancestor
 input {
   background: #16213e;
   color: #e0e0e0;
@@ -49,7 +267,55 @@ input {
   font-family: monospace;
   font-size: 0.85rem;
 }
+=======
+a { color: #000000; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+a:hover { background: #ffff00; color: #000000; }
+>>>>>>> theirs
+||||||| ancestor
+a { color: #000000; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+a:hover { background: #ffff00; color: #000000; }
+=======
+input {
+  background: #16213e;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  padding: 0.5rem;
+  border-radius: 4px;
+  width: 100%;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+>>>>>>> theirs
 
+<<<<<<< ours
+<<<<<<< ours
+pre {
+  font-family: var(--font-mono);
+  background: var(--color-text);
+  color: #e5e7eb;
+  padding: var(--space-md);
+  overflow-x: auto;
+  font-size: 0.75rem;
+  margin-top: var(--space-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+button {
+  font-family: var(--font-sans);
+  background: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  padding: 0.625rem 1.25rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+||||||| ancestor
 pre {
   background: #16213e;
   padding: 0.75rem;
@@ -61,22 +327,136 @@ pre {
   word-break: break-all;
   color: #a0d0a0;
 }
+=======
+code { font-family: 'Space Mono', 'Courier New', monospace; background: #000000; color: #ffffff; padding: 0.15rem 0.4rem; font-size: 0.8rem; word-break: break-all; border: none; border-radius: 0; }
+pre { font-family: 'Space Mono', 'Courier New', monospace; background: #000000; color: #ffffff; padding: 1rem; overflow-x: auto; font-size: 0.75rem; margin-top: 0.5rem; white-space: pre-wrap; word-break: break-all; border: 3px solid #000000; border-radius: 0; }
+>>>>>>> theirs
 
+<<<<<<< ours
+button:hover { background: var(--color-accent-hover); }
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.5; cursor: not-allowed; background: var(--color-text-muted); }
+button:disabled:hover { background: var(--color-text-muted); }
+||||||| ancestor
+code { font-family: 'Space Mono', 'Courier New', monospace; background: #000000; color: #ffffff; padding: 0.15rem 0.4rem; font-size: 0.8rem; word-break: break-all; border: none; border-radius: 0; }
+pre { font-family: 'Space Mono', 'Courier New', monospace; background: #000000; color: #ffffff; padding: 1rem; overflow-x: auto; font-size: 0.75rem; margin-top: 0.5rem; white-space: pre-wrap; word-break: break-all; border: 3px solid #000000; border-radius: 0; }
+=======
+pre {
+  background: #16213e;
+  padding: 0.75rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #a0d0a0;
+}
+>>>>>>> theirs
+
+<<<<<<< ours
+input {
+  font-family: var(--font-sans);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 0.625rem 0.875rem;
+  width: 100%;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+||||||| ancestor
 .field {
   margin: 0.5rem 0;
 }
+=======
+button { font-family: 'Space Mono', 'Courier New', monospace; background: #000000; color: #ffffff; border: 3px solid #000000; padding: 0.75rem 1.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 0; transition: none; }
+button:hover { background: #ffff00; color: #000000; border-color: #000000; }
+button:active { background: #000000; color: #ffff00; }
+button:disabled { opacity: 0.3; cursor: not-allowed; background: #000000; color: #ffffff; }
+button:disabled:hover { background: #000000; color: #ffffff; }
+>>>>>>> theirs
 
+<<<<<<< ours
+input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12); }
+input::placeholder { color: var(--color-text-muted); font-size: 0.85rem; }
+
+section { border-top: 1px solid var(--color-border); padding-top: var(--space-lg); margin-top: var(--space-lg); }
+||||||| ancestor
+button { font-family: 'Space Mono', 'Courier New', monospace; background: #000000; color: #ffffff; border: 3px solid #000000; padding: 0.75rem 1.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 0; transition: none; }
+button:hover { background: #ffff00; color: #000000; border-color: #000000; }
+button:active { background: #000000; color: #ffff00; }
+button:disabled { opacity: 0.3; cursor: not-allowed; background: #000000; color: #ffffff; }
+button:disabled:hover { background: #000000; color: #ffffff; }
+=======
+.field {
+  margin: 0.5rem 0;
+}
+>>>>>>> theirs
+
+<<<<<<< ours
+.field { margin: var(--space-md) 0; }
+
+.field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+||||||| ancestor
 .field label {
   display: block;
   font-size: 0.85rem;
   color: #999;
   margin-bottom: 0.25rem;
 }
+=======
+input { font-family: 'Space Mono', 'Courier New', monospace; background: #ffffff; color: #000000; border: 3px solid #000000; padding: 0.75rem; width: 100%; font-size: 0.85rem; border-radius: 0; outline: none; }
+input:focus { background: #ffff00; color: #000000; border-color: #000000; }
+input::placeholder { color: #999999; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+>>>>>>> theirs
+||||||| ancestor
+input { font-family: 'Space Mono', 'Courier New', monospace; background: #ffffff; color: #000000; border: 3px solid #000000; padding: 0.75rem; width: 100%; font-size: 0.85rem; border-radius: 0; outline: none; }
+input:focus { background: #ffff00; color: #000000; border-color: #000000; }
+input::placeholder { color: #999999; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+=======
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  color: #999;
+  margin-bottom: 0.25rem;
+}
+>>>>>>> theirs
 
+<<<<<<< ours
+<<<<<<< ours
+.error {
+  color: var(--color-error);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-error-border);
+  padding: 0.75rem var(--space-md);
+  margin: var(--space-md) 0;
+  background: var(--color-error-light);
+  border-radius: var(--radius-md);
+}
+||||||| ancestor
 .error {
   color: #ff6b6b;
 }
+=======
+section { border-top: 4px solid #000000; padding-top: 1.5rem; margin-top: 1.5rem; }
+>>>>>>> theirs
 
+<<<<<<< ours
+.info { color: var(--color-text-secondary); font-size: 0.875rem; margin: var(--space-sm) 0; line-height: 1.6; }
+.hidden { display: none; }
+||||||| ancestor
 .info {
   color: #999;
   font-size: 0.85rem;
@@ -87,11 +467,67 @@ section {
   border-top: 1px solid #333;
   padding-top: 1rem;
 }
+||||||| ancestor
+section { border-top: 4px solid #000000; padding-top: 1.5rem; margin-top: 1.5rem; }
+=======
+.error {
+  color: #ff6b6b;
+}
+>>>>>>> theirs
 
+<<<<<<< ours
 .hidden {
   display: none;
 }
+=======
+.field { margin: 0.75rem 0; }
+.field label { display: block; font-family: 'Space Mono', 'Courier New', monospace; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #000000; margin-bottom: 0.4rem; }
+||||||| ancestor
+.field { margin: 0.75rem 0; }
+.field label { display: block; font-family: 'Space Mono', 'Courier New', monospace; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #000000; margin-bottom: 0.4rem; }
+=======
+.info {
+  color: #999;
+  font-size: 0.85rem;
+  margin: 0.5rem 0;
+}
+>>>>>>> theirs
 
+section {
+  border-top: 1px solid #333;
+  padding-top: 1rem;
+}
+
+<<<<<<< ours
+.home-btn { font-family: 'Space Mono', 'Courier New', monospace; background: #ffffff; color: #000000; border: 3px solid #000000; padding: 0.5rem 1rem; cursor: pointer; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none; white-space: nowrap; border-radius: 0; }
+.home-btn:hover { background: #ffff00; color: #000000; }
+>>>>>>> theirs
+||||||| ancestor
+.home-btn { font-family: 'Space Mono', 'Courier New', monospace; background: #ffffff; color: #000000; border: 3px solid #000000; padding: 0.5rem 1rem; cursor: pointer; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none; white-space: nowrap; border-radius: 0; }
+.home-btn:hover { background: #ffff00; color: #000000; }
+=======
+.hidden {
+  display: none;
+}
+>>>>>>> theirs
+
+<<<<<<< ours
+<<<<<<< ours
+.home-btn {
+  font-family: var(--font-sans);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  padding: 0.375rem 0.875rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--radius-full);
+  transition: all 0.15s ease;
+}
+||||||| ancestor
 .home-btn {
   background: #2a3a4a;
   color: #e0e0e0;
@@ -103,13 +539,74 @@ section {
   text-decoration: none;
   white-space: nowrap;
 }
+=======
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+>>>>>>> theirs
 
+<<<<<<< ours
+.home-btn:hover { background: var(--color-bg); color: var(--color-text); border-color: var(--color-border-strong); text-decoration: none; }
+||||||| ancestor
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+=======
+.home-btn {
+  background: #2a3a4a;
+  color: #e0e0e0;
+  border: 1px solid #3a4a5a;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+>>>>>>> theirs
+
+<<<<<<< ours
+.page-header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); }
+||||||| ancestor
 .home-btn:hover {
   background: #3a4a5a;
 }
+=======
+.progress { font-family: 'Space Mono', 'Courier New', monospace; background: #ffff00; border: 3px solid #000000; padding: 0.75rem; margin-top: 0.75rem; font-size: 0.8rem; color: #000000; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+>>>>>>> theirs
+||||||| ancestor
+.progress { font-family: 'Space Mono', 'Courier New', monospace; background: #ffff00; border: 3px solid #000000; padding: 0.75rem; margin-top: 0.75rem; font-size: 0.8rem; color: #000000; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+=======
+.home-btn:hover {
+  background: #3a4a5a;
+}
+>>>>>>> theirs
 
+<<<<<<< ours
+<<<<<<< ours
+.progress {
+  background: var(--color-accent-light);
+  border: 1px solid var(--color-accent-badge);
+  padding: 0.75rem var(--space-md);
+  margin-top: var(--space-md);
+  font-size: 0.85rem;
+  color: var(--color-accent);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+}
+
+::selection { background: var(--color-accent-badge); color: var(--color-text); }
+||||||| ancestor
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+=======
+::selection { background: #ffff00; color: #000000; }
+>>>>>>> theirs
+||||||| ancestor
+::selection { background: #ffff00; color: #000000; }
+=======
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+>>>>>>> theirs
