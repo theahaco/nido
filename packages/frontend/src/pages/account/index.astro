@@ -2,33 +2,46 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 ---
 
-<BaseLayout title="Contract Account Wallet">
+<BaseLayout title="G2C — Account">
   <div class="page-header">
-    <h1>Contract Account Wallet</h1>
-    <a id="home-link" class="home-btn">Home</a>
+    <h1>Account</h1>
+    <a id="home-link" class="home-btn">&larr; Home</a>
   </div>
 
   <div id="error-box" class="error" style="display:none"></div>
 
   <!-- Signing mode UI -->
   <div id="signing-mode" class="hidden">
-    <div class="signing-request">
-      <h2>Signature Request</h2>
-      <div>From: <span class="origin" id="sign-origin"></span></div>
-      <div class="hash">Hash: <code id="sign-hash"></code></div>
+    <div class="signing-card">
+      <div class="signing-header">
+        <div class="signing-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h2>Signature Request</h2>
+      </div>
+      <div class="signing-details">
+        <div class="sign-field">
+          <span class="sign-label">Origin</span>
+          <span class="sign-value" id="sign-origin"></span>
+        </div>
+        <div class="sign-field">
+          <span class="sign-label">Hash</span>
+          <code id="sign-hash"></code>
+        </div>
+      </div>
     </div>
 
     <div id="sign-needs-register">
-      <p class="info">No passkey registered yet. Register one first, then you can approve the request.</p>
+      <p class="info">No passkey registered. Register one first, then approve the request.</p>
       <div class="field">
         <button id="sign-register-btn">Register Passkey</button>
       </div>
     </div>
 
     <div id="sign-ready" class="hidden">
-      <div class="field">
+      <div class="field" style="display:flex;gap:0.5rem">
         <button id="approve-btn" class="primary">Approve & Sign</button>
-        <button id="deny-btn" style="margin-left:0.5rem">Deny</button>
+        <button id="deny-btn" class="btn-secondary">Deny</button>
       </div>
     </div>
 
@@ -38,12 +51,11 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   <!-- Home mode UI -->
   <div id="home-mode" class="hidden">
     <section id="account-section">
-      <h2>Account</h2>
       <div class="account-card">
         <div class="account-field">
           <span class="account-label">Address</span>
           <div class="address-row">
-            <code id="contract-id" class="account-address"></code>
+            <code id="contract-id" class="account-address-code"></code>
             <button id="copy-btn" class="copy-btn" title="Copy address">Copy</button>
           </div>
         </div>
@@ -52,11 +64,39 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
           <span id="xlm-balance" class="balance-value">loading...</span>
         </div>
         <div class="account-links">
-          <a id="explorer-link" class="explorer-link" target="_blank" rel="noopener" style="display:none">View on Stellar Expert</a>
+          <a id="explorer-link" class="explorer-link" target="_blank" rel="noopener" style="display:none">View on Stellar Expert &rarr;</a>
         </div>
       </div>
     </section>
 
+<<<<<<< ours
+    <!-- Name section -->
+    <section id="name-section" class="hidden">
+      <h2>Account Name</h2>
+      <div id="name-display" class="hidden">
+        <div class="name-hero">
+          <div class="name-big" id="account-name"></div>
+          <div class="name-url-badge">
+            <span class="name-url-label">Shareable URL</span>
+            <a id="name-url" class="name-url-value"></a>
+          </div>
+        </div>
+      </div>
+      <div id="name-claim" class="hidden">
+        <p class="info">Claim a human-readable name. 1-15 characters, lowercase letters and digits only.</p>
+        <div class="field">
+          <label for="name-input">Name</label>
+          <input id="name-input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
+        </div>
+        <div class="field" style="margin-top:0.5rem">
+          <button id="claim-name-btn">Claim Name</button>
+        </div>
+        <div id="name-result" class="progress" style="display:none"></div>
+      </div>
+    </section>
+
+<<<<<<< ours
+||||||| ancestor
     <!-- Name section -->
     <section id="name-section" class="hidden">
       <h2>Account Name</h2>
@@ -85,22 +125,55 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       </div>
     </section>
 
+=======
+>>>>>>> theirs
+||||||| ancestor
+=======
+    <!-- Name section -->
+    <section id="name-section" class="hidden">
+      <h2>Account Name</h2>
+      <div id="name-display" class="hidden">
+        <div class="account-card">
+          <div class="account-field">
+            <span class="account-label">Name</span>
+            <code id="account-name" class="account-address"></code>
+          </div>
+          <div class="account-field">
+            <span class="account-label">Shareable URL</span>
+            <a id="name-url" class="name-link"></a>
+          </div>
+        </div>
+      </div>
+      <div id="name-claim" class="hidden">
+        <p class="info">Claim a human-readable name for your account. Names are 1-15 characters, lowercase letters and digits only.</p>
+        <div class="field">
+          <label for="name-input">Name</label>
+          <input id="name-input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
+        </div>
+        <div class="field" style="margin-top:0.5rem">
+          <button id="claim-name-btn">Claim Name</button>
+        </div>
+        <div id="name-result" class="progress" style="display:none"></div>
+      </div>
+    </section>
+
+>>>>>>> theirs
     <!-- Shown when a passkey is already registered -->
     <section id="passkey-info-section" class="hidden">
       <h2>Passkey</h2>
-      <div class="passkey-details">
-        <div class="passkey-status">Registered</div>
+      <div class="passkey-card">
+        <div class="passkey-status-badge">Registered</div>
         <div class="passkey-field">
           <span class="passkey-label">Public Key</span>
-          <code id="passkey-pubkey" class="passkey-value"></code>
+          <code id="passkey-pubkey" class="passkey-value-code"></code>
         </div>
         <div class="passkey-field">
           <span class="passkey-label">Credential ID</span>
-          <code id="passkey-cred-id" class="passkey-value"></code>
+          <code id="passkey-cred-id" class="passkey-value-code"></code>
         </div>
         <div class="passkey-field">
           <span class="passkey-label">RP ID</span>
-          <code id="passkey-rp-id" class="passkey-value"></code>
+          <code id="passkey-rp-id" class="passkey-value-code"></code>
         </div>
         <p class="info rp-explainer">
           The RP ID (Relying Party Identifier) is the domain that your passkey is bound to.
@@ -121,25 +194,24 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     </section>
 
     <section id="sign-section">
-      <h2>Try It out</h2>
-      <p class="info">Want to see how it works?
-          Eventually, other stellar dApps will redirect to this domain when you need to sign a transaction.
-          For now you can invoke a contract or sign arbitrary data below.
-     </p>
-      <h3>Invoke a contract</h3>
+      <h2>Try It Out</h2>
+      <p class="info">Eventually, other Stellar dApps will redirect here when you need to sign. For now, try these demos.</p>
+
+      <h3>Invoke a Contract</h3>
       <p class="info">Set a status message on-chain via your smart account.</p>
       <div class="field">
-        <a id="status-message-link" class="button-link">Status Message</a>
+        <a id="status-message-link" class="button-link">Status Message &rarr;</a>
       </div>
+
       <h3>Sign a Hash</h3>
-      <p class="info">Authenticate with your passkey to sign a 32-byte hash (e.g. a transaction hash).</p>
+      <p class="info">Authenticate with your passkey to sign a 32-byte hash.</p>
       <div class="field">
         <label for="hash-input">Hash to sign (64 hex chars)</label>
-        <input id="hash-input" placeholder="e.g. a1b2c3d...64 hex characters" maxlength="64" />
+        <input id="hash-input" placeholder="a1b2c3d...64 hex characters" maxlength="64" />
       </div>
-      <div class="field" style="margin-top:0.5rem">
+      <div class="field" style="display:flex;gap:0.5rem;margin-top:0.5rem">
         <button id="sign-btn" disabled>Sign</button>
-        <button id="random-hash-btn" style="margin-left:0.5rem; font-size:0.8rem">Random hash</button>
+        <button id="random-hash-btn" class="btn-secondary" style="font-size:0.8rem">Random Hash</button>
       </div>
       <pre id="sign-result" style="display:none"></pre>
     </section>
@@ -147,171 +219,293 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 </BaseLayout>
 
 <style>
-  body {
-    background: #1a1a2e;
+  .page-header h1 {
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    letter-spacing: -0.03em;
   }
 
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-
-  button.primary {
-    background: #1a6b3a;
-    border-color: #1a8b4a;
-    font-size: 1.1rem;
-    padding: 0.7rem 2rem;
-  }
-
-  button.primary:hover {
-    background: #1a8b4a;
-  }
-
+  /* Account Card */
   .account-card {
-    background: #0a2040;
-    border: 1px solid #1a3060;
-    border-radius: 6px;
-    padding: 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    box-shadow: var(--shadow-sm);
   }
 
-  .account-field {
-    margin-bottom: 0.75rem;
-  }
-
-  .account-field:last-of-type {
-    margin-bottom: 0;
-  }
+  .account-field { margin-bottom: var(--space-md); }
+  .account-field:last-of-type { margin-bottom: 0; }
 
   .account-label {
-    color: #8899aa;
     display: block;
-    font-size: 0.8rem;
-    margin-bottom: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-xs);
   }
 
   .address-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-sm);
   }
 
-  .account-address {
-    color: #c0d0e0;
+  .account-address-code {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
     word-break: break-all;
-    font-size: 0.85rem;
+    background: var(--color-code-bg);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    flex: 1;
   }
 
   .copy-btn {
-    background: #1a3060;
-    color: #8899aa;
-    border: 1px solid #2a4070;
-    padding: 0.2rem 0.5rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.75rem;
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    padding: 0.25rem 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 600;
     white-space: nowrap;
     flex-shrink: 0;
+    border-radius: var(--radius-sm);
   }
 
   .copy-btn:hover {
-    background: #2a4070;
-    color: #c0d0e0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
   }
 
   .balance-value {
-    font-family: monospace;
-    font-size: 1.3rem;
-    color: #e0e0e0;
+    font-family: var(--font-sans);
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+    font-weight: 700;
+    color: var(--color-text);
   }
 
   .account-links {
-    margin-top: 0.75rem;
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
   }
 
   .explorer-link {
-    color: #5bc0de;
-    text-decoration: underline;
+    color: var(--color-accent);
     font-size: 0.8rem;
+    font-weight: 500;
   }
 
-  .explorer-link:hover {
-    color: #7dd4ed;
+  .explorer-link:hover { color: var(--color-accent-hover); }
+
+  /* Signing Card */
+  .signing-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin: var(--space-lg) 0;
+    box-shadow: var(--shadow-md);
   }
 
-  .signing-request {
-    background: #1a2a1a;
-    border: 1px solid #2a4a2a;
-    border-radius: 6px;
-    padding: 1rem;
-    margin: 1rem 0;
+  .signing-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
   }
 
-  .signing-request .origin {
-    color: #80b0e0;
-    font-size: 0.9rem;
+  .signing-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-full);
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
-  .signing-request .hash {
-    font-family: monospace;
-    font-size: 0.8rem;
-    color: #c0c0c0;
-    margin: 0.75rem 0;
+  .signing-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .sign-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sign-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .sign-value {
+    font-size: 0.85rem;
+    color: var(--color-text);
+  }
+
+  .signing-card code {
+    background: var(--color-code-bg);
+    color: var(--color-text);
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
     word-break: break-all;
   }
 
-  .passkey-details {
-    background: #0a2040;
-    border: 1px solid #1a3060;
-    border-radius: 6px;
-    padding: 0.75rem 1rem;
+  button.primary {
+    background: var(--color-success);
+    padding: 0.75rem 1.75rem;
+    font-size: 0.9375rem;
   }
 
-  .passkey-status {
-    color: #6fcf97;
+  button.primary:hover { background: #059669; }
+
+  .btn-secondary {
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-secondary:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+  }
+
+  /* Passkey Card */
+  .passkey-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .passkey-status-badge {
+    display: inline-block;
+    background: var(--color-success-light);
+    color: var(--color-success);
+    border: 1px solid var(--color-success-border);
+    padding: 0.2rem 0.75rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    border-radius: var(--radius-full);
+    margin-bottom: var(--space-md);
   }
 
-  .passkey-field {
-    margin: 0.4rem 0;
-    font-size: 0.85rem;
-  }
+  .passkey-field { margin: var(--space-sm) 0; }
 
   .passkey-label {
-    color: #8899aa;
     display: block;
-    margin-bottom: 0.15rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: 2px;
   }
 
-  .passkey-value {
-    color: #c0d0e0;
+  .passkey-value-code {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
     word-break: break-all;
-    font-size: 0.8rem;
+    background: var(--color-code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--radius-sm);
   }
 
   .rp-explainer {
-    margin-top: 0.75rem;
+    margin-top: var(--space-md);
     margin-bottom: 0;
     font-size: 0.8rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-md);
   }
 
   .button-link {
     display: inline-block;
-    background: #4a1a6b;
-    color: #e0e0e0;
-    border: 1px solid #6a2a8b;
-    padding: 0.5rem 1.2rem;
-    border-radius: 4px;
+    font-family: var(--font-sans);
+    background: var(--color-accent);
+    color: #ffffff;
+    border: none;
+    padding: 0.625rem 1.25rem;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.875rem;
+    font-weight: 600;
     text-decoration: none;
+    border-radius: var(--radius-md);
+    transition: background 0.15s ease;
   }
 
   .button-link:hover {
-    background: #5a2a7b;
+    background: var(--color-accent-hover);
+    color: #ffffff;
+    text-decoration: none;
   }
+<<<<<<< ours
+
+  /* Name Hero - prominent display */
+  .name-hero {
+    text-align: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2xl) var(--space-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .name-big {
+    font-family: var(--font-sans);
+    font-size: clamp(2.5rem, 8vw, 4rem);
+    font-weight: 800;
+    color: var(--color-text);
+    line-height: 1;
+    margin-bottom: var(--space-lg);
+    letter-spacing: -0.03em;
+  }
+
+  .name-url-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    background: var(--color-accent-light);
+    border: 1px solid var(--color-accent-badge);
+    border-radius: var(--radius-full);
+    padding: 0.5rem 1.25rem;
+  }
+
+  .name-url-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .name-url-value {
+    font-family: var(--font-mono);
+    color: var(--color-accent);
+    font-size: 0.8rem;
+    word-break: break-all;
+    font-weight: 500;
+  }
+
+  .name-url-value:hover {
+    color: var(--color-accent-hover);
+  }
+||||||| ancestor
 
   .name-link {
     color: #5bc0de;
@@ -324,6 +518,24 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   .name-link:hover {
     color: #7dd4ed;
   }
+<<<<<<< ours
+=======
+>>>>>>> theirs
+||||||| ancestor
+=======
+
+  .name-link {
+    color: #5bc0de;
+    font-family: monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    text-decoration: underline;
+  }
+
+  .name-link:hover {
+    color: #7dd4ed;
+  }
+>>>>>>> theirs
 </style>
 
 <script>
@@ -786,7 +998,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       document.getElementById("xlm-balance")!.textContent = "unavailable";
     });
   } else {
-    document.getElementById("xlm-balance")!.textContent = "—";
+    document.getElementById("xlm-balance")!.textContent = "\u2014";
   }
 
   // --- Name section ---
