@@ -2,7 +2,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use p256::ecdsa::signature::hazmat::PrehashSigner;
 use p256::ecdsa::{Signature, SigningKey};
-use stellar_accounts::smart_account::{ContextRule, Signer};
+use stellar_accounts::smart_account::{ContextRule, ContextRuleType, Signer};
 
 pub const SMART_ACCOUNT_WASM: &[u8] =
     include_bytes!("../../../target/wasm32v1-none/contract/g2c_smart_account.wasm");
@@ -14,7 +14,25 @@ pub const WEBAUTHN_VERIFIER_WASM: &[u8] =
 #[soroban_sdk::contractclient(name = "SmartAccountClient")]
 trait SmartAccountInterface {
     fn get_context_rule(env: soroban_sdk::Env, context_rule_id: u32) -> ContextRule;
+    fn get_context_rules(
+        env: soroban_sdk::Env,
+        context_rule_type: ContextRuleType,
+    ) -> soroban_sdk::Vec<ContextRule>;
     fn get_context_rules_count(env: soroban_sdk::Env) -> u32;
+    fn add_context_rule(
+        env: soroban_sdk::Env,
+        context_type: ContextRuleType,
+        name: soroban_sdk::String,
+        valid_until: Option<u32>,
+        signers: soroban_sdk::Vec<Signer>,
+        policies: soroban_sdk::Map<soroban_sdk::Address, soroban_sdk::Val>,
+    ) -> ContextRule;
+    fn update_context_rule_valid_until(
+        env: soroban_sdk::Env,
+        context_rule_id: u32,
+        valid_until: Option<u32>,
+    ) -> ContextRule;
+    fn remove_context_rule(env: soroban_sdk::Env, context_rule_id: u32);
 }
 
 /// On-chain `WebAuthn` assertion components (soroban-sdk types) suitable for
