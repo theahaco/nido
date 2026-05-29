@@ -2,6 +2,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use p256::ecdsa::signature::hazmat::PrehashSigner;
 use p256::ecdsa::{Signature, SigningKey};
+use sha2::{Digest, Sha256};
 use stellar_accounts::policies::simple_threshold::SimpleThresholdAccountParams;
 use stellar_accounts::smart_account::{ContextRule, ContextRuleType, Signer};
 
@@ -39,6 +40,20 @@ trait SmartAccountInterface {
     fn remove_context_rule(env: soroban_sdk::Env, context_rule_id: u32);
     fn add_signer(env: soroban_sdk::Env, context_rule_id: u32, signer: Signer);
     fn remove_signer(env: soroban_sdk::Env, context_rule_id: u32, signer: Signer);
+}
+
+/// Create a deterministic P-256 signing key from a `u64` seed.
+///
+/// The seed is hashed with SHA-256 to produce the 32-byte scalar. This
+/// guarantees that seeds 1, 2, 3, 4, … always yield the same key so tests
+/// are reproducible. Never reuse seed 1 for friend keys — `deploy_smart_account`
+/// internally uses a random key for the primary passkey signer.
+pub fn test_key(seed: u64) -> SigningKey {
+    let mut hasher = Sha256::new();
+    hasher.update(b"g2c-test-key:");
+    hasher.update(seed.to_le_bytes());
+    let bytes = hasher.finalize();
+    SigningKey::from_bytes(&bytes).expect("deterministic key from seed")
 }
 
 /// On-chain `WebAuthn` assertion components (soroban-sdk types) suitable for
