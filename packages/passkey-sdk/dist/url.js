@@ -85,8 +85,14 @@ export function nameFromHostname(hostname) {
 export function accountUrl(host, contractId, path = "/") {
     const preview = previewPrefix(host);
     if (preview) {
-        const base = stripSubdomain(host);
-        return `//${contractId.toLowerCase()}${PREVIEW_SEP}${preview}.${base}${path}`;
+        // We're about to emit `<acc>--pr-N.<apex>`, so the base we want is the
+        // bare apex — NOT what `stripSubdomain` returns (which preserves the
+        // preview prefix as its own segment for wallet-context usage). Drop
+        // the first label, whether it's a contract+preview subdomain
+        // (`<x>--pr-N`), a bare preview root (`pr-N`), or a reserved-dApp
+        // preview (`status-message--pr-N`).
+        const apex = host.split(".").slice(1).join(".");
+        return `//${contractId.toLowerCase()}${PREVIEW_SEP}${preview}.${apex}${path}`;
     }
     return `//${contractId.toLowerCase()}.${host}${path}`;
 }
