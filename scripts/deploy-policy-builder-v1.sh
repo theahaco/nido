@@ -47,8 +47,9 @@ NETWORK="${2:-testnet}"
 export STELLAR_NETWORK="$NETWORK"   # the CLI doesn't take --network; reads env
 
 FACTORY_CONTRACT_ID="${FACTORY_CONTRACT_ID:-CDDMELYHOSD6M2T53F5DUYCXDS3VVOQ72E4KZMMZP37GQWII2WRKM2CC}"
-POLICY_VERSION="${POLICY_VERSION:-0.1.0}"
-FACTORY_VERSION="${FACTORY_VERSION:-0.2.0}"
+POLICY_VERSION="${POLICY_VERSION:-0.2.0}"
+VERIFIER_VERSION="${VERIFIER_VERSION:-0.2.0}"
+FACTORY_VERSION="${FACTORY_VERSION:-0.3.0}"
 REGISTRY_PREFIX="${REGISTRY_PREFIX:-unverified/}"
 
 # Canonical registry names (prefixed). These are what `factory.resolve(name)`
@@ -169,21 +170,21 @@ else
     warn "verifier deployment — accounts created BEFORE this script ran"
     warn "reference the old address; new accounts will use the registered one."
 
-    if [ -z "$(fetch_hash "$VERIFIER_NAME" "$POLICY_VERSION")" ]; then
+    if [ -z "$(fetch_hash "$VERIFIER_NAME" "$VERIFIER_VERSION")" ]; then
         stellar registry publish \
             --wasm "$VERIFIER_WASM" \
             --wasm-name "$VERIFIER_NAME" \
-            --binver "$POLICY_VERSION" \
+            --binver "$VERIFIER_VERSION" \
             --source-account "$ALIAS"
-        ok "published $VERIFIER_NAME@$POLICY_VERSION"
+        ok "published $VERIFIER_NAME@$VERIFIER_VERSION"
     else
-        skip "$VERIFIER_NAME@$POLICY_VERSION already published"
+        skip "$VERIFIER_NAME@$VERIFIER_VERSION already published"
     fi
 
     stellar registry deploy \
         --contract-name "$VERIFIER_NAME" \
         --wasm-name "$VERIFIER_NAME" \
-        --version "$POLICY_VERSION" \
+        --version "$VERIFIER_VERSION" \
         --source-account "$ALIAS"
     verifier_addr="$(fetch_contract_id "$VERIFIER_NAME")"
     ok "deployed $VERIFIER_NAME: $verifier_addr"
