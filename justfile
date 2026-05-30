@@ -41,3 +41,9 @@ cloudflare-deploy: build-astro
 
 dev: build-ts
     (cd packages/frontend; npm run dev)
+
+# Run Tasks 4 & 4b: publish + deploy multisig-policy via stellar-registry,
+# publish + upgrade factory. See scripts/deploy-policy-builder-v1.sh for what
+# it does and the env-var overrides.
+publish-policy-builder-v1 alias network="testnet":
+    ./scripts/deploy-policy-builder-v1.sh {{alias}} {{network}}
