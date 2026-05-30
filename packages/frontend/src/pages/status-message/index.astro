@@ -109,7 +109,6 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     hex2buf,
     buf2hex,
     accountUrl,
-    stripSubdomain,
     computeAccountAddress,
     loadSessionKeyMaterial,
     forgetSessionKeyMaterial,
@@ -244,9 +243,14 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
           alert("Enter your smart account address first.");
           return;
         }
-        // Build the wallet origin: https://<account>.<base>
-        const base = stripSubdomain(window.location.hostname);
-        const walletOrigin = `${window.location.protocol}//${acc.toLowerCase()}.${base}`;
+        // Build the wallet origin. accountUrl returns a protocol-relative
+        // URL ("//<acc>.<base>/" in prod, "//<acc>--pr-N.<base>/" in PR
+        // previews), which we feed to URL() to extract the origin. Doing it
+        // manually with `${acc}.${stripSubdomain(host)}` drops the --pr-N
+        // suffix in previews because stripSubdomain returns "pr-N.<base>"
+        // (preserves the prefix as its own segment).
+        const path = accountUrl(window.location.host, acc, "/");
+        const walletOrigin = new URL(`${window.location.protocol}${path}`).origin;
         try {
           // Generates the session key in *this* origin, persists private bytes
           // locally, then full-page redirects to the wallet with the public
