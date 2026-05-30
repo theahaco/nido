@@ -77,23 +77,21 @@ warn()   { printf "  \033[33m!\033[0m %s\n" "$*" >&2; }
 die()    { printf "\033[31m✗ %s\033[0m\n" "$*" >&2; exit 1; }
 
 # Returns the contract ID for a registered name, empty string if not registered.
-# Reads from stderr-and-stdout since some CLI versions chatter; greps for
-# anything that looks like a C-address.
+# Only reads stdout (stderr can contain unrelated C-addresses from error
+# messages, which would false-positive a grep). Errors → empty.
 fetch_contract_id() {
-    local name="$1"
-    stellar registry fetch-contract-id "$name" --source-account "$ALIAS" 2>&1 \
-        | grep -oE 'C[A-Z0-9]{55}' \
-        | head -1 \
-        || true
+    local name="$1" out
+    out="$(stellar registry fetch-contract-id "$name" --source-account "$ALIAS" 2>/dev/null)" \
+        || return 0
+    printf '%s' "$out" | grep -oE 'C[A-Z0-9]{55}' | head -1
 }
 
 # Returns the wasm hash for a published (name, version), empty if not published.
 fetch_hash() {
-    local name="$1" version="$2"
-    stellar registry fetch-hash "$name" --version "$version" --source-account "$ALIAS" 2>&1 \
-        | grep -oE '[0-9a-f]{64}' \
-        | head -1 \
-        || true
+    local name="$1" version="$2" out
+    out="$(stellar registry fetch-hash "$name" --version "$version" --source-account "$ALIAS" 2>/dev/null)" \
+        || return 0
+    printf '%s' "$out" | grep -oE '[0-9a-f]{64}' | head -1
 }
 
 # --- preflight ------------------------------------------------------------
