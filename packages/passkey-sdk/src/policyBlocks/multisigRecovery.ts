@@ -1,4 +1,5 @@
 import { Client as SmartAccountClient } from 'smart-account';
+import type { SimpleThresholdAccountParams } from 'multisig-policy';
 import type { AssembledTransaction } from '@stellar/stellar-sdk/contract';
 import type {
   ChainRule, LocalOverlay, MultisigRecoveryBlock,
@@ -28,8 +29,9 @@ export const multisigRecoveryModule: PolicyBlockModule<MultisigRecoveryBlock> = 
     // (SimpleThresholdAccountParams.threshold is u32, but auto-conversion of
     // a plain { threshold: 2 } often defaults to a larger int type).
     const { nativeToScVal } = await import('@stellar/stellar-sdk');
+    const installParamNative: SimpleThresholdAccountParams = { threshold: args.block.threshold };
     const installParam = nativeToScVal(
-      { threshold: args.block.threshold },
+      installParamNative,
       { type: { threshold: ['symbol', 'u32'] } as { threshold: ['symbol', 'u32'] } },
     );
 

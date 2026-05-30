@@ -1,6 +1,7 @@
 import { Buffer } from "buffer";
 import { AssembledTransaction, Client as ContractClient, ClientOptions as ContractClientOptions, MethodOptions } from "@stellar/stellar-sdk/contract";
 import type { u32, i128, Option } from "@stellar/stellar-sdk/contract";
+type Context = unknown;
 export * from "@stellar/stellar-sdk";
 export * as contract from "@stellar/stellar-sdk/contract";
 export * as rpc from "@stellar/stellar-sdk/rpc";
@@ -463,97 +464,51 @@ export interface WebAuthnSigData {
 }
 export interface Client {
     /**
-     * Construct and simulate a execute transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Construct and simulate a enforce transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
-    execute: ({ target, target_fn, target_args }: {
-        target: string;
-        target_fn: string;
-        target_args: Array<any>;
+    enforce: ({ context, authenticated_signers, context_rule, smart_account }: {
+        context: Context;
+        authenticated_signers: Array<Signer>;
+        context_rule: ContextRule;
+        smart_account: string;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
-     * Construct and simulate a add_policy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Construct and simulate a install transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
-    add_policy: ({ context_rule_id, policy, install_param }: {
-        context_rule_id: u32;
-        policy: string;
-        install_param: any;
+    install: ({ install_params, context_rule, smart_account }: {
+        install_params: SimpleThresholdAccountParams;
+        context_rule: ContextRule;
+        smart_account: string;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
-     * Construct and simulate a add_signer transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Construct and simulate a uninstall transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
-    add_signer: ({ context_rule_id, signer }: {
-        context_rule_id: u32;
-        signer: Signer;
+    uninstall: ({ context_rule, smart_account }: {
+        context_rule: ContextRule;
+        smart_account: string;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
-     * Construct and simulate a remove_policy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Construct and simulate a can_enforce transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
-    remove_policy: ({ context_rule_id, policy }: {
+    can_enforce: ({ context, authenticated_signers, context_rule, smart_account }: {
+        context: Context;
+        authenticated_signers: Array<Signer>;
+        context_rule: ContextRule;
+        smart_account: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<boolean>>;
+    /**
+     * Construct and simulate a get_threshold transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Read the installed M-of-N threshold for a given account + rule.
+     * Returns 0 if not installed.
+     */
+    get_threshold: ({ context_rule_id, smart_account }: {
         context_rule_id: u32;
-        policy: string;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
-    /**
-     * Construct and simulate a remove_signer transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    remove_signer: ({ context_rule_id, signer }: {
-        context_rule_id: u32;
-        signer: Signer;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
-    /**
-     * Construct and simulate a add_context_rule transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    add_context_rule: ({ context_type, name, valid_until, signers, policies }: {
-        context_type: ContextRuleType;
-        name: string;
-        valid_until: Option<u32>;
-        signers: Array<Signer>;
-        policies: Map<string, any>;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>;
-    /**
-     * Construct and simulate a get_context_rule transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    get_context_rule: ({ context_rule_id }: {
-        context_rule_id: u32;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>;
-    /**
-     * Construct and simulate a get_context_rules transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    get_context_rules: ({ context_rule_type }: {
-        context_rule_type: ContextRuleType;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<Array<ContextRule>>>;
-    /**
-     * Construct and simulate a remove_context_rule transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    remove_context_rule: ({ context_rule_id }: {
-        context_rule_id: u32;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
-    /**
-     * Construct and simulate a get_context_rules_count transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    get_context_rules_count: (options?: MethodOptions) => Promise<AssembledTransaction<u32>>;
-    /**
-     * Construct and simulate a update_context_rule_name transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    update_context_rule_name: ({ context_rule_id, name }: {
-        context_rule_id: u32;
-        name: string;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>;
-    /**
-     * Construct and simulate a update_context_rule_valid_until transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-     */
-    update_context_rule_valid_until: ({ context_rule_id, valid_until }: {
-        context_rule_id: u32;
-        valid_until: Option<u32>;
-    }, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>;
+        smart_account: string;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<u32>>;
 }
 export declare class Client extends ContractClient {
     readonly options: ContractClientOptions;
     static deploy<T = Client>(
-    /** Constructor/Initialization Args for the contract's `__constructor` method */
-    { signers, policies }: {
-        signers: Array<Signer>;
-        policies: Map<string, any>;
-    }, 
     /** Options for initializing a Client as well as for calling a method, with extras specific to deploying. */
     options: MethodOptions & Omit<ContractClientOptions, "contractId"> & {
         /** The hash of the Wasm blob, which must already be installed on-chain. */
@@ -565,17 +520,10 @@ export declare class Client extends ContractClient {
     }): Promise<AssembledTransaction<T>>;
     constructor(options: ContractClientOptions);
     readonly fromJSON: {
-        execute: (json: string) => AssembledTransaction<null>;
-        add_policy: (json: string) => AssembledTransaction<null>;
-        add_signer: (json: string) => AssembledTransaction<null>;
-        remove_policy: (json: string) => AssembledTransaction<null>;
-        remove_signer: (json: string) => AssembledTransaction<null>;
-        add_context_rule: (json: string) => AssembledTransaction<ContextRule>;
-        get_context_rule: (json: string) => AssembledTransaction<ContextRule>;
-        get_context_rules: (json: string) => AssembledTransaction<ContextRule[]>;
-        remove_context_rule: (json: string) => AssembledTransaction<null>;
-        get_context_rules_count: (json: string) => AssembledTransaction<number>;
-        update_context_rule_name: (json: string) => AssembledTransaction<ContextRule>;
-        update_context_rule_valid_until: (json: string) => AssembledTransaction<ContextRule>;
+        enforce: (json: string) => AssembledTransaction<null>;
+        install: (json: string) => AssembledTransaction<null>;
+        uninstall: (json: string) => AssembledTransaction<null>;
+        can_enforce: (json: string) => AssembledTransaction<boolean>;
+        get_threshold: (json: string) => AssembledTransaction<number>;
     };
 }

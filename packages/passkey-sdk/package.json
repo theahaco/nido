@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@noble/curves": "1.9.7",
-    "smart-account": "*"
+    "smart-account": "*",
+    "multisig-policy": "*"
   },
   "peerDependencies": {
     "@stellar/stellar-sdk": ">=11.3.0"

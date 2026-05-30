@@ -21,6 +21,13 @@ import type {
   Timepoint,
   Duration,
 } from "@stellar/stellar-sdk/contract";
+
+// Generated bindings reference `Context` but did not import it (generator
+// quirk for contracts whose Policy trait methods take soroban_sdk::auth::Context).
+// We never call can_enforce/enforce from JS — the smart account invokes them
+// contract-side — so a thin alias to `unknown` unblocks the build without
+// claiming a usable JS signature.
+type Context = unknown;
 export * from "@stellar/stellar-sdk";
 export * as contract from "@stellar/stellar-sdk/contract";
 export * as rpc from "@stellar/stellar-sdk/rpc";
@@ -411,70 +418,35 @@ signature: Buffer;
 
 export interface Client {
   /**
-   * Construct and simulate a execute transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Construct and simulate a enforce transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  execute: ({target, target_fn, target_args}: {target: string, target_fn: string, target_args: Array<any>}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+  enforce: ({context, authenticated_signers, context_rule, smart_account}: {context: Context, authenticated_signers: Array<Signer>, context_rule: ContextRule, smart_account: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
-   * Construct and simulate a add_policy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Construct and simulate a install transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  add_policy: ({context_rule_id, policy, install_param}: {context_rule_id: u32, policy: string, install_param: any}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+  install: ({install_params, context_rule, smart_account}: {install_params: SimpleThresholdAccountParams, context_rule: ContextRule, smart_account: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
-   * Construct and simulate a add_signer transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Construct and simulate a uninstall transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  add_signer: ({context_rule_id, signer}: {context_rule_id: u32, signer: Signer}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+  uninstall: ({context_rule, smart_account}: {context_rule: ContextRule, smart_account: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
-   * Construct and simulate a remove_policy transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Construct and simulate a can_enforce transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
-  remove_policy: ({context_rule_id, policy}: {context_rule_id: u32, policy: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+  can_enforce: ({context, authenticated_signers, context_rule, smart_account}: {context: Context, authenticated_signers: Array<Signer>, context_rule: ContextRule, smart_account: string}, options?: MethodOptions) => Promise<AssembledTransaction<boolean>>
 
   /**
-   * Construct and simulate a remove_signer transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Construct and simulate a get_threshold transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Read the installed M-of-N threshold for a given account + rule.
+   * Returns 0 if not installed.
    */
-  remove_signer: ({context_rule_id, signer}: {context_rule_id: u32, signer: Signer}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a add_context_rule transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  add_context_rule: ({context_type, name, valid_until, signers, policies}: {context_type: ContextRuleType, name: string, valid_until: Option<u32>, signers: Array<Signer>, policies: Map<string, any>}, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>
-
-  /**
-   * Construct and simulate a get_context_rule transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  get_context_rule: ({context_rule_id}: {context_rule_id: u32}, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>
-
-  /**
-   * Construct and simulate a get_context_rules transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  get_context_rules: ({context_rule_type}: {context_rule_type: ContextRuleType}, options?: MethodOptions) => Promise<AssembledTransaction<Array<ContextRule>>>
-
-  /**
-   * Construct and simulate a remove_context_rule transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  remove_context_rule: ({context_rule_id}: {context_rule_id: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a get_context_rules_count transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  get_context_rules_count: (options?: MethodOptions) => Promise<AssembledTransaction<u32>>
-
-  /**
-   * Construct and simulate a update_context_rule_name transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  update_context_rule_name: ({context_rule_id, name}: {context_rule_id: u32, name: string}, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>
-
-  /**
-   * Construct and simulate a update_context_rule_valid_until transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  update_context_rule_valid_until: ({context_rule_id, valid_until}: {context_rule_id: u32, valid_until: Option<u32>}, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>
+  get_threshold: ({context_rule_id, smart_account}: {context_rule_id: u32, smart_account: string}, options?: MethodOptions) => Promise<AssembledTransaction<u32>>
 
 }
 export class Client extends ContractClient {
   static async deploy<T = Client>(
-        /** Constructor/Initialization Args for the contract's `__constructor` method */
-        {signers, policies}: {signers: Array<Signer>, policies: Map<string, any>},
     /** Options for initializing a Client as well as for calling a method, with extras specific to deploying. */
     options: MethodOptions &
       Omit<ContractClientOptions, "contractId"> & {
@@ -486,24 +458,15 @@ export class Client extends ContractClient {
         format?: "hex" | "base64";
       }
   ): Promise<AssembledTransaction<T>> {
-    return ContractClient.deploy({signers, policies}, options)
+    return ContractClient.deploy(null, options)
   }
   constructor(public readonly options: ContractClientOptions) {
     super(
-      new ContractSpec([ "AAAAAAAAAAAAAAAHZXhlY3V0ZQAAAAADAAAAAAAAAAZ0YXJnZXQAAAAAABMAAAAAAAAACXRhcmdldF9mbgAAAAAAABEAAAAAAAAAC3RhcmdldF9hcmdzAAAAA+oAAAAAAAAAAA==",
-        "AAAAAAAAAAAAAAAKYWRkX3BvbGljeQAAAAAAAwAAAAAAAAAPY29udGV4dF9ydWxlX2lkAAAAAAQAAAAAAAAABnBvbGljeQAAAAAAEwAAAAAAAAANaW5zdGFsbF9wYXJhbQAAAAAAAAAAAAAA",
-        "AAAAAAAAAAAAAAAKYWRkX3NpZ25lcgAAAAAAAgAAAAAAAAAPY29udGV4dF9ydWxlX2lkAAAAAAQAAAAAAAAABnNpZ25lcgAAAAAH0AAAAAZTaWduZXIAAAAAAAA=",
-        "AAAAAAAAAAAAAAAMX19jaGVja19hdXRoAAAAAwAAAAAAAAARc2lnbmF0dXJlX3BheWxvYWQAAAAAAAPuAAAAIAAAAAAAAAAKc2lnbmF0dXJlcwAAAAAH0AAAAApTaWduYXR1cmVzAAAAAAAAAAAADWF1dGhfY29udGV4dHMAAAAAAAPqAAAH0AAAAAdDb250ZXh0AAAAAAEAAAPpAAAAAgAAAAM=",
-        "AAAAAAAAASJJbml0aWFsaXplIHRoZSBzbWFydCBhY2NvdW50IHdpdGggYSBkZWZhdWx0IGNvbnRleHQgcnVsZS4KClR5cGljYWxseSBjYWxsZWQgd2l0aCBhIHNpbmdsZSBgV2ViQXV0aG5gIHBhc3NrZXkgc2lnbmVyIGR1cmluZwp0aGUgRy10by1DIG1pZ3JhdGlvbiBmbG93LgoKIyBBcmd1bWVudHMKCiogYHNpZ25lcnNgIC0gSW5pdGlhbCBzaWduZXJzIChlLmcuLCBwYXNza2V5IHZpYSBgV2ViQXV0aG5gIHZlcmlmaWVyKQoqIGBwb2xpY2llc2AgLSBPcHRpb25hbCBwb2xpY2llcyAoZS5nLiwgc3BlbmRpbmcgbGltaXRzKQAAAAAADV9fY29uc3RydWN0b3IAAAAAAAACAAAAAAAAAAdzaWduZXJzAAAAA+oAAAfQAAAABlNpZ25lcgAAAAAAAAAAAAhwb2xpY2llcwAAA+wAAAATAAAAAAAAAAA=",
-        "AAAAAAAAAAAAAAANcmVtb3ZlX3BvbGljeQAAAAAAAAIAAAAAAAAAD2NvbnRleHRfcnVsZV9pZAAAAAAEAAAAAAAAAAZwb2xpY3kAAAAAABMAAAAA",
-        "AAAAAAAAAAAAAAANcmVtb3ZlX3NpZ25lcgAAAAAAAAIAAAAAAAAAD2NvbnRleHRfcnVsZV9pZAAAAAAEAAAAAAAAAAZzaWduZXIAAAAAB9AAAAAGU2lnbmVyAAAAAAAA",
-        "AAAAAAAAAAAAAAAQYWRkX2NvbnRleHRfcnVsZQAAAAUAAAAAAAAADGNvbnRleHRfdHlwZQAAB9AAAAAPQ29udGV4dFJ1bGVUeXBlAAAAAAAAAAAEbmFtZQAAABAAAAAAAAAAC3ZhbGlkX3VudGlsAAAAA+gAAAAEAAAAAAAAAAdzaWduZXJzAAAAA+oAAAfQAAAABlNpZ25lcgAAAAAAAAAAAAhwb2xpY2llcwAAA+wAAAATAAAAAAAAAAEAAAfQAAAAC0NvbnRleHRSdWxlAA==",
-        "AAAAAAAAAAAAAAAQZ2V0X2NvbnRleHRfcnVsZQAAAAEAAAAAAAAAD2NvbnRleHRfcnVsZV9pZAAAAAAEAAAAAQAAB9AAAAALQ29udGV4dFJ1bGUA",
-        "AAAAAAAAAAAAAAARZ2V0X2NvbnRleHRfcnVsZXMAAAAAAAABAAAAAAAAABFjb250ZXh0X3J1bGVfdHlwZQAAAAAAB9AAAAAPQ29udGV4dFJ1bGVUeXBlAAAAAAEAAAPqAAAH0AAAAAtDb250ZXh0UnVsZQA=",
-        "AAAAAAAAAAAAAAATcmVtb3ZlX2NvbnRleHRfcnVsZQAAAAABAAAAAAAAAA9jb250ZXh0X3J1bGVfaWQAAAAABAAAAAA=",
-        "AAAAAAAAAAAAAAAXZ2V0X2NvbnRleHRfcnVsZXNfY291bnQAAAAAAAAAAAEAAAAE",
-        "AAAAAAAAAAAAAAAYdXBkYXRlX2NvbnRleHRfcnVsZV9uYW1lAAAAAgAAAAAAAAAPY29udGV4dF9ydWxlX2lkAAAAAAQAAAAAAAAABG5hbWUAAAAQAAAAAQAAB9AAAAALQ29udGV4dFJ1bGUA",
-        "AAAAAAAAAAAAAAAfdXBkYXRlX2NvbnRleHRfcnVsZV92YWxpZF91bnRpbAAAAAACAAAAAAAAAA9jb250ZXh0X3J1bGVfaWQAAAAABAAAAAAAAAALdmFsaWRfdW50aWwAAAAD6AAAAAQAAAABAAAH0AAAAAtDb250ZXh0UnVsZQA=",
+      new ContractSpec([ "AAAAAAAAAAAAAAAHZW5mb3JjZQAAAAAEAAAAAAAAAAdjb250ZXh0AAAAB9AAAAAHQ29udGV4dAAAAAAAAAAAFWF1dGhlbnRpY2F0ZWRfc2lnbmVycwAAAAAAA+oAAAfQAAAABlNpZ25lcgAAAAAAAAAAAAxjb250ZXh0X3J1bGUAAAfQAAAAC0NvbnRleHRSdWxlAAAAAAAAAAANc21hcnRfYWNjb3VudAAAAAAAABMAAAAA",
+        "AAAAAAAAAAAAAAAHaW5zdGFsbAAAAAADAAAAAAAAAA5pbnN0YWxsX3BhcmFtcwAAAAAH0AAAABxTaW1wbGVUaHJlc2hvbGRBY2NvdW50UGFyYW1zAAAAAAAAAAxjb250ZXh0X3J1bGUAAAfQAAAAC0NvbnRleHRSdWxlAAAAAAAAAAANc21hcnRfYWNjb3VudAAAAAAAABMAAAAA",
+        "AAAAAAAAAAAAAAAJdW5pbnN0YWxsAAAAAAAAAgAAAAAAAAAMY29udGV4dF9ydWxlAAAH0AAAAAtDb250ZXh0UnVsZQAAAAAAAAAADXNtYXJ0X2FjY291bnQAAAAAAAATAAAAAA==",
+        "AAAAAAAAAAAAAAALY2FuX2VuZm9yY2UAAAAABAAAAAAAAAAHY29udGV4dAAAAAfQAAAAB0NvbnRleHQAAAAAAAAAABVhdXRoZW50aWNhdGVkX3NpZ25lcnMAAAAAAAPqAAAH0AAAAAZTaWduZXIAAAAAAAAAAAAMY29udGV4dF9ydWxlAAAH0AAAAAtDb250ZXh0UnVsZQAAAAAAAAAADXNtYXJ0X2FjY291bnQAAAAAAAATAAAAAQAAAAE=",
+        "AAAAAAAAAFtSZWFkIHRoZSBpbnN0YWxsZWQgTS1vZi1OIHRocmVzaG9sZCBmb3IgYSBnaXZlbiBhY2NvdW50ICsgcnVsZS4KUmV0dXJucyAwIGlmIG5vdCBpbnN0YWxsZWQuAAAAAA1nZXRfdGhyZXNob2xkAAAAAAAAAgAAAAAAAAAPY29udGV4dF9ydWxlX2lkAAAAAAQAAAAAAAAADXNtYXJ0X2FjY291bnQAAAAAAAATAAAAAQAAAAQ=",
         "AAAABQAAADdFdmVudCBlbWl0dGVkIHdoZW4gYSBwb2xpY3kgaXMgYWRkZWQgdG8gYSBjb250ZXh0IHJ1bGUuAAAAAAAAAAALUG9saWN5QWRkZWQAAAAAAQAAAAxwb2xpY3lfYWRkZWQAAAADAAAAAAAAAA9jb250ZXh0X3J1bGVfaWQAAAAABAAAAAEAAAAAAAAABnBvbGljeQAAAAAAEwAAAAAAAAAAAAAADWluc3RhbGxfcGFyYW0AAAAAAAAAAAAAAAAAAAI=",
         "AAAABQAAADdFdmVudCBlbWl0dGVkIHdoZW4gYSBzaWduZXIgaXMgYWRkZWQgdG8gYSBjb250ZXh0IHJ1bGUuAAAAAAAAAAALU2lnbmVyQWRkZWQAAAAAAQAAAAxzaWduZXJfYWRkZWQAAAACAAAAAAAAAA9jb250ZXh0X3J1bGVfaWQAAAAABAAAAAEAAAAAAAAABnNpZ25lcgAAAAAH0AAAAAZTaWduZXIAAAAAAAAAAAAC",
         "AAAABQAAADtFdmVudCBlbWl0dGVkIHdoZW4gYSBwb2xpY3kgaXMgcmVtb3ZlZCBmcm9tIGEgY29udGV4dCBydWxlLgAAAAAAAAAADVBvbGljeVJlbW92ZWQAAAAAAAABAAAADnBvbGljeV9yZW1vdmVkAAAAAAACAAAAAAAAAA9jb250ZXh0X3J1bGVfaWQAAAAABAAAAAEAAAAAAAAABnBvbGljeQAAAAAAEwAAAAAAAAAC",
@@ -538,17 +501,10 @@ export class Client extends ContractClient {
     )
   }
   public readonly fromJSON = {
-    execute: this.txFromJSON<null>,
-        add_policy: this.txFromJSON<null>,
-        add_signer: this.txFromJSON<null>,
-        remove_policy: this.txFromJSON<null>,
-        remove_signer: this.txFromJSON<null>,
-        add_context_rule: this.txFromJSON<ContextRule>,
-        get_context_rule: this.txFromJSON<ContextRule>,
-        get_context_rules: this.txFromJSON<Array<ContextRule>>,
-        remove_context_rule: this.txFromJSON<null>,
-        get_context_rules_count: this.txFromJSON<u32>,
-        update_context_rule_name: this.txFromJSON<ContextRule>,
-        update_context_rule_valid_until: this.txFromJSON<ContextRule>
+    enforce: this.txFromJSON<null>,
+        install: this.txFromJSON<null>,
+        uninstall: this.txFromJSON<null>,
+        can_enforce: this.txFromJSON<boolean>,
+        get_threshold: this.txFromJSON<u32>
   }
 }

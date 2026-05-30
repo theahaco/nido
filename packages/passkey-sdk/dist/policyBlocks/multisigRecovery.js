@@ -18,7 +18,8 @@ export const multisigRecoveryModule = {
         // (SimpleThresholdAccountParams.threshold is u32, but auto-conversion of
         // a plain { threshold: 2 } often defaults to a larger int type).
         const { nativeToScVal } = await import('@stellar/stellar-sdk');
-        const installParam = nativeToScVal({ threshold: args.block.threshold }, { type: { threshold: ['symbol', 'u32'] } });
+        const installParamNative = { threshold: args.block.threshold };
+        const installParam = nativeToScVal(installParamNative, { type: { threshold: ['symbol', 'u32'] } });
         const callArgs = {
             context_type: { tag: 'CallContract', values: [args.account] },
             name: args.block.label ?? 'recovery',
