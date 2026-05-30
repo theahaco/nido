@@ -6,8 +6,9 @@ use soroban_sdk::{
     auth::{Context, CustomAccountInterface},
     contract, contractimpl,
     crypto::Hash,
-    Address, Env, Map, String, Symbol, Val, Vec,
+    Address, Env, IntoVal, Map, String, Symbol, Val, Vec,
 };
+use stellar_accounts::policies::simple_threshold::SimpleThresholdAccountParams;
 use stellar_accounts::smart_account::{
     add_context_rule, add_policy, add_signer, do_check_auth, get_context_rule, get_context_rules,
     get_context_rules_count, remove_context_rule, remove_policy, remove_signer,
@@ -39,6 +40,48 @@ impl G2CSmartAccount {
             &signers,
             &policies,
         );
+    }
+
+    /// Install a social-recovery rule scoped to calls on this account, gated
+    /// by an M-of-N multisig policy.
+    ///
+    /// Typed wrapper around `add_context_rule` that constructs the policies
+    /// map for the caller — the SDK doesn't need to wrestle with the
+    /// `Map<Address, Val>` install-param encoding (the generated TS bindings
+    /// would otherwise erase the install param to `any`).
+    ///
+    /// The rule is scoped to `CallContract(self)` so it authorises calls
+    /// against the account's own methods (e.g. `add_signer`, `remove_signer`,
+    /// `add_context_rule`) — not external transfers.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Human-readable rule name.
+    /// * `valid_until` - Optional expiration ledger sequence.
+    /// * `friends` - The signers authorised by the recovery rule.
+    /// * `multisig_policy` - Address of the deployed multisig policy contract.
+    /// * `threshold` - Number of `friends` signatures required (M).
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn add_multisig_recovery(
+        e: &Env,
+        name: String,
+        valid_until: Option<u32>,
+        friends: Vec<Signer>,
+        multisig_policy: Address,
+        threshold: u32,
+    ) -> ContextRule {
+        e.current_contract_address().require_auth();
+        let install: Val = SimpleThresholdAccountParams { threshold }.into_val(e);
+        let mut policies: Map<Address, Val> = Map::new(e);
+        policies.set(multisig_policy, install);
+        add_context_rule(
+            e,
+            &ContextRuleType::CallContract(e.current_contract_address()),
+            &name,
+            valid_until,
+            &friends,
+            &policies,
+        )
     }
 }
 

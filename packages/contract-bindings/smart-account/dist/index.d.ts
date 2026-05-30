@@ -528,6 +528,35 @@ export interface Client {
         context_rule_id: u32;
     }, options?: MethodOptions) => Promise<AssembledTransaction<null>>;
     /**
+     * Construct and simulate a add_multisig_recovery transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+     * Install a social-recovery rule scoped to calls on this account, gated
+     * by an M-of-N multisig policy.
+     *
+     * Typed wrapper around `add_context_rule` that constructs the policies
+     * map for the caller — the SDK doesn't need to wrestle with the
+     * `Map<Address, Val>` install-param encoding (the generated TS bindings
+     * would otherwise erase the install param to `any`).
+     *
+     * The rule is scoped to `CallContract(self)` so it authorises calls
+     * against the account's own methods (e.g. `add_signer`, `remove_signer`,
+     * `add_context_rule`) — not external transfers.
+     *
+     * # Arguments
+     *
+     * * `name` - Human-readable rule name.
+     * * `valid_until` - Optional expiration ledger sequence.
+     * * `friends` - The signers authorised by the recovery rule.
+     * * `multisig_policy` - Address of the deployed multisig policy contract.
+     * * `threshold` - Number of `friends` signatures required (M).
+     */
+    add_multisig_recovery: ({ name, valid_until, friends, multisig_policy, threshold }: {
+        name: string;
+        valid_until: Option<u32>;
+        friends: Array<Signer>;
+        multisig_policy: string;
+        threshold: u32;
+    }, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>;
+    /**
      * Construct and simulate a get_context_rules_count transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
      */
     get_context_rules_count: (options?: MethodOptions) => Promise<AssembledTransaction<u32>>;
@@ -574,6 +603,7 @@ export declare class Client extends ContractClient {
         get_context_rule: (json: string) => AssembledTransaction<ContextRule>;
         get_context_rules: (json: string) => AssembledTransaction<ContextRule[]>;
         remove_context_rule: (json: string) => AssembledTransaction<null>;
+        add_multisig_recovery: (json: string) => AssembledTransaction<ContextRule>;
         get_context_rules_count: (json: string) => AssembledTransaction<number>;
         update_context_rule_name: (json: string) => AssembledTransaction<ContextRule>;
         update_context_rule_valid_until: (json: string) => AssembledTransaction<ContextRule>;

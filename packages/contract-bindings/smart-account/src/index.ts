@@ -456,6 +456,30 @@ export interface Client {
   remove_context_rule: ({context_rule_id}: {context_rule_id: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a add_multisig_recovery transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   * Install a social-recovery rule scoped to calls on this account, gated
+   * by an M-of-N multisig policy.
+   * 
+   * Typed wrapper around `add_context_rule` that constructs the policies
+   * map for the caller — the SDK doesn't need to wrestle with the
+   * `Map<Address, Val>` install-param encoding (the generated TS bindings
+   * would otherwise erase the install param to `any`).
+   * 
+   * The rule is scoped to `CallContract(self)` so it authorises calls
+   * against the account's own methods (e.g. `add_signer`, `remove_signer`,
+   * `add_context_rule`) — not external transfers.
+   * 
+   * # Arguments
+   * 
+   * * `name` - Human-readable rule name.
+   * * `valid_until` - Optional expiration ledger sequence.
+   * * `friends` - The signers authorised by the recovery rule.
+   * * `multisig_policy` - Address of the deployed multisig policy contract.
+   * * `threshold` - Number of `friends` signatures required (M).
+   */
+  add_multisig_recovery: ({name, valid_until, friends, multisig_policy, threshold}: {name: string, valid_until: Option<u32>, friends: Array<Signer>, multisig_policy: string, threshold: u32}, options?: MethodOptions) => Promise<AssembledTransaction<ContextRule>>
+
+  /**
    * Construct and simulate a get_context_rules_count transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   get_context_rules_count: (options?: MethodOptions) => Promise<AssembledTransaction<u32>>
@@ -501,6 +525,7 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAQZ2V0X2NvbnRleHRfcnVsZQAAAAEAAAAAAAAAD2NvbnRleHRfcnVsZV9pZAAAAAAEAAAAAQAAB9AAAAALQ29udGV4dFJ1bGUA",
         "AAAAAAAAAAAAAAARZ2V0X2NvbnRleHRfcnVsZXMAAAAAAAABAAAAAAAAABFjb250ZXh0X3J1bGVfdHlwZQAAAAAAB9AAAAAPQ29udGV4dFJ1bGVUeXBlAAAAAAEAAAPqAAAH0AAAAAtDb250ZXh0UnVsZQA=",
         "AAAAAAAAAAAAAAATcmVtb3ZlX2NvbnRleHRfcnVsZQAAAAABAAAAAAAAAA9jb250ZXh0X3J1bGVfaWQAAAAABAAAAAA=",
+        "AAAAAAAAA0ZJbnN0YWxsIGEgc29jaWFsLXJlY292ZXJ5IHJ1bGUgc2NvcGVkIHRvIGNhbGxzIG9uIHRoaXMgYWNjb3VudCwgZ2F0ZWQKYnkgYW4gTS1vZi1OIG11bHRpc2lnIHBvbGljeS4KClR5cGVkIHdyYXBwZXIgYXJvdW5kIGBhZGRfY29udGV4dF9ydWxlYCB0aGF0IGNvbnN0cnVjdHMgdGhlIHBvbGljaWVzCm1hcCBmb3IgdGhlIGNhbGxlciDigJQgdGhlIFNESyBkb2Vzbid0IG5lZWQgdG8gd3Jlc3RsZSB3aXRoIHRoZQpgTWFwPEFkZHJlc3MsIFZhbD5gIGluc3RhbGwtcGFyYW0gZW5jb2RpbmcgKHRoZSBnZW5lcmF0ZWQgVFMgYmluZGluZ3MKd291bGQgb3RoZXJ3aXNlIGVyYXNlIHRoZSBpbnN0YWxsIHBhcmFtIHRvIGBhbnlgKS4KClRoZSBydWxlIGlzIHNjb3BlZCB0byBgQ2FsbENvbnRyYWN0KHNlbGYpYCBzbyBpdCBhdXRob3Jpc2VzIGNhbGxzCmFnYWluc3QgdGhlIGFjY291bnQncyBvd24gbWV0aG9kcyAoZS5nLiBgYWRkX3NpZ25lcmAsIGByZW1vdmVfc2lnbmVyYCwKYGFkZF9jb250ZXh0X3J1bGVgKSDigJQgbm90IGV4dGVybmFsIHRyYW5zZmVycy4KCiMgQXJndW1lbnRzCgoqIGBuYW1lYCAtIEh1bWFuLXJlYWRhYmxlIHJ1bGUgbmFtZS4KKiBgdmFsaWRfdW50aWxgIC0gT3B0aW9uYWwgZXhwaXJhdGlvbiBsZWRnZXIgc2VxdWVuY2UuCiogYGZyaWVuZHNgIC0gVGhlIHNpZ25lcnMgYXV0aG9yaXNlZCBieSB0aGUgcmVjb3ZlcnkgcnVsZS4KKiBgbXVsdGlzaWdfcG9saWN5YCAtIEFkZHJlc3Mgb2YgdGhlIGRlcGxveWVkIG11bHRpc2lnIHBvbGljeSBjb250cmFjdC4KKiBgdGhyZXNob2xkYCAtIE51bWJlciBvZiBgZnJpZW5kc2Agc2lnbmF0dXJlcyByZXF1aXJlZCAoTSkuAAAAAAAVYWRkX211bHRpc2lnX3JlY292ZXJ5AAAAAAAABQAAAAAAAAAEbmFtZQAAABAAAAAAAAAAC3ZhbGlkX3VudGlsAAAAA+gAAAAEAAAAAAAAAAdmcmllbmRzAAAAA+oAAAfQAAAABlNpZ25lcgAAAAAAAAAAAA9tdWx0aXNpZ19wb2xpY3kAAAAAEwAAAAAAAAAJdGhyZXNob2xkAAAAAAAABAAAAAEAAAfQAAAAC0NvbnRleHRSdWxlAA==",
         "AAAAAAAAAAAAAAAXZ2V0X2NvbnRleHRfcnVsZXNfY291bnQAAAAAAAAAAAEAAAAE",
         "AAAAAAAAAAAAAAAYdXBkYXRlX2NvbnRleHRfcnVsZV9uYW1lAAAAAgAAAAAAAAAPY29udGV4dF9ydWxlX2lkAAAAAAQAAAAAAAAABG5hbWUAAAAQAAAAAQAAB9AAAAALQ29udGV4dFJ1bGUA",
         "AAAAAAAAAAAAAAAfdXBkYXRlX2NvbnRleHRfcnVsZV92YWxpZF91bnRpbAAAAAACAAAAAAAAAA9jb250ZXh0X3J1bGVfaWQAAAAABAAAAAAAAAALdmFsaWRfdW50aWwAAAAD6AAAAAQAAAABAAAH0AAAAAtDb250ZXh0UnVsZQA=",
@@ -547,6 +572,7 @@ export class Client extends ContractClient {
         get_context_rule: this.txFromJSON<ContextRule>,
         get_context_rules: this.txFromJSON<Array<ContextRule>>,
         remove_context_rule: this.txFromJSON<null>,
+        add_multisig_recovery: this.txFromJSON<ContextRule>,
         get_context_rules_count: this.txFromJSON<u32>,
         update_context_rule_name: this.txFromJSON<ContextRule>,
         update_context_rule_valid_until: this.txFromJSON<ContextRule>
