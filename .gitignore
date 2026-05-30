@@ -27,6 +27,7 @@ packages/frontend/.astro/
 
 # Playwright test artifacts
 test-results/
+.playwright-mcp/
 
 # Local secrets — wrangler, env files. Never commit.
 .env
