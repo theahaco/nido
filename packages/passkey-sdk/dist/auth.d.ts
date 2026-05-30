@@ -28,9 +28,16 @@ export declare function parseAssertionResponse(assertionResponse: {
 /**
  * Inject a passkey signature into a transaction's Soroban auth credentials.
  *
- * Constructs the OZ smart account `Signatures(Map<Signer, Bytes>)` format:
- * - Key: `Signer::External(verifier_address, public_key)`
- * - Value: XDR-encoded `WebAuthnSigData { authenticator_data, client_data, signature }`
+ * Constructs the OZ v0.7+ `AuthPayload` struct expected by `do_check_auth`:
+ *
+ *   AuthPayload {
+ *     signers: Map<Signer, Bytes>,    // { External(verifier, pubkey): XDR(WebAuthnSigData) }
+ *     context_rule_ids: Vec<u32>,     // which rule authorizes each context
+ *   }
+ *
+ * In Soroban scval encoding, a Rust struct is a `Map` keyed by `Symbol(field_name)`
+ * with entries in alphabetical order; an enum variant is a `Vec` with the variant
+ * name as the first element followed by its tuple values.
  *
  * @param transaction - The assembled transaction from simulation
  * @param passkeySignature - Parsed passkey signature components
@@ -38,8 +45,11 @@ export declare function parseAssertionResponse(assertionResponse: {
  * @param publicKey - 65-byte uncompressed P-256 public key
  * @param lastLedger - Current ledger sequence number
  * @param expirationLedgerOffset - How many ledgers the signature is valid for (default 100)
+ * @param contextRuleIds - Context-rule IDs authorizing each auth context (index-aligned).
+ *                        Defaults to `[0]` — the Default rule that ships with every
+ *                        smart account and authorizes self-modification.
  */
 export declare function injectPasskeySignature(transaction: {
     operations: readonly Operation[];
-}, passkeySignature: PasskeySignature, verifierAddress: string, publicKey: Uint8Array, lastLedger: number, expirationLedgerOffset?: number): void;
+}, passkeySignature: PasskeySignature, verifierAddress: string, publicKey: Uint8Array, lastLedger: number, expirationLedgerOffset?: number, contextRuleIds?: readonly number[]): void;
 //# sourceMappingURL=auth.d.ts.map

@@ -71,9 +71,16 @@ export function parseAssertionResponse(assertionResponse: {
 /**
  * Inject a passkey signature into a transaction's Soroban auth credentials.
  *
- * Constructs the OZ smart account `Signatures(Map<Signer, Bytes>)` format:
- * - Key: `Signer::External(verifier_address, public_key)`
- * - Value: XDR-encoded `WebAuthnSigData { authenticator_data, client_data, signature }`
+ * Constructs the OZ v0.7+ `AuthPayload` struct expected by `do_check_auth`:
+ *
+ *   AuthPayload {
+ *     signers: Map<Signer, Bytes>,    // { External(verifier, pubkey): XDR(WebAuthnSigData) }
+ *     context_rule_ids: Vec<u32>,     // which rule authorizes each context
+ *   }
+ *
+ * In Soroban scval encoding, a Rust struct is a `Map` keyed by `Symbol(field_name)`
+ * with entries in alphabetical order; an enum variant is a `Vec` with the variant
+ * name as the first element followed by its tuple values.
  *
  * @param transaction - The assembled transaction from simulation
  * @param passkeySignature - Parsed passkey signature components
@@ -81,6 +88,9 @@ export function parseAssertionResponse(assertionResponse: {
  * @param publicKey - 65-byte uncompressed P-256 public key
  * @param lastLedger - Current ledger sequence number
  * @param expirationLedgerOffset - How many ledgers the signature is valid for (default 100)
+ * @param contextRuleIds - Context-rule IDs authorizing each auth context (index-aligned).
+ *                        Defaults to `[0]` — the Default rule that ships with every
+ *                        smart account and authorizes self-modification.
  */
 export function injectPasskeySignature(
   transaction: { operations: readonly Operation[] },
@@ -89,6 +99,7 @@ export function injectPasskeySignature(
   publicKey: Uint8Array,
   lastLedger: number,
   expirationLedgerOffset: number = DEFAULT_EXPIRATION_OFFSET,
+  contextRuleIds: readonly number[] = [0],
 ): void {
   const op = transaction.operations[0] as Operation.InvokeHostFunction;
   const creds = op.auth?.[0]?.credentials().address();
@@ -99,7 +110,8 @@ export function injectPasskeySignature(
 
   creds.signatureExpirationLedger(lastLedger + expirationLedgerOffset);
 
-  // WebAuthnSigData struct (field names must match the contract type)
+  // WebAuthnSigData struct (field names must match the contract type).
+  // Soroban struct → ScMap with Symbol keys in alphabetical order.
   const sigDataScVal = xdr.ScVal.scvMap([
     new xdr.ScMapEntry({
       key: xdr.ScVal.scvSymbol("authenticator_data"),
@@ -114,26 +126,41 @@ export function injectPasskeySignature(
       val: xdr.ScVal.scvBytes(Buffer.from(passkeySignature.signature)),
     }),
   ]);
-
-  // XDR-encode WebAuthnSigData to raw bytes for the Signatures map value
   const sigDataBytes = sigDataScVal.toXDR();
 
   // Signer::External(verifier_address, public_key) enum variant
+  // → Vec[Symbol("External"), Address, Bytes]
   const signerScVal = xdr.ScVal.scvVec([
     xdr.ScVal.scvSymbol("External"),
     Address.fromString(verifierAddress).toScVal(),
     xdr.ScVal.scvBytes(Buffer.from(publicKey)),
   ]);
 
-  // Signatures tuple struct → Vec([Map<Signer, Bytes>])
+  // signers: Map<Signer, Bytes> with our single passkey entry
+  const signersMap = xdr.ScVal.scvMap([
+    new xdr.ScMapEntry({
+      key: signerScVal,
+      val: xdr.ScVal.scvBytes(sigDataBytes),
+    }),
+  ]);
+
+  // context_rule_ids: Vec<u32>
+  const contextRuleIdsVec = xdr.ScVal.scvVec(
+    contextRuleIds.map((id) => xdr.ScVal.scvU32(id)),
+  );
+
+  // AuthPayload struct → ScMap, alphabetical field order
+  // (context_rule_ids < signers).
   creds.signature(
-    xdr.ScVal.scvVec([
-      xdr.ScVal.scvMap([
-        new xdr.ScMapEntry({
-          key: signerScVal,
-          val: xdr.ScVal.scvBytes(sigDataBytes),
-        }),
-      ]),
+    xdr.ScVal.scvMap([
+      new xdr.ScMapEntry({
+        key: xdr.ScVal.scvSymbol("context_rule_ids"),
+        val: contextRuleIdsVec,
+      }),
+      new xdr.ScMapEntry({
+        key: xdr.ScVal.scvSymbol("signers"),
+        val: signersMap,
+      }),
     ]),
   );
 }
