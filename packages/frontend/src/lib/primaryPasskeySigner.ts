@@ -125,13 +125,19 @@ export async function signAndSubmit(args: {
     lastLedger,
   );
 
-  // 7. Re-simulate with the signature baked in, assemble final, sign with
-  //    the submitter keypair (envelope sig — pays fees), and send.
+  // 7. Re-simulate the now-signed tx as a sanity check — surfaces auth
+  //    failures (bad signature, expired ledger, wrong rule) BEFORE we
+  //    submit. Crucially, do NOT call `rpc.assembleTransaction(...)` here:
+  //    that function rebuilds the auth entries from the sim result's
+  //    UNSIGNED templates and would silently discard the signature we
+  //    just injected (which is what produced `signatures: Void` and an
+  //    Auth/InvalidAction trap at submit time). The initial assemble in
+  //    step 4 already baked in resource fees from the first simulation,
+  //    which sized them for the expected signed payload.
   const final_sim = await server.simulateTransaction(assembled_tx);
   if (rpc.Api.isSimulationError(final_sim)) {
     throw new Error(`Final simulation failed: ${(final_sim as rpc.Api.SimulateTransactionErrorResponse).error}`);
   }
-  const final_tx = rpc.assembleTransaction(assembled_tx, final_sim).build();
-  final_tx.sign(submitter);
-  return server.sendTransaction(final_tx);
+  assembled_tx.sign(submitter);
+  return server.sendTransaction(assembled_tx);
 }
