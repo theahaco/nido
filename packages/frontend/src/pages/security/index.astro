@@ -1,0 +1,69 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Security">
+  <main class="security">
+    <header>
+      <h1>Security</h1>
+      <p class="subtitle">Recovery friends, app delegations, and advanced rules for this account.</p>
+    </header>
+
+    <section id="recovery-section">
+      <h2>Account Recovery</h2>
+      <div id="recovery-list"></div>
+      <button id="add-recovery">+ Set up recovery</button>
+    </section>
+
+    <section id="delegations-section">
+      <h2>App Delegations</h2>
+      <div id="delegation-list"></div>
+      <button id="add-delegation">+ Delegate to a dApp</button>
+    </section>
+
+    <section id="advanced-section">
+      <h2>Advanced</h2>
+      <p class="muted">Default rule · your primary passkey on this device</p>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  import { contractIdFromHostname } from '@g2c/passkey-sdk';
+
+  const account = contractIdFromHostname(window.location.hostname);
+  const recoveryList = document.getElementById('recovery-list')!;
+  const delegationList = document.getElementById('delegation-list')!;
+
+  // Phase-7 placeholder until Task 20 (policyChainFetch) and Tasks 19/21/22
+  // wire real loading.
+  if (!account) {
+    recoveryList.innerHTML = '<p class="muted">No account selected. Open this page from an account subdomain.</p>';
+    delegationList.innerHTML = '';
+  } else {
+    recoveryList.innerHTML = '<p class="muted">No recovery rule yet.</p>';
+    delegationList.innerHTML = '<p class="muted">No session keys yet.</p>';
+  }
+
+  document.getElementById('add-recovery')!.addEventListener('click', () => {
+    alert('Recovery setup form lands in Task 21.');
+  });
+  document.getElementById('add-delegation')!.addEventListener('click', () => {
+    alert('Session-key delegate form lands in Task 22.');
+  });
+</script>
+
+<style>
+  .security { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  header h1 { margin-bottom: 0.25rem; }
+  header .subtitle { color: #666; margin-top: 0; }
+  section { margin-bottom: 2rem; padding-top: 1rem; }
+  section h2 {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    color: #666;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.5rem 0;
+  }
+  .muted { color: #888; font-size: 0.9rem; }
+  button { margin-top: 0.5rem; }
+</style>
