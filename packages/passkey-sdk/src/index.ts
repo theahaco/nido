@@ -59,3 +59,5 @@ export {
 } from "./storage.js";
 
 export * from './policyBlocks/index.js';
+
+export * from './resolveFriendInput.js';
