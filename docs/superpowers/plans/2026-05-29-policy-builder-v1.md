@@ -252,220 +252,270 @@ git commit -m "feat(multisig-policy): implement Policy trait via OZ simple_thres
 
 ## Phase 2 — Factory integration
 
-### Task 3: Factory lazy-deploys the shared multisig policy
+### Task 3: Factory resolves singletons via stellar-registry (architecture C)
+
+**Note on direction change:** An earlier version of this task added `multisig_policy_address` + a `singleton_at` helper + a `MULTISIG_POLICY: [u8; 32]` hash constant. That design was scrapped (see commit history: the previous Task 3 commit `326d79c` is superseded by this rewrite). The factory should not carry per-singleton wasm hashes; it should look canonical contracts up by name from the on-chain stellar-registry. See spec §Factory change for rationale.
 
 **Files:**
 - Modify: `contracts/factory/src/contract.rs`
 - Test: `contracts/factory/src/contract.rs` (new unit-test module at bottom)
 
-**Pre-read:** The factory's contract struct is named `Contract` (not `Factory`). `verifier_address` currently *inlines* the lazy-deploy pattern and is **private**. This task (a) factors that pattern into a shared `singleton_at` helper, (b) makes `verifier_address` `pub` so the SDK can simulate-read it, and (c) adds `multisig_policy_address` in parallel.
+**Pre-read:** The factory's contract struct is named `Contract`. The current source carries `VERIFIER` and `MULTISIG_POLICY` byte-array constants, a private `singleton_at` helper, `pub fn verifier_address` and `pub fn multisig_policy_address` methods, and an internal `deploy_account_contract` that calls `Self::verifier_address(e)`. All of those go away in favor of a registry-resolution helper.
 
-- [ ] **Step 1: Add a failing test at the bottom of `contracts/factory/src/contract.rs`**
+- [ ] **Step 1: Delete the old singleton scaffolding**
 
-The factory has no existing `#[cfg(test)]` module, so create one. Append to the file:
+In `contracts/factory/src/contract.rs`, remove:
+
+- The `VERIFIER` constant.
+- The `MULTISIG_POLICY` constant.
+- `pub fn verifier_address(...)`.
+- `pub fn multisig_policy_address(...)`.
+- `fn singleton_at(...)`.
+- The `#[cfg(test)] mod test { ... }` block at the bottom.
+
+Also drop any imports that become unused once those are gone (likely `BytesN` stays — `ACCOUNT_HASH` still needs it inside `deploy_account_contract`; check `cargo build` warnings).
+
+`cargo build -p g2c-factory` will fail because `deploy_account_contract` still calls `Self::verifier_address(e)` — that's expected; Step 3 fixes it.
+
+- [ ] **Step 2: Add the registry client module + constant**
+
+Just below the `ACCOUNT_HASH` constant declaration:
+
+```rust
+/// Stellar Registry "unverified" testnet contract. Used to resolve canonical
+/// contract addresses by name (verifier, multisig-policy, etc.). For a mainnet
+/// or alternate-registry build, rebuild the factory wasm with a different
+/// constant here and `stellar registry upgrade`.
+const REGISTRY: &str = "CAMLHKQHNZO2IOIBFUF5BGZ2V62BMS5QCWFFGRCB4NOB3G5OMDA7SGZN";
+
+mod registry {
+    use soroban_sdk::*;
+    #[contractclient(name = "RegistryClient")]
+    pub trait RegistryInterface {
+        fn fetch_contract_id(name: String) -> Address;
+    }
+}
+```
+
+Add `String` and `Symbol` to the existing `soroban_sdk::{...}` import line if not present.
+
+- [ ] **Step 3: Add `resolve` and update `deploy_account_contract`**
+
+Inside `impl Contract` (place `resolve` as a private helper after the existing private `deployer` helper):
+
+```rust
+fn resolve(env: &Env, name: &str) -> Address {
+    let key = Symbol::new(env, name);
+    if let Some(addr) = env.storage().instance().get::<_, Address>(&key) {
+        return addr;
+    }
+    let client = registry::RegistryClient::new(
+        env,
+        &Address::from_str(env, REGISTRY),
+    );
+    let addr = client.fetch_contract_id(&String::from_str(env, name));
+    env.storage().instance().set(&key, &addr);
+    addr
+}
+```
+
+In `deploy_account_contract`, change the first line from `let verifier_addr = Self::verifier_address(e);` to:
+
+```rust
+let verifier_addr = Self::resolve(e, "verifier");
+```
+
+(The rest of `deploy_account_contract` is unchanged.)
+
+- [ ] **Step 4: Add a unit test that mocks the registry**
+
+Append:
 
 ```rust
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::Env;
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::{contract, contractimpl, Env};
+
+    // Minimal mock: every fetch returns the same fixed address.
+    #[contract]
+    struct MockRegistry;
+
+    #[contractimpl]
+    impl MockRegistry {
+        pub fn __constructor(env: &Env, fixed: Address) {
+            env.storage()
+                .instance()
+                .set(&Symbol::new(env, "fixed"), &fixed);
+        }
+        pub fn fetch_contract_id(env: &Env, _name: String) -> Address {
+            env.storage()
+                .instance()
+                .get::<_, Address>(&Symbol::new(env, "fixed"))
+                .unwrap()
+        }
+    }
 
     #[test]
-    fn multisig_policy_address_is_deterministic_and_idempotent() {
+    fn resolve_caches_after_first_lookup() {
         let env = Env::default();
         env.mock_all_auths();
+
+        // Deploy MockRegistry at the exact address `REGISTRY` points at so the
+        // factory's hardcoded constant resolves to the mock during the test.
+        let registry_addr = Address::from_str(&env, REGISTRY);
+        let expected = Address::generate(&env);
+        env.register_at(&registry_addr, MockRegistry, (expected.clone(),));
+
         let factory_addr = env.register(Contract, ());
-        // MULTISIG_POLICY is [0u8; 32] (placeholder until Task 4 publishes the
-        // real wasm). SHA-256 of any actual bytes will never equal all-zeros,
-        // so we cannot deploy a contract from the placeholder hash directly.
-        //
-        // Instead we test `singleton_at` with a hash from a real uploaded wasm.
-        // The idempotency invariant under test is independent of which wasm
-        // hash is used: first call deploys, second call detects the executable
-        // and returns the same address. Requires `just build-contracts` first.
-        const FACTORY_WASM: &[u8] =
-            include_bytes!("../../../target/wasm32v1-none/contract/g2c_factory.wasm");
-        let hash = env
-            .deployer()
-            .upload_contract_wasm(soroban_sdk::Bytes::from_slice(&env, FACTORY_WASM));
-        let first = env.as_contract(&factory_addr, || {
-            Contract::singleton_at(&env, &hash.to_array())
-        });
-        let second = env.as_contract(&factory_addr, || {
-            Contract::singleton_at(&env, &hash.to_array())
-        });
+        let first =
+            env.as_contract(&factory_addr, || Contract::resolve(&env, "verifier"));
+        let second =
+            env.as_contract(&factory_addr, || Contract::resolve(&env, "verifier"));
+        assert_eq!(first, expected);
         assert_eq!(first, second);
     }
 }
 ```
 
-After Task 4 fills in the real `MULTISIG_POLICY` hash, this test can be expanded (or replaced) with a direct call to `Contract::multisig_policy_address(&env)`. Tests in the integration crate (Phase 3) exercise the real public API.
+If `env.register_at(addr, contract, args)` is named differently in soroban-sdk 25.x (e.g. `register_contract`, `register_contract_at`), adapt — the shape that matters is "deploy MockRegistry at the exact address held in REGISTRY." If no such API exists, fall back to: register the mock at any address, then drive `resolve` indirectly by stubbing the inner client. Stop and report if neither path works cleanly.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **Step 5: Run the test**
 
-Run: `cargo test -p g2c-factory multisig_policy_address_is_deterministic_and_idempotent`
-Expected: FAIL with "no function or associated item named `multisig_policy_address` found".
+Run: `just build-contracts` then `cargo test -p g2c-factory`
+Expected: all tests pass.
 
-- [ ] **Step 3: Add the `MULTISIG_POLICY` hash constant**
-
-Just below the existing `VERIFIER` constant in `contracts/factory/src/contract.rs`:
-
-```rust
-/// Wasm hash of `g2c_multisig_policy.wasm`. Filled in by Task 4 once the
-/// policy wasm has been published via `stellar registry publish`.
-const MULTISIG_POLICY: &[u8; 32] = &[0u8; 32];
-```
-
-(Match the shape of the existing `VERIFIER: &[u8; 32]` declaration — same `&[u8; 32]` reference type, byte-literal style.)
-
-- [ ] **Step 4: Factor out the inlined verifier deploy into a `singleton_at` helper, refactor `verifier_address` to use it, and add `multisig_policy_address`**
-
-Inside `impl Contract`:
-
-```rust
-/// Lazy-deploy and return the WebAuthn verifier singleton.
-pub fn verifier_address(e: &Env) -> Address {
-    Self::singleton_at(e, VERIFIER)
-}
-
-/// Lazy-deploy and return the shared multisig policy singleton.
-pub fn multisig_policy_address(e: &Env) -> Address {
-    Self::singleton_at(e, MULTISIG_POLICY)
-}
-
-fn singleton_at(e: &Env, hash: &[u8; 32]) -> Address {
-    let bytes: BytesN<32> = BytesN::from_array(e, hash);
-    let deployer = e.deployer().with_current_contract(bytes.clone());
-    let address = deployer.deployed_address();
-    if address.executable().is_none() {
-        deployer.deploy_v2(bytes, ())
-    } else {
-        address
-    }
-}
-```
-
-Delete the previous `fn verifier_address(...)` definition that inlined the lazy-deploy logic. The new `pub fn verifier_address` returning `Self::singleton_at(e, VERIFIER)` replaces it. Existing internal callers (`deploy_account_contract`) continue to work because the function name and signature are preserved; the visibility just widens to `pub`.
-
-- [ ] **Step 5: Run the test to verify it passes**
-
-Run: `cargo test -p g2c-factory multisig_policy_address_is_deterministic_and_idempotent`
-Expected: PASS.
-
-- [ ] **Step 6: Commit (still with placeholder hash)**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add contracts/factory/src/contract.rs
-git commit -m "feat(factory): add multisig_policy_address singleton (placeholder hash)"
+git commit -m "feat(factory): resolve singletons via stellar-registry (replaces singleton_at)"
 ```
 
 ---
 
-### Task 4: Publish multisig-policy via stellar-registry-cli, fill factory hash constant
+### Task 4: Publish and deploy multisig-policy under its canonical registry name
 
-The factory holds the multisig-policy wasm hash as a constant and lazy-deploys via that hash. For the deployed-on-testnet factory to lazy-deploy the *correct* wasm, the bytes must already be installed on the network and the constant must match. We use `stellar registry publish` to install the wasm (which assigns a canonical hash) and then put that hash into the source.
+With architecture C, the factory no longer carries the multisig-policy's wasm hash. Instead, the wasm is published to the registry and deployed under the name `multisig-policy`; the factory resolves the name at runtime via `fetch_contract_id("multisig-policy")` and caches the address. So Task 4 is purely a one-time registry operation — no factory source change.
 
-**Prerequisites:** The engineer has `stellar` CLI configured with an account alias (`--source <alias>`) authorized to publish to the registry on testnet (e.g., `--source default-account` per project convention). If unsure, check `~/.config/stellar/identity/` or run `stellar keys ls`.
+**Prerequisites:** `stellar` CLI configured with an account alias authorized to publish under your registry namespace. Confirm with `stellar keys ls`.
 
-**Files:**
-- Modify: `contracts/factory/src/contract.rs`
+**Files:** none (CLI-only).
 
-- [ ] **Step 1: Publish the multisig-policy wasm to the testnet registry**
+- [ ] **Step 1: Publish the multisig-policy wasm**
 
-Run:
 ```bash
 stellar registry publish \
   --wasm target/wasm32v1-none/contract/g2c_multisig_policy.wasm \
   --name multisig-policy --version 0.1.0 \
   --network testnet --source <your-alias>
 ```
-Expected: outputs the published package's wasm hash (64 hex chars). Save it.
+Expected: returns the wasm hash (should match `sha256sum target/wasm32v1-none/contract/g2c_multisig_policy.wasm`).
 
-- [ ] **Step 2: Confirm the hash via the registry**
-
-Run:
-```bash
-stellar registry fetch-hash --name multisig-policy --version 0.1.0 --network testnet
-```
-Expected: same 64-hex-char hash as Step 1. Note it as `<HASH>`.
-
-- [ ] **Step 3: Replace the placeholder `MULTISIG_POLICY` constant in `contracts/factory/src/contract.rs`**
-
-Convert `<HASH>` (e.g., `bb43ad3545306f0c2fd0539c0785104e946121e2a1147326ca3a4ff95cc77c01`) to a `[u8; 32]` literal:
-
-```rust
-const MULTISIG_POLICY: [u8; 32] = [
-    0xbb, 0x43, 0xad, 0x35, 0x45, 0x30, 0x6f, 0x0c,
-    0x2f, 0xd0, 0x53, 0x9c, 0x07, 0x85, 0x10, 0x4e,
-    0x94, 0x61, 0x21, 0xe2, 0xa1, 0x14, 0x73, 0x26,
-    0xca, 0x3a, 0x4f, 0xf9, 0x5c, 0xc7, 0x7c, 0x01,
-];
-```
-(Replace each byte from your actual hash. A quick way: `python3 -c "h='<HASH>'; print(', '.join(f'0x{h[i:i+2]}' for i in range(0,64,2)))"`.)
-
-- [ ] **Step 4: Rebuild and re-run factory tests**
-
-Run: `just build-contracts && cargo test -p g2c-factory`
-Expected: all tests PASS.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 2: Deploy a named instance**
 
 ```bash
-git add contracts/factory/src/contract.rs
-git commit -m "feat(factory): set real multisig-policy wasm hash"
+stellar registry deploy \
+  --name multisig-policy --version 0.1.0 \
+  --network testnet --source <your-alias>
+```
+Expected: prints the deployed contract address (`C…`). After this, `stellar registry fetch-contract-id --name multisig-policy --network testnet` returns that address. The factory's `resolve(env, "multisig-policy")` will return the same address.
+
+- [ ] **Step 3: Confirm the verifier is also registered**
+
+The factory now also resolves `"verifier"` via the same path. Check whether the WebAuthn verifier contract is already deployed under that name:
+
+```bash
+stellar registry fetch-contract-id --name verifier --network testnet
+```
+
+If it returns a C-address, you're done. If it errors (not registered), publish + deploy the verifier under that name now:
+
+```bash
+stellar registry publish \
+  --wasm target/wasm32v1-none/contract/g2c_webauthn_verifier.wasm \
+  --name verifier --version 0.1.0 \
+  --network testnet --source <your-alias>
+stellar registry deploy \
+  --name verifier --version 0.1.0 \
+  --network testnet --source <your-alias>
+```
+
+If a verifier *contract* exists on testnet but isn't registered (the deployed factory's old `verifier_address` lazy-deployed it from a hash), and you want to keep that exact contract address, use `stellar registry register-contract --name verifier --contract-id <existing-C-addr> --owner <your-alias>` instead of `deploy`.
+
+- [ ] **Step 4: Commit (annotation only)**
+
+```bash
+git commit --allow-empty -m "deploy(registry): publish + deploy multisig-policy v0.1.0 (and verifier if needed)
+
+multisig-policy address: <C-ADDRESS>
+verifier address: <C-ADDRESS>"
 ```
 
 ---
 
 ### Task 4b: Publish new factory wasm and upgrade the deployed factory
 
-The deployed factory at `CDDMELYHOSD6M2T53F5DUYCXDS3VVOQ72E4KZMMZP37GQWII2WRKM2CC` runs the *old* factory wasm (no `multisig_policy_address`). The new factory wasm (built in Task 4) needs to be published and the deployed instance upgraded. Both steps go through stellar-registry-cli.
+The deployed factory at `CDDMELYHOSD6M2T53F5DUYCXDS3VVOQ72E4KZMMZP37GQWII2WRKM2CC` runs the *old* factory wasm (no registry-resolve logic; still uses hardcoded wasm hashes). The new factory wasm (built after Task 3's rewrite) needs to be published and the deployed instance upgraded.
 
-**Files:** none new (this task only runs CLI commands).
+**One-time prerequisite:** the deployed factory must be a *registered named contract* in the registry (otherwise `stellar registry upgrade` has nothing to upgrade by name). Check first:
+
+```bash
+stellar registry fetch-contract-id --name factory --network testnet
+```
+
+If it returns `CDDMEL…M2CC`, you're good — skip to Step 1. If it errors, register first:
+
+```bash
+stellar registry register-contract \
+  --name factory \
+  --contract-id CDDMELYHOSD6M2T53F5DUYCXDS3VVOQ72E4KZMMZP37GQWII2WRKM2CC \
+  --owner <your-alias> \
+  --network testnet --source <your-alias>
+```
+
+**Files:** none (CLI-only).
 
 - [ ] **Step 1: Publish the new factory wasm**
 
-Run:
 ```bash
 stellar registry publish \
   --wasm target/wasm32v1-none/contract/g2c_factory.wasm \
   --name factory --version 0.2.0 \
   --network testnet --source <your-alias>
 ```
-Expected: outputs the new factory wasm hash. The version bump from 0.1.0 → 0.2.0 reflects the added method.
 
-- [ ] **Step 2: Upgrade the deployed factory to the new wasm**
+- [ ] **Step 2: Upgrade the deployed factory**
 
-Run:
 ```bash
 stellar registry upgrade \
   --name factory --version 0.2.0 \
   --network testnet --source <your-alias>
 ```
-Expected: upgrade transaction confirmed; deployed factory contract address `CDDMEL…M2CC` is unchanged, but its wasm now exposes `multisig_policy_address`.
+Expected: deployed factory's contract address is unchanged; its wasm now contains the registry-resolve logic.
 
-- [ ] **Step 3: Verify the new method works on-chain**
+- [ ] **Step 3: Verify**
 
-Run:
+The factory's only exported method is `create_account` (`verifier_address`/`multisig_policy_address` are gone in architecture C). Smoke-test by creating an account through the existing frontend flow on testnet, or with the CLI:
+
 ```bash
+# Pick a test funder G-address with some XLM:
 stellar contract invoke \
   --id CDDMELYHOSD6M2T53F5DUYCXDS3VVOQ72E4KZMMZP37GQWII2WRKM2CC \
   --network testnet --source <your-alias> \
-  -- multisig_policy_address
+  -- create_account \
+  --funder <your-G-addr> \
+  --key <some-65-byte-hex> \
+  --amount 1000000
 ```
-Expected: returns the lazy-deployed multisig policy contract address (a C-address). The first invocation may take longer because it triggers the lazy-deploy; subsequent calls are pure reads.
 
-- [ ] **Step 4: Record the multisig policy contract address for the frontend reference**
+Expected: deploys a new smart account (transaction succeeds). Inside `create_account`, `resolve(env, "verifier")` is invoked — the first call costs a cross-contract simulate hop to the registry, subsequent calls are instance-storage reads.
 
-Capture the address output by Step 3. The frontend reads it dynamically via `factory.multisig_policy_address()` (in `recoveryActions.ts`'s `fetchFactorySingleton`), so no hardcoded constant is needed in the source. But note the value in this task's commit message for future reference.
-
-- [ ] **Step 5: Commit (annotation only — no source changes)**
+- [ ] **Step 4: Commit (annotation only)**
 
 ```bash
-git commit --allow-empty -m "deploy(factory): publish v0.2.0 via stellar-registry-cli, upgrade testnet deployment
-
-Published multisig-policy v0.1.0 wasm hash: <HASH>
-Multisig policy deployed contract: <C-ADDRESS>"
+git commit --allow-empty -m "deploy(factory): publish v0.2.0 (registry-resolve) and upgrade testnet deployment"
 ```
 
 ---

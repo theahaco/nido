@@ -59,13 +59,38 @@ The contract carries no logic of its own; M-of-N enforcement, storage layout, an
 
 ### Factory change
 
-`contracts/factory` carries the multisig-policy wasm hash and lazy-deploys a singleton on first use, mirroring the WebAuthn verifier pattern. New public method:
+`contracts/factory` resolves canonical singleton contracts (the WebAuthn verifier, the multisig policy, and any future shared contracts) by **name lookup against the on-chain stellar-registry**, replacing the previous "hardcoded wasm hash + lazy-deploy" pattern.
+
+The registry contract (the testnet "unverified" instance at `CAMLHKQHNZO2IOIBFUF5BGZ2V62BMS5QCWFFGRCB4NOB3G5OMDA7SGZN`) exposes `fetch_contract_id(name: String) -> Address`, which the factory calls via a small `RegistryClient` declared inline. Resolved addresses are cached in the factory's instance storage to amortize the cross-contract call.
 
 ```rust
-pub fn multisig_policy_address(e: &Env) -> Address
+const REGISTRY: &str = "CAMLHKQHNZO2IOIBFUF5BGZ2V62BMS5QCWFFGRCB4NOB3G5OMDA7SGZN";
+
+mod registry {
+    use soroban_sdk::*;
+    #[contractclient(name = "RegistryClient")]
+    pub trait RegistryInterface {
+        fn fetch_contract_id(name: String) -> Address;
+    }
+}
+
+impl Contract {
+    fn resolve(env: &Env, name: &str) -> Address {
+        let key = Symbol::new(env, name);
+        if let Some(addr) = env.storage().instance().get::<_, Address>(&key) {
+            return addr;
+        }
+        let client = registry::RegistryClient::new(env, &Address::from_str(env, REGISTRY));
+        let addr = client.fetch_contract_id(&String::from_str(env, name));
+        env.storage().instance().set(&key, &addr);
+        addr
+    }
+}
 ```
 
-Returns the shared deployment, deploying if absent. The SDK calls this once per session and caches the address; subsequent uses of the policy just reference that address.
+`deploy_account_contract` calls `Self::resolve(env, "verifier")` to obtain the verifier address for the initial signer. Future policies plug in with one line: e.g. an SDK method that needs the multisig-policy address calls `Self::resolve(env, "multisig-policy")`. The factory carries no policy- or verifier-specific knowledge in its source — adding a new policy contract means publishing it via `stellar registry publish` and `stellar registry deploy --name <foo>` without touching the factory.
+
+**Trade-offs.** The first call for any given name pays one cross-contract simulate-time hop; subsequent calls are pure-read from instance storage. The factory source no longer chases the hash of any dependency wasm, so adding policies stops requiring a factory rebuild + upgrade. The deployed factory holds the registry address as a compile-time constant; switching networks (or registries) means a factory wasm rebuild and `stellar registry upgrade`.
 
 ### No new contract for session keys
 
