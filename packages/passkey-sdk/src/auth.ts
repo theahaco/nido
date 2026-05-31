@@ -101,25 +101,12 @@ export function parseAssertionResponse(assertionResponse: {
 }
 
 /**
- * Version of the OpenZeppelin smart account contract the target account runs:
- *
- *  - `'v0.6'` (default): old `Signatures(Map<Signer, Bytes>)` tuple struct —
- *    XDR `Vec[Map[Signer, Bytes]]`. `do_check_auth` verifies each signature
- *    against the raw `signature_payload` (no rule-id binding).
- *
- *  - `'v0.7'`: new `AuthPayload { signers, context_rule_ids }` struct —
- *    XDR `Map[Symbol → Vec, Symbol → Map]`. `do_check_auth` verifies each
- *    signature against `sha256(signature_payload || context_rule_ids.to_xdr())`.
- *
- * Every account currently on Stellar testnet was deployed from a factory
- * that hardcoded the v0.6 WASM hash (soroban-sdk 25.x). The repo's source
- * is on v0.7. Until a new factory + accounts land (see issue #26), the
- * default has to be `'v0.6'` so existing accounts can be signed for.
- */
-export type SmartAccountAuthVersion = 'v0.6' | 'v0.7';
-
-/**
  * Inject a passkey signature into a transaction's Soroban auth credentials.
+ *
+ * Emits the OZ v0.7+ `AuthPayload { signers, context_rule_ids }` struct.
+ * Pre-v0.7 contracts (raw `Signatures(Map<Signer, Bytes>)` tuple struct,
+ * signing the raw signature_payload with no rule-id binding) are not
+ * supported — they need to be migrated to a v0.7 factory + account.
  *
  * @param transaction - The assembled transaction from simulation
  * @param passkeySignature - Parsed passkey signature components
@@ -128,9 +115,8 @@ export type SmartAccountAuthVersion = 'v0.6' | 'v0.7';
  * @param lastLedger - Current ledger sequence number
  * @param expirationLedgerOffset - How many ledgers the signature is valid for (default 100)
  * @param contextRuleIds - Context-rule IDs authorizing each auth context (index-aligned).
- *                        Used only in `'v0.7'` mode. Defaults to `[0]` — the
- *                        Default rule that ships with every smart account.
- * @param version - Which on-chain auth shape to emit. See `SmartAccountAuthVersion`.
+ *                        Defaults to `[0]` — the Default rule that ships with every
+ *                        smart account and authorizes self-modification.
  */
 export function injectPasskeySignature(
   transaction: { operations: readonly Operation[] },
@@ -140,7 +126,6 @@ export function injectPasskeySignature(
   lastLedger: number,
   expirationLedgerOffset: number = DEFAULT_EXPIRATION_OFFSET,
   contextRuleIds: readonly number[] = [0],
-  version: SmartAccountAuthVersion = 'v0.6',
 ): void {
   // Mutate via clone-and-replace, not in-place. The canonical
   // `authorizeEntry` helper in stellar-base does the same — and for good
@@ -194,16 +179,6 @@ export function injectPasskeySignature(
     }),
   ]);
 
-  if (version === 'v0.6') {
-    // v0.6: `Signatures(Map<Signer, Bytes>)` is a tuple struct wrapping the
-    // signers map. The XDR encoding is `Vec[Map[Signer, Bytes]]` — exactly
-    // one element, the map itself.
-    creds.signature(xdr.ScVal.scvVec([signersMap]));
-    (op.auth as xdr.SorobanAuthorizationEntry[])[0] = signedEntry;
-    return;
-  }
-
-  // v0.7: AuthPayload struct.
   const contextRuleIdsVec = xdr.ScVal.scvVec(
     contextRuleIds.map((id) => xdr.ScVal.scvU32(id)),
   );

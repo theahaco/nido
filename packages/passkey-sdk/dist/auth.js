@@ -77,6 +77,11 @@ export function parseAssertionResponse(assertionResponse) {
 /**
  * Inject a passkey signature into a transaction's Soroban auth credentials.
  *
+ * Emits the OZ v0.7+ `AuthPayload { signers, context_rule_ids }` struct.
+ * Pre-v0.7 contracts (raw `Signatures(Map<Signer, Bytes>)` tuple struct,
+ * signing the raw signature_payload with no rule-id binding) are not
+ * supported — they need to be migrated to a v0.7 factory + account.
+ *
  * @param transaction - The assembled transaction from simulation
  * @param passkeySignature - Parsed passkey signature components
  * @param verifierAddress - Address of the WebAuthn verifier contract
@@ -84,11 +89,10 @@ export function parseAssertionResponse(assertionResponse) {
  * @param lastLedger - Current ledger sequence number
  * @param expirationLedgerOffset - How many ledgers the signature is valid for (default 100)
  * @param contextRuleIds - Context-rule IDs authorizing each auth context (index-aligned).
- *                        Used only in `'v0.7'` mode. Defaults to `[0]` — the
- *                        Default rule that ships with every smart account.
- * @param version - Which on-chain auth shape to emit. See `SmartAccountAuthVersion`.
+ *                        Defaults to `[0]` — the Default rule that ships with every
+ *                        smart account and authorizes self-modification.
  */
-export function injectPasskeySignature(transaction, passkeySignature, verifierAddress, publicKey, lastLedger, expirationLedgerOffset = DEFAULT_EXPIRATION_OFFSET, contextRuleIds = [0], version = 'v0.6') {
+export function injectPasskeySignature(transaction, passkeySignature, verifierAddress, publicKey, lastLedger, expirationLedgerOffset = DEFAULT_EXPIRATION_OFFSET, contextRuleIds = [0]) {
     // Mutate via clone-and-replace, not in-place. The canonical
     // `authorizeEntry` helper in stellar-base does the same — and for good
     // reason: through `assembleTransaction(...).build()`, `op.auth[i]` is
@@ -136,15 +140,6 @@ export function injectPasskeySignature(transaction, passkeySignature, verifierAd
             val: xdr.ScVal.scvBytes(sigDataBytes),
         }),
     ]);
-    if (version === 'v0.6') {
-        // v0.6: `Signatures(Map<Signer, Bytes>)` is a tuple struct wrapping the
-        // signers map. The XDR encoding is `Vec[Map[Signer, Bytes]]` — exactly
-        // one element, the map itself.
-        creds.signature(xdr.ScVal.scvVec([signersMap]));
-        op.auth[0] = signedEntry;
-        return;
-    }
-    // v0.7: AuthPayload struct.
     const contextRuleIdsVec = xdr.ScVal.scvVec(contextRuleIds.map((id) => xdr.ScVal.scvU32(id)));
     // ScMap with Symbol keys in alphabetical order (context_rule_ids < signers).
     creds.signature(xdr.ScVal.scvMap([

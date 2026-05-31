@@ -104,6 +104,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   import { Client } from "status-message";
   import {
     buildAuthHash,
+    computeAuthDigest,
     getAuthEntry,
     injectPasskeySignature,
     hex2buf,
@@ -114,6 +115,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     forgetSessionKeyMaterial,
     signWithSessionPasskey,
   } from "@g2c/passkey-sdk";
+  import { findRuleForPubkey } from "../../lib/policyChainFetch.js";
   import { startDelegation, readDelegationReturn } from "../../lib/delegationHandover.js";
   import { Keypair, Networks, TransactionBuilder, Transaction, rpc } from "@stellar/stellar-sdk";
 
@@ -370,42 +372,59 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       // --- Session-passkey in-page signing path ---
       const material = loadSessionKeyMaterial(contract, STATUS_CONTRACT);
       if (material) {
+        $setForm.textContent = "Finding session rule on chain...";
+
+        // Discover which context rule on this account contains our
+        // session-passkey signer. The wallet's add_context_rule assigned
+        // some non-zero rule id when it installed the delegation; we
+        // can't hard-code [0] (that's the default rule for the primary
+        // passkey) and can't easily plumb the id back from the wallet's
+        // redirect either. Querying every time is cheap and self-healing:
+        // if the install tx never landed, this returns null and we tear
+        // the stale localStorage entry down.
+        const ruleId = await findRuleForPubkey(contract, material.publicKey);
+        if (ruleId === null) {
+          forgetSessionKeyMaterial(contract, STATUS_CONTRACT);
+          throw new Error(
+            "Session passkey is not installed on chain (the delegation never " +
+              "actually committed). Please re-delegate this dApp."
+          );
+        }
+        const contextRuleIds = [ruleId];
+
         $setForm.textContent = "Touch your authenticator to sign...";
 
-        // Run the WebAuthn get ceremony against the dApp-origin session
-        // passkey. The OS shows its normal "use this passkey" prompt; the
-        // signature comes back already in the shape injectPasskeySignature
-        // wants.
+        // OZ v0.7+ smart accounts verify against
+        //   auth_digest = sha256(signature_payload || context_rule_ids.to_xdr())
+        // — NOT the raw signature_payload. Sign that digest.
+        const authDigest = computeAuthDigest(
+          new Uint8Array(authHash),
+          contextRuleIds,
+        );
         const parsed = await signWithSessionPasskey(
           material.credentialId,
-          new Uint8Array(authHash),
+          new Uint8Array(authDigest),
         );
 
-        // We persisted the pubkey alongside the credentialId at delegation
-        // time precisely so we don't have to recover it from the assertion.
         const sessionPubkey = hex2buf(material.publicKey);
 
         // `tx.built` is ALREADY the assembled tx from the bindings'
-        // internal simulate (AssembledTransaction.simulate replaces
-        // .built with `assembleTransaction(raw, sim).build()` on
-        // success). Re-running `rpc.assembleTransaction(tx.built, sim)`
-        // calls `TransactionBuilder.cloneFrom(tx.built)`, which fails
-        // the `tx instanceof Transaction` check across Vite-bundled
-        // module instances and surfaces as
-        //   "expected a 'Transaction', got: [object Object]".
-        // Mutate the existing built tx in place via the same XDR
-        // round-trip clone trick we use in injectPasskeySignature.
+        // internal simulate. Re-running rpc.assembleTransaction on it
+        // hits the cross-bundle `instanceof Transaction` check and
+        // throws "expected a 'Transaction', got: [object Object]".
         const authTxn = tx.built!;
 
-        // Inject the session-passkey signature into the assembled
-        // transaction. Default to v0.6 shape (existing on-chain
-        // contracts) — see auth.ts SmartAccountAuthVersion docs.
+        // Inject the session-passkey signature in OZ v0.7 AuthPayload
+        // shape, threading the same contextRuleIds so the chain-side
+        // recomputed digest matches our signature.
         injectPasskeySignature(
           authTxn,
           parsed,
           VERIFIER_ADDRESS,
           sessionPubkey,
           lastLedger,
+          undefined,
+          contextRuleIds,
         );
 
         $setForm.textContent = "Submitting...";

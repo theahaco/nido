@@ -126,60 +126,91 @@ export async function fetchRegistryAddress(name: string): Promise<string> {
  *  account), so existing call sites that pass an arbitrary account don't
  *  crash.
  */
-/** What `fetchAccountAuthInfo` returns: the verifier address the account's
- *  default rule lists for its primary passkey, plus the on-chain OZ version
- *  (detected by checking whether the rule has v0.7-only `signer_ids` field). */
-export interface AccountAuthInfo {
-  verifierAddress: string;
-  version: 'v0.6' | 'v0.7';
-}
-
-/** Single-call query that returns both pieces of info `signAndSubmit` needs
- *  to construct a correct auth signature against the on-chain contract. */
-export async function fetchAccountAuthInfo(account: string): Promise<AccountAuthInfo> {
+/** Find the context-rule id on `account` that contains an External signer
+ *  with the given public key. Returns `null` if no such rule exists (e.g.
+ *  delegation install transaction never actually committed, or the rule
+ *  has been revoked).
+ *
+ *  Queries each rule sequentially via `get_context_rule(i)` up to
+ *  `get_context_rules_count()`. Used to discover which rule_id our session
+ *  passkey lives under so the signing-side AuthPayload + computed digest
+ *  both reference the correct rule. */
+export async function findRuleForPubkey(
+  account: string,
+  pubkeyHex: string,
+): Promise<number | null> {
   const server = new rpc.Server(RPC_URL);
-  const rv = await simulateView(
-    server,
-    new Contract(account),
-    'get_context_rule',
-    nativeToScVal(0, { type: 'u32' }),
-  );
-  const native = scValToNative(rv) as { signers?: unknown[]; signer_ids?: unknown };
-  // v0.7+ ContextRule has `signer_ids: Vec<u32>`; v0.6 doesn't. Use that as
-  // the detection signal.
-  const version: 'v0.6' | 'v0.7' = 'signer_ids' in native ? 'v0.7' : 'v0.6';
-  let verifierAddress: string | null = null;
-  for (const s of native.signers ?? []) {
-    if (Array.isArray(s) && s[0] === 'External' && typeof s[1] === 'string') {
-      verifierAddress = s[1];
-      break;
-    }
-    const asTagged = s as { tag?: string; values?: unknown[] };
-    if (asTagged.tag === 'External' && Array.isArray(asTagged.values)) {
-      verifierAddress = asTagged.values[0] as string;
-      break;
-    }
-    const obj = s as Record<string, unknown>;
-    const ext = obj.External;
-    if (Array.isArray(ext) && typeof ext[0] === 'string') {
-      verifierAddress = ext[0];
-      break;
+  const countRv = await simulateView(server, new Contract(account), 'get_context_rules_count');
+  const count = scValToNative(countRv) as number;
+  const lowerHex = pubkeyHex.toLowerCase();
+  for (let i = 0; i < count; i++) {
+    const ruleRv = await simulateView(
+      server,
+      new Contract(account),
+      'get_context_rule',
+      nativeToScVal(i, { type: 'u32' }),
+    );
+    const native = scValToNative(ruleRv) as { id?: number; signers?: unknown[] };
+    for (const s of native.signers ?? []) {
+      // ["External", verifier, pubkey_bytes_as_array_or_buffer]
+      if (Array.isArray(s) && s[0] === 'External') {
+        const raw = s[2];
+        let candidateHex: string | null = null;
+        if (raw instanceof Uint8Array) {
+          candidateHex = Array.from(raw, (b) => b.toString(16).padStart(2, '0')).join('');
+        } else if (Array.isArray(raw)) {
+          candidateHex = (raw as number[])
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+        } else if (typeof raw === 'object' && raw !== null) {
+          // scValToNative sometimes hands back the buffer as an object with
+          // numeric keys; rebuild as bytes.
+          const obj = raw as Record<string, number>;
+          const ordered: number[] = [];
+          for (let j = 0; obj[j as unknown as string] !== undefined; j++) {
+            ordered.push(obj[j as unknown as string]);
+          }
+          if (ordered.length > 0) {
+            candidateHex = ordered.map((b) => b.toString(16).padStart(2, '0')).join('');
+          }
+        }
+        if (candidateHex && candidateHex.toLowerCase() === lowerHex) {
+          return native.id ?? i;
+        }
+      }
     }
   }
-  if (!verifierAddress) {
-    // Last-resort fallback so old call sites don't crash on edge cases.
-    verifierAddress = await fetchRegistryAddress('verifier');
-  }
-  return { verifierAddress, version };
+  return null;
 }
 
-/** Back-compat shim — prefer `fetchAccountAuthInfo` which returns version too. */
+/** Read the verifier address the account's default rule references.
+ *
+ *  Reads `get_context_rule(0).signers` via raw `scValToNative` (not the
+ *  typed bindings, whose ContextRule shape would mismatch if the account
+ *  was built against a slightly different soroban-sdk minor). Returns the
+ *  first External signer's verifier address, falling back to the registry
+ *  if the account hasn't been queryable or has no external signer. */
 export async function fetchVerifierAddress(account: string): Promise<string> {
   try {
-    return (await fetchAccountAuthInfo(account)).verifierAddress;
+    const server = new rpc.Server(RPC_URL);
+    const rv = await simulateView(
+      server,
+      new Contract(account),
+      'get_context_rule',
+      nativeToScVal(0, { type: 'u32' }),
+    );
+    const native = scValToNative(rv) as { signers?: unknown[] };
+    for (const s of native.signers ?? []) {
+      // scValToNative decodes a Soroban Signer enum (tuple variant) as a
+      // plain array: ["External", verifier_address, pubkey_bytes].
+      if (Array.isArray(s) && s[0] === 'External' && typeof s[1] === 'string') {
+        return s[1];
+      }
+    }
   } catch {
-    return fetchRegistryAddress('verifier');
+    // fall through to registry
   }
+  return fetchRegistryAddress('verifier');
 }
 
 // --- Internal parsers ------------------------------------------------------

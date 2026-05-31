@@ -14,7 +14,7 @@ import {
   parseAssertionResponse,
   hex2buf,
 } from '@g2c/passkey-sdk';
-import { fetchAccountAuthInfo } from './policyChainFetch.js';
+import { fetchVerifierAddress } from './policyChainFetch.js';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
@@ -64,8 +64,8 @@ export async function signAndSubmit(args: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   operation: any;
   /** Optional: skip the on-chain probe by passing a verifier address you've
-   *  already fetched. If omitted, signAndSubmit fetches both verifier + auth
-   *  version itself. */
+   *  already fetched. Otherwise we'll read it from the account's default
+   *  rule. */
   verifierAddress?: string;
 }): Promise<rpc.Api.SendTransactionResponse> {
   const cred = loadCredential(args.account);
@@ -73,16 +73,8 @@ export async function signAndSubmit(args: {
 
   const server = new rpc.Server(RPC_URL);
 
-  // 0. Detect what auth-signature shape the account expects.
-  //    Old accounts (factory deployed before the OZ v0.7 refactor) want
-  //    Signatures(Map<Signer, Bytes>) and verify against the raw
-  //    signature_payload; new accounts want AuthPayload {signers, context_rule_ids}
-  //    and verify against sha256(signature_payload || ctx_rule_ids.to_xdr()).
-  //    Mismatched shape → contract panics in __check_auth.
-  const { verifierAddress, version } = await fetchAccountAuthInfo(args.account);
-  // Caller can override the verifier address (helpful for tests), but the
-  // detected version always wins so we emit a self-consistent payload.
-  const finalVerifierAddress = args.verifierAddress ?? verifierAddress;
+  const finalVerifierAddress =
+    args.verifierAddress ?? (await fetchVerifierAddress(args.account));
 
   // 1. Get the ephemeral submitter G-address; load its current sequence.
   //    This is the tx source/fee-payer, NOT the smart account itself.
@@ -122,23 +114,18 @@ export async function signAndSubmit(args: {
   }
   const successSim = sim as rpc.Api.SimulateTransactionSuccessResponse;
 
-  // 3. Extract the auth entry and compute the digest the user must sign.
+  // 3. Extract the auth entry and compute the OZ v0.7 auth digest:
   //
-  //    v0.6 accounts: sign the raw `signature_payload`.
-  //    v0.7 accounts: sign `auth_digest = sha256(payload || context_rule_ids.to_xdr())`.
+  //    auth_digest = sha256(signature_payload || context_rule_ids.to_xdr())
   //
-  //    The same array passed here MUST be the one passed to
-  //    injectPasskeySignature, so the AuthPayload struct on the auth
-  //    entry and the digest the contract recomputes both refer to the
-  //    same rule.
+  //    The same `contextRuleIds` array passed here MUST be the one passed
+  //    to `injectPasskeySignature` so the AuthPayload's `context_rule_ids`
+  //    and the digest the contract recomputes both refer to the same rule.
   const authEntry = getAuthEntry(successSim);
   const lastLedger = successSim.latestLedger;
   const signaturePayload = buildAuthHash(authEntry, Networks.TESTNET, lastLedger);
   const contextRuleIds = [0];
-  const challengeBytes =
-    version === 'v0.7'
-      ? computeAuthDigest(signaturePayload, contextRuleIds)
-      : signaturePayload;
+  const challengeBytes = computeAuthDigest(signaturePayload, contextRuleIds);
 
   // 4. Assemble so auth entries are baked into the tx XDR before signing.
   const assembled_tx = rpc.assembleTransaction(sim_tx, successSim).build();
@@ -164,8 +151,7 @@ export async function signAndSubmit(args: {
     signature: response.signature,
   });
 
-  // 6. Inject the passkey signature into the assembled tx's auth entry,
-  //    using the version-appropriate shape (Signatures vs AuthPayload).
+  // 6. Inject the passkey signature into the assembled tx's auth entry.
   injectPasskeySignature(
     assembled_tx,
     parsed,
@@ -174,7 +160,6 @@ export async function signAndSubmit(args: {
     lastLedger,
     undefined,
     contextRuleIds,
-    version,
   );
 
   // 7. Re-simulate the now-signed tx in ENFORCE mode as a sanity check —
