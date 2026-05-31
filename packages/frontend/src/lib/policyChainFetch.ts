@@ -127,22 +127,45 @@ export async function fetchRegistryAddress(name: string): Promise<string> {
  *  crash.
  */
 export async function fetchVerifierAddress(account: string): Promise<string> {
+  // Read get_context_rule(0) via raw RPC + scValToNative instead of the
+  // typed SmartAccountClient bindings. The bindings carry the *current*
+  // ContextRule schema (OZ v0.7+: includes `signer_ids`/`policy_ids` Vec<u32>
+  // fields), but accounts deployed by the unupgraded factory still run an
+  // older WASM and return a slimmer ContextRule. Feeding that into the
+  // bindings' typed parser throws `Type [object Object] was not vec, but
+  // [object Object] is` — and the throw silently fell back to the
+  // registry-registered verifier, which is what the on-chain rule does NOT
+  // reference. Raw scValToNative is shape-agnostic, so we can traverse the
+  // returned native object for an External signer regardless of which
+  // version the contract is on.
   try {
-    const client = new SmartAccountClient({
-      contractId: account,
-      networkPassphrase: NETWORK_PASSPHRASE,
-      rpcUrl: RPC_URL,
-    });
-    const tx = await client.get_context_rule({ context_rule_id: 0 });
-    const rule = tx.result as ContextRule;
-    for (const s of rule.signers) {
-      if (s.tag === 'External') {
-        return s.values[0]; // [verifier_address, pubkey_bytes]
+    const server = new rpc.Server(RPC_URL);
+    const rv = await simulateView(
+      server,
+      new Contract(account),
+      'get_context_rule',
+      nativeToScVal(0, { type: 'u32' }),
+    );
+    const native = scValToNative(rv) as {
+      signers?: Array<{ tag?: string; values?: unknown[] } | { External?: unknown[] }>;
+    };
+    for (const s of native.signers ?? []) {
+      // The bindings return tagged objects ({tag: 'External', values: [...]}),
+      // but a raw scValToNative on this contract's enum-like Signer returns
+      // either tagged-object form or a JS object whose first own key IS the
+      // variant name with the values array as its value. Handle both.
+      const asTagged = s as { tag?: string; values?: unknown[] };
+      if (asTagged.tag === 'External' && Array.isArray(asTagged.values)) {
+        return asTagged.values[0] as string;
+      }
+      const obj = s as Record<string, unknown>;
+      const ext = obj.External;
+      if (Array.isArray(ext) && typeof ext[0] === 'string') {
+        return ext[0];
       }
     }
   } catch {
-    // fall through to the registry — the account might not exist yet
-    // (pending creation) or the call may fail for other reasons.
+    // fall through — registry as last resort
   }
   return fetchRegistryAddress('verifier');
 }
