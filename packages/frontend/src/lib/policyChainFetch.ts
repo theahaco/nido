@@ -146,14 +146,18 @@ export async function fetchVerifierAddress(account: string): Promise<string> {
       'get_context_rule',
       nativeToScVal(0, { type: 'u32' }),
     );
-    const native = scValToNative(rv) as {
-      signers?: Array<{ tag?: string; values?: unknown[] } | { External?: unknown[] }>;
-    };
+    const native = scValToNative(rv) as { signers?: unknown[] };
     for (const s of native.signers ?? []) {
-      // The bindings return tagged objects ({tag: 'External', values: [...]}),
-      // but a raw scValToNative on this contract's enum-like Signer returns
-      // either tagged-object form or a JS object whose first own key IS the
-      // variant name with the values array as its value. Handle both.
+      // scValToNative deserializes a Soroban `Signer` enum (Rust tuple
+      // variant) as a plain ARRAY: [variant_name_string, ...values].
+      // For `External(Address, Bytes)`, that's ["External", verifier, pubkey].
+      // The typed bindings would wrap this as {tag, values}, but here we're
+      // bypassing them precisely because their schema may not match older
+      // accounts. Handle the array form as the primary case; also handle
+      // {tag,values} and {External:[…]} for defensive forward-compat.
+      if (Array.isArray(s) && s[0] === 'External' && typeof s[1] === 'string') {
+        return s[1];
+      }
       const asTagged = s as { tag?: string; values?: unknown[] };
       if (asTagged.tag === 'External' && Array.isArray(asTagged.values)) {
         return asTagged.values[0] as string;
