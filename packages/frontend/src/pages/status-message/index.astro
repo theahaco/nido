@@ -452,12 +452,25 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         const successSim2 = sim2 as rpc.Api.SimulateTransactionSuccessResponse;
         const newSorobanData = successSim2.transactionData.build();
         const newResourceFee = BigInt(newSorobanData.resourceFee().toString());
+
+        // Round-trip authTxn through XDR to materialize a Transaction in
+        // the PAGE's @stellar/stellar-sdk module instance — otherwise
+        // TransactionBuilder.cloneFrom's `instanceof Transaction` check
+        // fails because authTxn was built by the bindings' bundled SDK
+        // module copy. Same gotcha that broke the original
+        // rpc.assembleTransaction(tx.built, sim) call; same workaround.
+        // The signed auth entries are part of the XDR so they survive
+        // the round-trip intact.
+        const reparsedAuthTxn = TransactionBuilder.fromXDR(
+          authTxn.toEnvelope().toXDR('base64'),
+          Networks.TESTNET,
+        ) as Transaction;
         const oldResourceFee = BigInt(
-          (authTxn.toEnvelope().v1().tx().ext().value() as xdr.SorobanTransactionData | undefined)
+          (reparsedAuthTxn.toEnvelope().v1().tx().ext().value() as xdr.SorobanTransactionData | undefined)
             ?.resourceFee().toString() ?? '0'
         );
-        const classicFee = BigInt(authTxn.fee) - oldResourceFee;
-        const finalTx = TransactionBuilder.cloneFrom(authTxn, {
+        const classicFee = BigInt(reparsedAuthTxn.fee) - oldResourceFee;
+        const finalTx = TransactionBuilder.cloneFrom(reparsedAuthTxn, {
           fee: (classicFee + newResourceFee).toString(),
           sorobanData: newSorobanData,
           networkPassphrase: Networks.TESTNET,
