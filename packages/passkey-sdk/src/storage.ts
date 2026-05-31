@@ -94,10 +94,26 @@ export function loadFriendNicknames(account: string): Record<string, string> {
   return raw ? JSON.parse(raw) : {};
 }
 
+/**
+ * Material persisted at the dApp's origin for a delegated session key.
+ *
+ *  - `credentialId` is the base64url WebAuthn credential id created at
+ *    delegation time (`createSessionPasskey`).
+ *  - `publicKey` is a hex-encoded 65-byte SEC1 uncompressed P-256 point.
+ *    Stored alongside the credentialId because the dApp needs it on each
+ *    sign to construct the `External(verifier, pubkey)` signer; the
+ *    credential id alone can't yield the pubkey.
+ *
+ * Older session-key entries created before the passkey-backed flow may
+ * still have a `privateKey` field — accepted on load for forward compat
+ * but never written by current code.
+ */
 export interface SessionKeyMaterial {
-  privateKey: Uint8Array;
   credentialId: string;
+  publicKey: string;        // hex, 65 bytes
   label?: string;
+  /** @deprecated synthetic-key flow only; absent for passkey-backed sessions. */
+  privateKey?: Uint8Array;
 }
 
 export function saveSessionKeyMaterial(
@@ -105,11 +121,14 @@ export function saveSessionKeyMaterial(
   target: string,
   material: SessionKeyMaterial,
 ): void {
-  const serialized = {
-    privateKey: Array.from(material.privateKey),
+  const serialized: Record<string, unknown> = {
     credentialId: material.credentialId,
+    publicKey: material.publicKey,
     label: material.label,
   };
+  if (material.privateKey) {
+    serialized.privateKey = Array.from(material.privateKey);
+  }
   localStorage.setItem(sessionKey(account, target), JSON.stringify(serialized));
 }
 
@@ -121,9 +140,10 @@ export function loadSessionKeyMaterial(
   if (!raw) return null;
   const o = JSON.parse(raw);
   return {
-    privateKey: new Uint8Array(o.privateKey),
     credentialId: o.credentialId,
+    publicKey: o.publicKey,
     label: o.label,
+    ...(o.privateKey ? { privateKey: new Uint8Array(o.privateKey) } : {}),
   };
 }
 

@@ -66,10 +66,13 @@ export function loadFriendNicknames(account) {
 }
 export function saveSessionKeyMaterial(account, target, material) {
     const serialized = {
-        privateKey: Array.from(material.privateKey),
         credentialId: material.credentialId,
+        publicKey: material.publicKey,
         label: material.label,
     };
+    if (material.privateKey) {
+        serialized.privateKey = Array.from(material.privateKey);
+    }
     localStorage.setItem(sessionKey(account, target), JSON.stringify(serialized));
 }
 export function loadSessionKeyMaterial(account, target) {
@@ -78,9 +81,10 @@ export function loadSessionKeyMaterial(account, target) {
         return null;
     const o = JSON.parse(raw);
     return {
-        privateKey: new Uint8Array(o.privateKey),
         credentialId: o.credentialId,
+        publicKey: o.publicKey,
         label: o.label,
+        ...(o.privateKey ? { privateKey: new Uint8Array(o.privateKey) } : {}),
     };
 }
 export function forgetSessionKeyMaterial(account, target) {

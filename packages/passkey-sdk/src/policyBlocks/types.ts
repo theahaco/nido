@@ -1,4 +1,5 @@
 import type { xdr } from '@stellar/stellar-sdk';
+import type { SessionKeyMaterial } from '../storage.js';
 
 export interface Friend {
   /** Resolved C-address or G-address; authoritative. */
@@ -58,11 +59,7 @@ export type PolicyState = Record<string, unknown>;
 /** Local display/credential overlay loaded from storage. */
 export interface LocalOverlay {
   friendNicknames: Record<string, string>;          // by address
-  sessionKeyMaterial: Record<string, {              // by target contract
-    privateKey: Uint8Array;
-    credentialId: string;
-    label?: string;
-  }>;
+  sessionKeyMaterial: Record<string, SessionKeyMaterial>; // by target contract
   blockLabels: Record<number, string>;              // by ruleId
 }
 

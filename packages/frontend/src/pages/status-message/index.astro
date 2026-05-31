@@ -112,10 +112,9 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     computeAccountAddress,
     loadSessionKeyMaterial,
     forgetSessionKeyMaterial,
-    buildSyntheticAssertion,
+    signWithSessionPasskey,
   } from "@g2c/passkey-sdk";
   import { startDelegation, readDelegationReturn } from "../../lib/delegationHandover.js";
-  import { p256 } from "@noble/curves/nist.js";
   import { Keypair, Networks, TransactionBuilder, Transaction, rpc } from "@stellar/stellar-sdk";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
@@ -223,20 +222,23 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     const material = loadSessionKeyMaterial(account, STATUS_CONTRACT);
     const delegatedBanner = material
       ? `<p style="margin:0 0 0.5rem 0;font-size:0.9em;color:#9ac">
-           <strong>Delegated</strong> — signing in-page (no wallet prompt).
+           <strong>Delegated</strong> — signs in-page with a dApp-scoped passkey.
            <button id="forget-delegation" style="margin-left:0.5rem;font-size:0.85em">Forget delegation</button>
          </p>
          <p style="margin:0 0 0.5rem 0;font-size:0.85em;color:#666">
-           Re-delegating overwrites the existing session key with a fresh one.
+           Each action prompts your authenticator (Touch ID / device unlock) at this origin;
+           no wallet round-trip. Re-delegate to replace this session passkey with a fresh one.
          </p>`
       : `<p style="margin:0 0 0.5rem 0;font-size:0.9em">
            <strong>Not delegated.</strong> Every action will redirect to your
            wallet for a passkey prompt.
          </p>
          <p style="margin:0 0 0.5rem 0;font-size:0.85em;color:#666">
-           Delegate this dApp to skip the round-trip: your wallet generates
-           a session key scoped to the status-message contract, and signing
-           stays in this page until you revoke or it expires.
+           Delegate this dApp to skip the round-trip: a passkey scoped to
+           the status-message contract is created at this origin. The
+           private key never leaves your authenticator — XSS at this site
+           can't sign for you. Each action still needs a biometric/device
+           unlock here, just not a full wallet detour.
          </p>`;
     $status.innerHTML = `
       <div style="background:#f7f7fa;border:1px solid #ddd;border-radius:6px;padding:0.75rem;margin:0.5rem 0">
@@ -365,32 +367,31 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       const lastLedger = sim.latestLedger;
       const authHash = buildAuthHash(authEntry, Networks.TESTNET, lastLedger);
 
-      // --- Session-key in-page signing path ---
+      // --- Session-passkey in-page signing path ---
       const material = loadSessionKeyMaterial(contract, STATUS_CONTRACT);
       if (material) {
-        $setForm.textContent = "Signing in-page...";
+        $setForm.textContent = "Touch your authenticator to sign...";
 
-        // Build a synthetic WebAuthn assertion using the delegated session key.
-        const assertion = await buildSyntheticAssertion(
-          material.privateKey,
+        // Run the WebAuthn get ceremony against the dApp-origin session
+        // passkey. The OS shows its normal "use this passkey" prompt; the
+        // signature comes back already in the shape injectPasskeySignature
+        // wants.
+        const parsed = await signWithSessionPasskey(
+          material.credentialId,
           new Uint8Array(authHash),
         );
 
-        // Derive the uncompressed (65-byte) public key from the private key.
-        // p256.getPublicKey(d, false) returns 0x04 || x || y.
-        const sessionPubkey = p256.getPublicKey(material.privateKey, false);
+        // We persisted the pubkey alongside the credentialId at delegation
+        // time precisely so we don't have to recover it from the assertion.
+        const sessionPubkey = hex2buf(material.publicKey);
 
         // Assemble the transaction (bakes auth entry into XDR).
         const authTxn = rpc.assembleTransaction(tx.built!, sim).build();
 
-        // Inject the session-key signature into the assembled transaction.
+        // Inject the session-passkey signature into the assembled transaction.
         injectPasskeySignature(
           authTxn,
-          {
-            authenticatorData: assertion.authenticatorData,
-            clientDataJson: assertion.clientDataJSON,
-            signature: assertion.signature,
-          },
+          parsed,
           VERIFIER_ADDRESS,
           sessionPubkey,
           lastLedger,

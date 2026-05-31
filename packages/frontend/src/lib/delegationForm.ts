@@ -1,4 +1,9 @@
-import { generateSessionKey, saveSessionKeyMaterial, forgetSessionKeyMaterial } from '@g2c/passkey-sdk';
+import {
+  generateSessionKey,
+  saveSessionKeyMaterial,
+  forgetSessionKeyMaterial,
+  buf2hex,
+} from '@g2c/passkey-sdk';
 import { delegateSessionKey } from './sessionKeyActions.js';
 
 /** Approximate stroop blocks per duration. Soroban testnet has ~5s ledger
@@ -60,10 +65,17 @@ export function mountDelegationForm(container: HTMLElement, account: string): vo
     saveBtn.textContent = 'Generating key...';
 
     try {
+      // NOTE: this in-wallet flow predates the cross-origin handover and
+      // still uses a synthetic P-256 key (stored in localStorage). The new
+      // canonical path is `startDelegation` from the dApp's origin, which
+      // creates a real passkey at the dApp via `createSessionPasskey`. Once
+      // every dApp is on the new flow this form (and the synthetic key)
+      // can be removed.
       const k = await generateSessionKey();
       saveSessionKeyMaterial(account, target, {
-        privateKey: k.privateKey,
         credentialId: k.credentialId,
+        publicKey: buf2hex(k.publicKey),
+        privateKey: k.privateKey,
         label,
       });
 

@@ -1,4 +1,5 @@
 import type { xdr } from '@stellar/stellar-sdk';
+import type { SessionKeyMaterial } from '../storage.js';
 export interface Friend {
     /** Resolved C-address or G-address; authoritative. */
     address: string;
@@ -58,11 +59,7 @@ export type PolicyState = Record<string, unknown>;
 /** Local display/credential overlay loaded from storage. */
 export interface LocalOverlay {
     friendNicknames: Record<string, string>;
-    sessionKeyMaterial: Record<string, {
-        privateKey: Uint8Array;
-        credentialId: string;
-        label?: string;
-    }>;
+    sessionKeyMaterial: Record<string, SessionKeyMaterial>;
     blockLabels: Record<number, string>;
 }
 /** Result of a buildInstall / buildRevoke — XDR Soroban operations the
