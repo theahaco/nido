@@ -197,5 +197,29 @@ export async function signAndSubmit(args: {
     throw new Error(`Final simulation failed: ${(final_sim as rpc.Api.SimulateTransactionErrorResponse).error}`);
   }
   assembled_tx.sign(submitter);
-  return server.sendTransaction(assembled_tx);
+  // 8. Submit and wait for chain confirmation. A successful enforce-mode
+  //    sim isn't proof the tx lands — fee-bid races, ledger close failures,
+  //    or out-of-band footprint errors can still drop a tx. Returning the
+  //    PENDING SendTransactionResponse without polling let callers happily
+  //    say "Done" while the rule we just paid to install never persisted
+  //    (rediscovered when the dApp then tried to use it and __check_auth
+  //    failed because no such rule was on-chain).
+  const sendResult = await server.sendTransaction(assembled_tx);
+  if (sendResult.status === 'ERROR') {
+    const detail = sendResult.errorResult?.toXDR('base64') ?? 'unknown';
+    throw new Error(`Submit rejected: ${detail}`);
+  }
+  if (sendResult.status === 'DUPLICATE' || sendResult.status === 'TRY_AGAIN_LATER') {
+    throw new Error(`Submit ${sendResult.status}: ${sendResult.hash}`);
+  }
+  // PENDING — poll until we see SUCCESS or FAILED.
+  let getResult = await server.getTransaction(sendResult.hash);
+  for (let i = 0; getResult.status === 'NOT_FOUND' && i < 30; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    getResult = await server.getTransaction(sendResult.hash);
+  }
+  if (getResult.status !== 'SUCCESS') {
+    throw new Error(`Tx ${sendResult.hash} ${getResult.status}`);
+  }
+  return sendResult;
 }
