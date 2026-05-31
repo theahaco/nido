@@ -22,6 +22,38 @@ export function dappPathFromHostname(host) {
     return RESERVED_DAPP_SUBDOMAINS[raw] ?? null;
 }
 /**
+ * Build a protocol-relative URL to a reserved-dApp subdomain, preserving the
+ * preview prefix if the calling page is in a PR preview. Mirrors `accountUrl`
+ * but for dApp names rather than contract IDs.
+ *
+ *   dappUrl("cabc--pr-24.mysoroban.xyz", "status-message", "/?contract=C…")
+ *     → "//status-message--pr-24.mysoroban.xyz/?contract=C…"
+ *
+ *   dappUrl("cabc.mysoroban.xyz", "status-message", "/?contract=C…")
+ *     → "//status-message.mysoroban.xyz/?contract=C…"
+ *
+ * Pass `window.location.host` (with port) as the host parameter.
+ */
+export function dappUrl(host, dappName, path = "/") {
+    const preview = previewPrefix(host);
+    if (preview) {
+        // Drop the calling page's first label entirely (whether it's a
+        // contract+preview subdomain, bare preview root, or another reserved
+        // dApp) and rebuild from the apex.
+        const apex = host.split(".").slice(1).join(".");
+        return `//${dappName}${PREVIEW_SEP}${preview}.${apex}${path}`;
+    }
+    // Production: the calling host could be a contract subdomain
+    // (cabc.mysoroban.xyz), a name subdomain (alice.mysoroban.xyz), the apex
+    // (mysoroban.xyz), or another reserved dApp (status-message.mysoroban.xyz).
+    // Strip to the apex: 3+ labels means there's a subdomain to drop, 2 labels
+    // means we're already at the apex. (This codebase doesn't deal with
+    // multi-segment TLDs like co.uk.)
+    const parts = host.split(".");
+    const apex = parts.length > 2 ? parts.slice(1).join(".") : host;
+    return `//${dappName}.${apex}${path}`;
+}
+/**
  * Check if a subdomain string looks like a Stellar contract ID.
  * Contract IDs are exactly 56 characters starting with C.
  */

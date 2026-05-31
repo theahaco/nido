@@ -3,6 +3,7 @@ import {
   accountUrl,
   contractIdFromHostname,
   dappPathFromHostname,
+  dappUrl,
   nameFromHostname,
   stripSubdomain,
 } from './url.js';
@@ -91,6 +92,29 @@ describe('nameFromHostname', () => {
   it('returns null for reserved dApp subdomains', () => {
     expect(nameFromHostname('status-message.mysoroban.xyz')).toBe(null);
     expect(nameFromHostname('status-message--pr-24.mysoroban.xyz')).toBe(null);
+  });
+});
+
+describe('dappUrl', () => {
+  it('production: builds <dapp>.<apex>/path from a contract subdomain', () => {
+    expect(dappUrl(`${C.toLowerCase()}.mysoroban.xyz`, 'status-message', '/?contract=X')).toBe(
+      '//status-message.mysoroban.xyz/?contract=X',
+    );
+  });
+  it('production: from the apex itself', () => {
+    expect(dappUrl('mysoroban.xyz', 'status-message', '/')).toBe(
+      '//status-message.mysoroban.xyz/',
+    );
+  });
+  it('preview: contract subdomain → reserved-dapp subdomain with same prefix', () => {
+    expect(dappUrl('cabc1234--pr-24.mysoroban.xyz', 'status-message', '/?contract=X')).toBe(
+      '//status-message--pr-24.mysoroban.xyz/?contract=X',
+    );
+  });
+  it('preview: bare preview root → reserved-dapp subdomain', () => {
+    expect(dappUrl('pr-24.mysoroban.xyz', 'status-message', '/')).toBe(
+      '//status-message--pr-24.mysoroban.xyz/',
+    );
   });
 });
 

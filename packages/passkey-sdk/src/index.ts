@@ -40,6 +40,7 @@ export {
   accountUrl,
   stripSubdomain,
   dappPathFromHostname,
+  dappUrl,
   RESERVED_DAPP_SUBDOMAINS,
 } from "./url.js";
 
