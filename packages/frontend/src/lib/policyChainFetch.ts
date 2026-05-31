@@ -109,9 +109,41 @@ export async function fetchRegistryAddress(name: string): Promise<string> {
   return scValToNative(rv) as string;
 }
 
-/** Convenience wrapper used by `scopedSessionKeyModule.buildInstall`'s
- *  `verifierAddress` injection. */
-export async function fetchVerifierAddress(_account: string): Promise<string> {
+/** Resolve the verifier address that THIS account actually trusts for its
+ *  primary passkey, by reading the External signer on the default rule.
+ *
+ *  Critical: do NOT just look up `unverified/verifier` in the registry.
+ *  Accounts created by an old factory (pre-Architecture-C) reference a
+ *  verifier contract whose address differs from the currently-registered
+ *  one — the factory hardcodes a wasm hash and lazy-deploys, which yields
+ *  a different deterministic address per factory build. If we sign citing
+ *  a verifier the rule doesn't list, the smart account's signer-map
+ *  lookup fails and __check_auth traps with Auth/InvalidAction even
+ *  though the signature itself is perfectly valid.
+ *
+ *  Falls back to the registry if the account has no External signer on
+ *  rule 0 (would only happen on a non-standard / freshly-uninstalled
+ *  account), so existing call sites that pass an arbitrary account don't
+ *  crash.
+ */
+export async function fetchVerifierAddress(account: string): Promise<string> {
+  try {
+    const client = new SmartAccountClient({
+      contractId: account,
+      networkPassphrase: NETWORK_PASSPHRASE,
+      rpcUrl: RPC_URL,
+    });
+    const tx = await client.get_context_rule({ context_rule_id: 0 });
+    const rule = tx.result as ContextRule;
+    for (const s of rule.signers) {
+      if (s.tag === 'External') {
+        return s.values[0]; // [verifier_address, pubkey_bytes]
+      }
+    }
+  } catch {
+    // fall through to the registry — the account might not exist yet
+    // (pending creation) or the call may fail for other reasons.
+  }
   return fetchRegistryAddress('verifier');
 }
 
