@@ -15,6 +15,18 @@ import type { PasskeySignature } from "./types.js";
  */
 export declare function buildAuthHash(authEntry: xdr.SorobanAuthorizationEntry, networkPassphrase: string, lastLedger: number, expirationLedgerOffset?: number): Buffer;
 /**
+ * Like {@link buildAuthHash}, but takes the ABSOLUTE signature-expiration
+ * ledger instead of a relative offset.
+ *
+ * Multi-party flows (recovery completion) require every participant — the
+ * originator who stores the parent auth-digest, each friend who signs over it,
+ * and the chain that recomputes it from the submitted entry — to feed the
+ * IDENTICAL `signatureExpirationLedger` into the preimage. A relative offset
+ * resolved against each party's own live `getLatestLedger` diverges; one
+ * canonical absolute ledger does not. Use this in those flows.
+ */
+export declare function buildAuthHashAt(authEntry: xdr.SorobanAuthorizationEntry, networkPassphrase: string, signatureExpirationLedger: number): Buffer;
+/**
  * Compute the OZ v0.7+ auth digest the smart account's `do_check_auth` will
  * verify each signer's signature against:
  *
