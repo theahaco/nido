@@ -10,17 +10,19 @@ import {
   buildRotation,
   describeRotation,
   planRotation,
-  buildAuthHash,
+  buildAuthHashAt,
   computeAuthDigest,
-  getAuthEntry,
   buildAuthPayloadScVal,
-  hex2buf,
+  buildFriendInvocation,
+  friendSignaturePayload,
+  randomNonce,
   encodeRotationHandoff,
   decodeRotationHandoff,
   decodeFriendSignature,
   encodeFriendSignature,
   loadCredential,
   parseAssertionResponse,
+  hex2buf,
   type RotationHandoff,
 } from '@g2c/passkey-sdk';
 import {
@@ -28,17 +30,33 @@ import {
   TransactionBuilder,
   Networks,
   Keypair,
-  hash,
   xdr,
   Address,
 } from '@stellar/stellar-sdk';
 import { Buffer } from 'buffer';
-import { fetchRegistryAddress, fetchVerifierAddress, fetchAllChainRules } from './policyChainFetch.js';
+import {
+  fetchRegistryAddress,
+  fetchVerifierAddress,
+  fetchAllChainRules,
+  fetchPolicyState,
+} from './policyChainFetch.js';
 import { signAndSubmit } from './primaryPasskeySigner.js';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
 const SUBMITTER_KEY = 'g2c:name-keypair';
+/** Ledgers the canonical parent auth-digest stays valid for (~14h on testnet
+ *  at ~5s/ledger) — long enough to collect friend signatures out of band. */
+const PARENT_EXPIRATION_OFFSET = 10000;
+
+/** Extract the root (recovering account) auth entry from an assembled tx XDR. */
+function assembledRootAuthEntry(txXdr: string): xdr.SorobanAuthorizationEntry {
+  const envelope = xdr.TransactionEnvelope.fromXDR(txXdr, 'base64');
+  const ihf = envelope.v1().tx().operations()[0].body().invokeHostFunctionOp();
+  const auth = ihf.auth();
+  if (auth.length === 0) throw new Error('assembled rotation tx has no auth entry');
+  return auth[0];
+}
 
 export async function installRecovery(
   account: string,
@@ -95,6 +113,12 @@ export interface RotationStaging {
   contextRuleIds: number[];
   /** Ledger the simulation was pinned to (for expiration math). */
   lastLedger: number;
+  /**
+   * The canonical absolute expiration ledger written onto the PARENT auth
+   * entry. Must match the value baked into the handoff and signed by every
+   * friend; the chain recomputes the parent digest with it.
+   */
+  parentSignatureExpirationLedger: number;
   description: string;
   /** Collected friend signatures keyed by friend account. */
   collected: Record<string, FriendSignature>;
@@ -179,7 +203,23 @@ export async function findRecoveryRules(account: string): Promise<RecoveryRuleIn
     const friends = r.signers
       .filter((s): s is { kind: 'delegated'; address: string } => s.kind === 'delegated')
       .map((s) => s.address);
-    out.push({ ruleId: r.ruleId, threshold: null, friends });
+    // Read the REAL threshold from the rule's policy (multisig-policy's
+    // `get_threshold`). If no policy exposes it, leave null and let the caller
+    // fall back to a heuristic.
+    let threshold: number | null = null;
+    try {
+      const state = await fetchPolicyState(account, r);
+      for (const policyAddr of r.policies) {
+        const t = state[policyAddr]?.threshold;
+        if (typeof t === 'number') {
+          threshold = t;
+          break;
+        }
+      }
+    } catch {
+      // leave threshold null on read failure
+    }
+    out.push({ ruleId: r.ruleId, threshold, friends });
   }
   return out;
 }
@@ -237,13 +277,25 @@ export async function prepareRotation(args: {
     throw new Error(`Rotation simulation failed: ${(sim as rpc.Api.SimulateTransactionErrorResponse).error}`);
   }
   const successSim = sim as rpc.Api.SimulateTransactionSuccessResponse;
-  const authEntry = getAuthEntry(successSim);
   const lastLedger = successSim.latestLedger;
-  const signaturePayload = buildAuthHash(authEntry, Networks.TESTNET, lastLedger);
-  const parentAuthDigest = computeAuthDigest(signaturePayload, [recoveryRuleId]);
 
+  // Choose ONE canonical absolute expiration ledger here and freeze it. Every
+  // party (originator, friends, chain) must derive the parent auth digest from
+  // exactly this value, or the digests diverge.
+  const parentSignatureExpirationLedger = lastLedger + PARENT_EXPIRATION_OFFSET;
+
+  // Assemble the transaction FIRST, then derive the parent auth digest from the
+  // root auth entry that actually ships — not from the pre-assemble sim entry,
+  // whose invocation/nonce may differ from the assembled one.
   const assembled = rpc.assembleTransaction(simTx, successSim).build();
   const txXdr = assembled.toXDR();
+  const authEntry = assembledRootAuthEntry(txXdr);
+  const signaturePayload = buildAuthHashAt(
+    authEntry,
+    Networks.TESTNET,
+    parentSignatureExpirationLedger,
+  );
+  const parentAuthDigest = computeAuthDigest(signaturePayload, [recoveryRuleId]);
 
   const staging: RotationStaging = {
     account,
@@ -254,6 +306,7 @@ export async function prepareRotation(args: {
     parentAuthDigestHex: Buffer.from(parentAuthDigest).toString('hex'),
     contextRuleIds: built.contextRuleIds,
     lastLedger,
+    parentSignatureExpirationLedger,
     description: built.description,
     collected: {},
   };
@@ -266,6 +319,7 @@ export async function prepareRotation(args: {
     description: built.description,
     txXdr,
     friends,
+    parentSignatureExpirationLedger,
   };
   const encoded = encodeRotationHandoff(handoff);
   const handoffLink = `${window.location.origin}/security/recover/?handoff=${encoded}`;
@@ -338,10 +392,15 @@ export async function submitRotation(account: string): Promise<string> {
   const ihfOp = innerOp.body().invokeHostFunctionOp();
   const rootAuth = ihfOp.auth()[0];
   const rootCreds = rootAuth.credentials().address();
+  // Write the canonical expiration onto the parent entry so the chain
+  // recomputes the SAME parent auth digest the originator stored and the
+  // friends signed over. Without this the chain uses whatever assemble left
+  // and the digest diverges.
+  rootCreds.signatureExpirationLedger(staging.parentSignatureExpirationLedger);
   rootCreds.signature(parentAuthPayload);
 
   const friendEntries = contributors.map((c) =>
-    buildFriendAuthEntry(c, staging.parentAuthDigestHex),
+    buildFriendAuthEntry(staging.account, c, staging.parentAuthDigestHex),
   );
   ihfOp.auth([rootAuth, ...friendEntries]);
 
@@ -385,14 +444,18 @@ export async function submitRotation(account: string): Promise<string> {
 
 /**
  * Construct a nested `SorobanAuthorizationEntry` for a friend authorizing
- * `friend.require_auth_for_args((parent_auth_digest,))` with the friend's own
- * primary-passkey signature.
+ * `recovering_account.__check_auth((parent_auth_digest,))` with the friend's
+ * own primary-passkey signature.
+ *
+ * The invocation's `contract_address` is the RECOVERING account (whose
+ * `__check_auth` frame the host matches against), NOT the friend's address.
  */
 function buildFriendAuthEntry(
+  recoveringAccount: string,
   fs: FriendSignature,
   parentAuthDigestHex: string,
 ): xdr.SorobanAuthorizationEntry {
-  const invocation = buildFriendInvocation(fs.friendAccount, parentAuthDigestHex);
+  const invocation = buildFriendInvocation(recoveringAccount, parentAuthDigestHex);
 
   // The friend's own AuthPayload (primary passkey, default rule 0). The blob
   // already holds the COMPACT 64-byte signature, so build the
@@ -427,53 +490,6 @@ function buildFriendAuthEntry(
   });
 }
 
-/**
- * The invocation a friend authorizes:
- * `friend.require_auth_for_args((parent_auth_digest,))`. Soroban encodes
- * `require_auth_for_args` as a ContractFn invocation on the address with a
- * synthetic function name; the host builds the identical shape on-chain, so
- * the friend-signing and submit paths MUST construct it byte-identically.
- */
-function buildFriendInvocation(
-  friendAccount: string,
-  parentAuthDigestHex: string,
-): xdr.SorobanAuthorizedInvocation {
-  const argScVal = xdr.ScVal.scvBytes(Buffer.from(hex2buf(parentAuthDigestHex)));
-  return new xdr.SorobanAuthorizedInvocation({
-    function: xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-      new xdr.InvokeContractArgs({
-        contractAddress: Address.fromString(friendAccount).toScAddress(),
-        functionName: '__check_auth',
-        args: [argScVal],
-      }),
-    ),
-    subInvocations: [],
-  });
-}
-
-/**
- * Compute a friend's `signature_payload` — the sha256 of the
- * HashIdPreimageSorobanAuthorization for the friend's nested invocation. This
- * is what the friend's own `__check_auth` receives as the host payload; the
- * friend then signs `auth_digest = sha256(signature_payload || [0].to_xdr())`.
- */
-function friendSignaturePayload(args: {
-  friendAccount: string;
-  parentAuthDigestHex: string;
-  nonce: string;
-  signatureExpirationLedger: number;
-}): Buffer {
-  const preimage = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
-    new xdr.HashIdPreimageSorobanAuthorization({
-      networkId: hash(Buffer.from(Networks.TESTNET, 'utf-8')),
-      nonce: xdr.Int64.fromString(args.nonce),
-      signatureExpirationLedger: args.signatureExpirationLedger,
-      invocation: buildFriendInvocation(args.friendAccount, args.parentAuthDigestHex),
-    }),
-  );
-  return hash(preimage.toXDR());
-}
-
 // --- Friend side -----------------------------------------------------------
 
 /**
@@ -499,31 +515,32 @@ export async function signRotationAsFriend(
   const verifierAddress = await fetchVerifierAddress(friendAccount);
 
   // Recompute the PARENT auth digest from the shared tx so the friend signs
-  // over exactly what the recovering account will require.
-  const server = new rpc.Server(RPC_URL);
-  const parentTx = TransactionBuilder.fromXDR(handoff.txXdr, Networks.TESTNET);
-  const parentOp = (parentTx as unknown as { operations: xdr.Operation[] }).operations[0];
+  // over exactly what the recovering account will require. Crucially, use the
+  // CANONICAL absolute expiration the originator froze into the handoff — NOT
+  // a value derived from a live `getLatestLedger`, which would diverge from
+  // the originator's stored digest and the chain's recomputation.
   const parentEnvelope = xdr.TransactionEnvelope.fromXDR(handoff.txXdr, 'base64');
   const parentIhf = parentEnvelope.v1().tx().operations()[0].body().invokeHostFunctionOp();
   const parentRootAuth = parentIhf.auth()[0];
-  void parentOp;
-  const latest = await server.getLatestLedger();
-  const lastLedger = latest.sequence;
-  const parentSignaturePayload = buildAuthHash(
+  const parentSignaturePayload = buildAuthHashAt(
     parentRootAuth,
     Networks.TESTNET,
-    lastLedger,
-    0, // use the expiration baked into the shared tx; offset 0 keeps it as-is
+    handoff.parentSignatureExpirationLedger,
   );
   const parentAuthDigest = computeAuthDigest(parentSignaturePayload, [handoff.recoveryRuleId]);
   const parentAuthDigestHex = Buffer.from(parentAuthDigest).toString('hex');
 
-  // Friend's own nested-entry params.
+  // Friend's own nested-entry params. The friend picks a fresh nonce + a local
+  // expiration for THEIR OWN nested entry (independent of the parent's). The
+  // friend's nested invocation targets the RECOVERING account, not their own.
+  const server = new rpc.Server(RPC_URL);
+  const latest = await server.getLatestLedger();
   const nonce = randomNonce();
-  const signatureExpirationLedger = lastLedger + 10000;
+  const signatureExpirationLedger = latest.sequence + PARENT_EXPIRATION_OFFSET;
   const friendPayload = friendSignaturePayload({
-    friendAccount,
+    recoveringAccount: handoff.account,
     parentAuthDigestHex,
+    networkPassphrase: Networks.TESTNET,
     nonce,
     signatureExpirationLedger,
   });
@@ -562,13 +579,6 @@ export async function signRotationAsFriend(
     signatureExpirationLedger,
   });
   return { blob, description: handoff.description };
-}
-
-function randomNonce(): string {
-  // A random positive i64 fits in 63 bits; build from two 32-bit halves.
-  const hi = BigInt(Math.floor(Math.random() * 0x7fffffff));
-  const lo = BigInt(Math.floor(Math.random() * 0xffffffff));
-  return ((hi << 32n) | lo).toString();
 }
 
 async function getSubmitter(): Promise<Keypair> {

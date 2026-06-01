@@ -1,6 +1,6 @@
 export { extractPublicKey, parseAttestationObject, parseRegistration, } from "./webauthn.js";
 export { derToCompact } from "./signature.js";
-export { buildAuthHash, computeAuthDigest, getAuthEntry, parseAssertionResponse, injectPasskeySignature, } from "./auth.js";
+export { buildAuthHash, buildAuthHashAt, computeAuthDigest, getAuthEntry, parseAssertionResponse, injectPasskeySignature, } from "./auth.js";
 export { buildAuthPayloadScVal } from "./multiSigner.js";
 export { getContractSalt, computeAccountAddress, lookupExistingAccount, deploySmartAccount, } from "./deploy.js";
 export { buf2hex, hex2buf, buf2base64url, base64url2buf, } from "./encoding.js";

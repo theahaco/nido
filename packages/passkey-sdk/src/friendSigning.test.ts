@@ -25,6 +25,7 @@ function sampleHandoff(): RotationHandoff {
       'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB',
       'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC',
     ],
+    parentSignatureExpirationLedger: 1234567,
   };
 }
 
@@ -50,6 +51,26 @@ describe('rotation handoff encoding', () => {
 
   it('rejects garbage input', () => {
     expect(() => decodeRotationHandoff('!!!not base64!!!')).toThrow();
+  });
+
+  it('rejects a handoff missing the canonical parent expiration ledger', () => {
+    const { parentSignatureExpirationLedger, ...rest } = sampleHandoff();
+    void parentSignatureExpirationLedger;
+    const badJson = JSON.stringify(rest);
+    const encoded = Buffer.from(badJson)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    expect(() => decodeRotationHandoff(encoded)).toThrow(/malformed/i);
+  });
+
+  it('round-trips the canonical parent expiration ledger', () => {
+    const h = sampleHandoff();
+    const decoded = decodeRotationHandoff(encodeRotationHandoff(h));
+    expect(decoded.parentSignatureExpirationLedger).toBe(
+      h.parentSignatureExpirationLedger,
+    );
   });
 });
 

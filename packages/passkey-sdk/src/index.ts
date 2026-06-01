@@ -14,6 +14,7 @@ export { derToCompact } from "./signature.js";
 
 export {
   buildAuthHash,
+  buildAuthHashAt,
   computeAuthDigest,
   getAuthEntry,
   parseAssertionResponse,

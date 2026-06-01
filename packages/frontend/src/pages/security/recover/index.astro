@@ -36,6 +36,8 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
           <em>before</em> the key is lost. <a href="/security/">Back to security</a>.</p>
       </div>
 
+      <p id="om-multi-rule" class="muted" hidden></p>
+
       <div id="om-stage">
         <h3>1. New passkey</h3>
         <p class="muted">Create a fresh passkey on this device to become the
@@ -160,10 +162,21 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
         document.getElementById('om-stage')!.hidden = true;
         return;
       }
-      // First cut: use the first recovery rule.
+      // First cut: use the first recovery rule, but warn if there is more
+      // than one so the user knows we are not letting them pick yet.
+      if (rules.length > 1) {
+        const warn = document.getElementById('om-multi-rule')!;
+        warn.hidden = false;
+        warn.textContent =
+          `This account has ${rules.length} recovery rules. Using rule #${rules[0].ruleId} ` +
+          `(the first). Picking among multiple recovery rules is not supported yet.`;
+      }
       recoveryRuleId = rules[0].ruleId;
       friends = rules[0].friends;
-      threshold = Math.max(1, Math.ceil(friends.length / 2)); // best-effort default
+      // Use the REAL on-chain threshold from the rule's multisig policy; only
+      // fall back to a heuristic if the policy could not be read.
+      threshold =
+        rules[0].threshold ?? Math.max(1, Math.ceil(friends.length / 2));
     } catch (e) {
       document.getElementById('om-stage')!.innerHTML =
         '<p class="muted">Failed to read recovery rule: ' +

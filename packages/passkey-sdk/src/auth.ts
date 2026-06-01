@@ -24,17 +24,36 @@ export function buildAuthHash(
   lastLedger: number,
   expirationLedgerOffset: number = DEFAULT_EXPIRATION_OFFSET,
 ): Buffer {
-  const creds = authEntry.credentials().address();
   const expirationLedger = lastLedger + expirationLedgerOffset;
+  return buildAuthHashAt(authEntry, networkPassphrase, expirationLedger);
+}
+
+/**
+ * Like {@link buildAuthHash}, but takes the ABSOLUTE signature-expiration
+ * ledger instead of a relative offset.
+ *
+ * Multi-party flows (recovery completion) require every participant — the
+ * originator who stores the parent auth-digest, each friend who signs over it,
+ * and the chain that recomputes it from the submitted entry — to feed the
+ * IDENTICAL `signatureExpirationLedger` into the preimage. A relative offset
+ * resolved against each party's own live `getLatestLedger` diverges; one
+ * canonical absolute ledger does not. Use this in those flows.
+ */
+export function buildAuthHashAt(
+  authEntry: xdr.SorobanAuthorizationEntry,
+  networkPassphrase: string,
+  signatureExpirationLedger: number,
+): Buffer {
+  const creds = authEntry.credentials().address();
   // Convert nonce to BigInt to avoid cross-package instanceof issues
   // when the auth entry originates from a different stellar-sdk copy
   const nonce = xdr.Int64.fromString(creds.nonce().toString());
 
-  let entry = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
+  const entry = xdr.HashIdPreimage.envelopeTypeSorobanAuthorization(
     new xdr.HashIdPreimageSorobanAuthorization({
       networkId: hash(Buffer.from(networkPassphrase, "utf-8")),
       nonce,
-      signatureExpirationLedger: expirationLedger,
+      signatureExpirationLedger,
       invocation: authEntry.rootInvocation(),
     }),
   );

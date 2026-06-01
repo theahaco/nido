@@ -1,7 +1,7 @@
 export type { PasskeyRegistration, PasskeySignature, NetworkConfig, } from "./types.js";
 export { extractPublicKey, parseAttestationObject, parseRegistration, } from "./webauthn.js";
 export { derToCompact } from "./signature.js";
-export { buildAuthHash, computeAuthDigest, getAuthEntry, parseAssertionResponse, injectPasskeySignature, } from "./auth.js";
+export { buildAuthHash, buildAuthHashAt, computeAuthDigest, getAuthEntry, parseAssertionResponse, injectPasskeySignature, } from "./auth.js";
 export { buildAuthPayloadScVal } from "./multiSigner.js";
 export type { SignerSignature, AuthPayloadSpec } from "./multiSigner.js";
 export { getContractSalt, computeAccountAddress, lookupExistingAccount, deploySmartAccount, } from "./deploy.js";
