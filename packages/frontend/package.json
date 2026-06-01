@@ -9,6 +9,7 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "^2.2.0",
     "@g2c/passkey-sdk": "*",
     "@g2c/stellar-wallets-kit-module": "*",
     "@stellar/stellar-sdk": "^15.1.0",

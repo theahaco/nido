@@ -50,6 +50,36 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     </form>
   </section>
 
+  <!-- Demo: dApp <-> g2c wallet via @creit.tech/stellar-wallets-kit -->
+  <section id="kit-demo">
+    <h2>3. Demo: g2c via stellar-wallets-kit</h2>
+    <p class="info">
+      This panel talks to g2c <strong>only through</strong>
+      <code>@creit.tech/stellar-wallets-kit</code> + the
+      <code>@g2c/stellar-wallets-kit-module</code> — no g2c-specific signing
+      code. Connect picks an account through <code>/connect/</code>; Set Message
+      builds the <code>udpate_message</code> tx, hands the XDR to
+      <code>kit.signTransaction()</code> (which runs the passkey ceremony at
+      <code>/sign/</code>), then submits the returned signed XDR.
+    </p>
+    <div class="field">
+      <button id="kit-connect" type="button">Connect g2c wallet</button>
+      <span id="kit-address" class="kit-addr"></span>
+    </div>
+    <div class="field">
+      <label for="kit-message-input">New message (via kit)</label>
+      <input id="kit-message-input" placeholder="Hello from the kit!" />
+    </div>
+    <div class="field">
+      <button id="kit-set" class="primary" type="button" disabled>Set Message via kit</button>
+    </div>
+    <div id="kit-status" class="message-display hidden">
+      <div class="label">Kit status</div>
+      <div class="value" id="kit-status-value"></div>
+      <a id="kit-tx-link" href="#" target="_blank" rel="noopener" style="display:none">View on Stellar Expert</a>
+    </div>
+  </section>
+
   <!-- Result (shown after redirect back) -->
   <section id="result-section" class="hidden">
     <h2>Result</h2>
@@ -106,6 +136,21 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     gap: 0.5rem;
     align-items: center;
   }
+
+  .kit-addr {
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: #9ac;
+    margin-left: 0.6rem;
+    word-break: break-all;
+  }
+
+  #kit-demo code {
+    background: #1a2040;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.85em;
+  }
 </style>
 
 <script>
@@ -127,6 +172,8 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   import { findRuleForPubkey, fetchVerifierAddress } from "../../lib/policyChainFetch.js";
   import { startDelegation, readDelegationReturn } from "../../lib/delegationHandover.js";
   import { Keypair, Networks, TransactionBuilder, Transaction, rpc, xdr } from "@stellar/stellar-sdk";
+  import { StellarWalletsKit, Networks as KitNetworks } from "@creit.tech/stellar-wallets-kit";
+  import { G2cModule, G2C_ID } from "@g2c/stellar-wallets-kit-module";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
   // Hardcoded so bindings can be regenerated without --contract-id (the
@@ -668,5 +715,152 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         }
       })();
     }
+  }
+
+  // ===================================================================
+  // Demo: drive g2c entirely through @creit.tech/stellar-wallets-kit
+  // ===================================================================
+  //
+  // Everything below is what an *arbitrary* dApp would write: it knows
+  // nothing about g2c passkeys, subdomains, or the WebAuthn verifier. It
+  // only knows the kit API (`getAddress`, `signTransaction`) and that it
+  // registered the g2c module. The module + the /connect/ and /sign/ pages
+  // do all the g2c-specific work behind the redirect ceremony.
+
+  {
+    // The module needs the g2c deployment *base* (apex) domain — the page
+    // itself lives at `status-message.<base>`, so strip our own subdomain to
+    // recover it. Carry the current scheme so localhost dev (http) works too.
+    // (In prod this resolves to e.g. `https://mysoroban.xyz`.)
+    const apexBase = `${window.location.protocol}//${stripSubdomain(window.location.host)}`;
+
+    StellarWalletsKit.init({
+      // Register ONLY the g2c module so this demo unambiguously exercises the
+      // g2c-through-the-kit path. A real dApp would spread `...allowAllModules()`
+      // alongside it to also offer Freighter/xBull/etc.
+      modules: [new G2cModule({ base: apexBase, networkPassphrase: Networks.TESTNET })],
+      selectedWalletId: G2C_ID,
+      network: KitNetworks.TESTNET,
+    });
+
+    const $kitConnect = document.getElementById("kit-connect") as HTMLButtonElement;
+    const $kitAddress = document.getElementById("kit-address")!;
+    const $kitMessageInput = document.getElementById("kit-message-input") as HTMLInputElement;
+    const $kitSet = document.getElementById("kit-set") as HTMLButtonElement;
+    const $kitStatus = document.getElementById("kit-status")!;
+    const $kitStatusValue = document.getElementById("kit-status-value")!;
+    const $kitTxLink = document.getElementById("kit-tx-link") as HTMLAnchorElement;
+
+    let kitAccount: string | null = null;
+
+    function kitSetStatus(msg: string) {
+      $kitStatus.classList.remove("hidden");
+      $kitStatusValue.textContent = msg;
+    }
+
+    function onConnected(address: string) {
+      kitAccount = address;
+      $kitAddress.textContent = address;
+      $kitSet.disabled = false;
+      $kitConnect.textContent = "Reconnect";
+      // Feed the connected account into the read/load section above so the
+      // existing "Load Message" button works against the same account.
+      $contractInput.value = address;
+      updateDelegationBanner(address);
+      updateAccountLink(address);
+    }
+
+    // Surface an already-cached selection (the module caches the chosen
+    // C-address in this origin's localStorage) without prompting.
+    StellarWalletsKit.getAddress()
+      .then(({ address }) => { if (address) onConnected(address); })
+      .catch(() => { /* nothing cached yet — wait for Connect */ });
+
+    $kitConnect.addEventListener("click", async () => {
+      clearError();
+      $kitConnect.disabled = true;
+      try {
+        // Goes through the module → apex `/connect/` picker (popup), returns
+        // the chosen smart-account C-address.
+        const { address } = await StellarWalletsKit.getAddress();
+        onConnected(address);
+      } catch (err: any) {
+        showError(`Connect failed: ${err.message ?? err}`);
+      } finally {
+        $kitConnect.disabled = false;
+      }
+    });
+
+    $kitSet.addEventListener("click", async () => {
+      clearError();
+      const message = $kitMessageInput.value.trim();
+      if (!kitAccount) { showError("Connect a g2c wallet first."); return; }
+      if (!message) { showError("Enter a message to set via the kit."); return; }
+
+      $kitSet.disabled = true;
+      const origLabel = $kitSet.textContent;
+      try {
+        const keypair = await keypairReady;
+
+        // 1. Build the Soroban tx XDR for `udpate_message` with the connected
+        //    smart account as `author`. The funded G-address is the tx source
+        //    (fee payer); the smart account authorizes via its passkey.
+        kitSetStatus("Building transaction…");
+        const client = new Client({
+          contractId: STATUS_CONTRACT,
+          networkPassphrase: Networks.TESTNET,
+          rpcUrl: RPC_URL,
+          publicKey: keypair.publicKey(),
+        });
+        const tx = await client.udpate_message(
+          { message, author: kitAccount },
+          { simulate: true },
+        );
+        const unsignedXdr = tx.built!.toXDR();
+
+        // 2. Hand the XDR to the kit. The g2c module opens `<account>.<base>/sign/`,
+        //    runs the passkey ceremony, and returns the XDR with the smart
+        //    account's auth entry signed (SEP-43: signing != submitting).
+        kitSetStatus("Awaiting wallet signature (passkey)…");
+        const { signedTxXdr } = await StellarWalletsKit.signTransaction(unsignedXdr, {
+          networkPassphrase: Networks.TESTNET,
+          address: kitAccount,
+        });
+
+        // 3. The returned tx is signed by the smart account but still needs the
+        //    fee-payer (tx source) signature. Add it and submit.
+        kitSetStatus("Submitting signed transaction…");
+        const server = new rpc.Server(RPC_URL);
+        const signedTx = TransactionBuilder.fromXDR(signedTxXdr, Networks.TESTNET) as Transaction;
+        signedTx.sign(keypair);
+
+        const sendResult = await server.sendTransaction(signedTx);
+        if (sendResult.status === "ERROR") {
+          throw new Error(`Rejected: ${sendResult.errorResult?.toXDR("base64") ?? "unknown"}`);
+        }
+
+        kitSetStatus("Waiting for confirmation…");
+        let getResult = await server.getTransaction(sendResult.hash);
+        while (getResult.status === "NOT_FOUND") {
+          await new Promise((r) => setTimeout(r, 1500));
+          getResult = await server.getTransaction(sendResult.hash);
+        }
+
+        if (getResult.status === "SUCCESS") {
+          kitSetStatus("Message updated via the kit!");
+          $kitTxLink.href = `https://stellar.expert/explorer/testnet/tx/${sendResult.hash}`;
+          $kitTxLink.style.display = "inline";
+          try { await loadMessage(kitAccount); } catch (_) { /* non-critical */ }
+        } else {
+          throw new Error(`Transaction failed: ${getResult.status}`);
+        }
+      } catch (err: any) {
+        kitSetStatus(`Failed: ${err.message ?? err}`);
+        showError(`Kit set-message failed: ${err.message ?? err}`);
+      } finally {
+        $kitSet.disabled = false;
+        $kitSet.textContent = origLabel;
+      }
+    });
   }
 </script>
