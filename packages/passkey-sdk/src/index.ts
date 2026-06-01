@@ -14,11 +14,15 @@ export { derToCompact } from "./signature.js";
 
 export {
   buildAuthHash,
+  buildAuthHashAt,
   computeAuthDigest,
   getAuthEntry,
   parseAssertionResponse,
   injectPasskeySignature,
 } from "./auth.js";
+
+export { buildAuthPayloadScVal } from "./multiSigner.js";
+export type { SignerSignature, AuthPayloadSpec } from "./multiSigner.js";
 
 export {
   getContractSalt,
@@ -81,3 +85,5 @@ export * from './resolveFriendInput.js';
 export * from './sessionKey.js';
 
 export * from './syntheticAssertion.js';
+
+export * from './friendSigning.js';

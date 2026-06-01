@@ -1,7 +1,9 @@
 export type { PasskeyRegistration, PasskeySignature, NetworkConfig, } from "./types.js";
 export { extractPublicKey, parseAttestationObject, parseRegistration, } from "./webauthn.js";
 export { derToCompact } from "./signature.js";
-export { buildAuthHash, computeAuthDigest, getAuthEntry, parseAssertionResponse, injectPasskeySignature, } from "./auth.js";
+export { buildAuthHash, buildAuthHashAt, computeAuthDigest, getAuthEntry, parseAssertionResponse, injectPasskeySignature, } from "./auth.js";
+export { buildAuthPayloadScVal } from "./multiSigner.js";
+export type { SignerSignature, AuthPayloadSpec } from "./multiSigner.js";
 export { getContractSalt, computeAccountAddress, lookupExistingAccount, deploySmartAccount, } from "./deploy.js";
 export { buf2hex, hex2buf, buf2base64url, base64url2buf, } from "./encoding.js";
 export { isContractId, contractIdFromHostname, nameFromHostname, accountUrl, stripSubdomain, dappPathFromHostname, dappUrl, RESERVED_DAPP_SUBDOMAINS, } from "./url.js";
@@ -15,4 +17,5 @@ export * from './policyBlocks/index.js';
 export * from './resolveFriendInput.js';
 export * from './sessionKey.js';
 export * from './syntheticAssertion.js';
+export * from './friendSigning.js';
 //# sourceMappingURL=index.d.ts.map

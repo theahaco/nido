@@ -14,6 +14,7 @@ export function renderRecoveryCard(block: MultisigRecoveryBlock): HTMLElement {
     </div>
     <p class="muted small">${escape(multisigRecoveryModule.summarize(block))}</p>
     <div class="actions">
+      <a class="recover-link" href="/security/recover/">Use to recover…</a>
       <button class="edit">Edit (replace)</button>
       <button class="remove">Remove</button>
     </div>
