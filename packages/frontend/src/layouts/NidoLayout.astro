@@ -1,0 +1,114 @@
+---
+// Nido "Warm Nest" layout — sibling to BaseLayout.astro (BaseLayout is left
+// untouched). Imports the Nido design system globally so `:root` tokens are
+// available everywhere, loads the brand fonts, and renders the prototype shell
+// (.stage / .appwrap / .col) around the page <slot/>.
+//
+// The PR-preview banner and in-app-WebView passkey-warning scripts are ported
+// from BaseLayout: the DETECTION LOGIC is byte-for-byte identical; only the
+// warning's COPY is reskinned to Nido voice.
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400;1,9..144,600;1,9..144,800&family=Hanken+Grotesk:wght@400..800&family=JetBrains+Mono:wght@400..600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a id="preview-banner" style="display:none" target="_blank" rel="noopener"></a>
+    <div class="stage">
+      <div id="webview-warning" style="display:none">
+        <p>Passkeys need your real browser to work their magic.</p>
+        <p>Tap the menu (<strong>&middot;&middot;&middot;</strong>) and choose <strong>"Open in Safari"</strong> or <strong>"Open in Browser"</strong> — we'll be right here.</p>
+      </div>
+      <div class="appwrap">
+        <div class="col">
+          <slot />
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  @import "../styles/nido.css";
+
+  #preview-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: none;
+    background: #e11d48;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    text-align: center;
+    text-decoration: none;
+    z-index: 9999;
+  }
+
+  #preview-banner:hover {
+    background: #be123c;
+  }
+
+  body:has(#preview-banner[style*="display: block"]) {
+    padding-top: 2.2rem;
+  }
+
+  #webview-warning {
+    background: var(--warn-soft);
+    border: 1px solid var(--warn);
+    border-radius: var(--r-md);
+    color: var(--warn);
+    padding: 0.75rem 1rem;
+    margin: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  #webview-warning p {
+    margin: 0.25rem 0;
+  }
+</style>
+
+<script>
+  // Preview banner
+  const sub = window.location.hostname.split(".")[0];
+  const match = sub.match(/(?:--)?pr-(\d+)$/);
+  if (match) {
+    const prNum = match[1];
+    const banner = document.getElementById("preview-banner") as HTMLAnchorElement;
+    banner.textContent = `Preview PR #${prNum}`;
+    banner.href = `https://github.com/theahaco/g2c/pull/${prNum}`;
+    banner.style.display = "block";
+  }
+
+  // In-app WebView detection
+  // Real Safari / SFSafariViewController always include both "Safari" and "Version/" in the UA.
+  // WKWebViews (Twitter, Instagram, etc.) omit "Version/" even if they add "Safari".
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isInAppBrowser = (isIOS && (!/Safari/.test(ua) || !/Version\//.test(ua)))
+    || /Twitter|Instagram|FBAN|FBAV|Line\//.test(ua)
+    || !window.PublicKeyCredential;
+
+  if (isInAppBrowser) {
+    document.getElementById("webview-warning")!.style.display = "block";
+  }
+</script>

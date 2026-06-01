@@ -1,0 +1,46 @@
+---
+// Passkey "confirming…" bottom sheet — VISUAL FRAME ONLY.
+//
+// CRITICAL: This does NOT replicate the prototype's fake `setTimeout` scanner.
+// It renders the static `.scrim` / `.sheet` / `.faceid` frame; its open/close
+// lifecycle is driven by a REAL promise via `src/lib/passkeySheet.ts`
+// (`withPasskeySheet(() => navigator.credentials.get(...))`). The scan line is
+// a non-committal "working…" animation, not a countdown to success.
+//
+// Mount once per page (e.g. inside the layout). Copy uses Nido voice and can be
+// overridden per call via `withPasskeySheet({ title, sub })`.
+import Icon from "./Icon.astro";
+
+interface Props {
+  /** Default heading while confirming. */
+  title?: string;
+  /** Default sub text while confirming. */
+  sub?: string;
+}
+
+const {
+  title = "Confirm it's you",
+  sub = "Confirm with your passkey.",
+} = Astro.props;
+---
+
+<div class="scrim" id="nido-passkey-scrim" style="pointer-events: none;">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="nido-passkey-title">
+    <div class="grab"></div>
+    <div style="text-align: center; padding-bottom: 6px;">
+      <div class="faceid" id="nido-passkey-faceid">
+        <div class="frame"></div>
+        <div class="scan"></div>
+        <div class="tick">
+          <Icon name="faceid" size={40} color="var(--acc)" stroke={1.7} />
+        </div>
+      </div>
+      <div class="disp" id="nido-passkey-title" style="font-weight: 800; font-size: 21px; margin-top: 16px;">
+        {title}
+      </div>
+      <div class="mut" id="nido-passkey-sub" style="font-size: 14px; margin-top: 6px; max-width: 300px; margin-inline: auto; line-height: 1.5;">
+        {sub}
+      </div>
+    </div>
+  </div>
+</div>

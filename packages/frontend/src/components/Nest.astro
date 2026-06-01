@@ -1,0 +1,49 @@
+---
+// Nido "Nest Ring" mark. Two dashed concentric rings (coral + honey) around a
+// teal dot. Ported from `app/ui.jsx` `Nest`. A spinning <Nest spin/> is the app
+// spinner (the prototype's `Spinner`).
+//   <Nest size={104} />
+//   <Nest spin />                          // spinner
+//   <Nest ring1="var(--coral)" ring2="var(--honey)" dot="var(--teal)" />
+interface Props {
+  /** Width & height in px. Default 104. */
+  size?: number;
+  /** Outer ring stroke color. Default var(--coral). */
+  ring1?: string;
+  /** Inner ring stroke color. Default var(--honey). */
+  ring2?: string;
+  /** Center dot fill. Default var(--teal). */
+  dot?: string;
+  /** Spin continuously (used for the loading spinner). Default false. */
+  spin?: boolean;
+  /** Spin duration in seconds. Default 1.2. */
+  dur?: number;
+  /** Optional class on the <svg>. */
+  class?: string;
+}
+
+const {
+  size = 104,
+  ring1 = "var(--coral)",
+  ring2 = "var(--honey)",
+  dot = "var(--teal)",
+  spin = false,
+  dur = 1.2,
+  class: className,
+} = Astro.props;
+
+const style = spin ? `animation: spin ${dur}s linear infinite;` : undefined;
+---
+
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 120 120"
+  aria-label="Nido"
+  class={className}
+  style={style}
+>
+  <circle cx="60" cy="60" r="46" fill="none" stroke={ring1} stroke-width="6" stroke-dasharray="14 9" stroke-linecap="round" />
+  <circle cx="60" cy="60" r="31" fill="none" stroke={ring2} stroke-width="6" stroke-dasharray="11 8" stroke-linecap="round" />
+  <circle cx="60" cy="60" r="11" fill={dot} />
+</svg>

@@ -1,0 +1,25 @@
+---
+// Nido wordmark, optionally with the Nest Ring mark.
+// Ported from `app/ui.jsx` `Logo`.
+//   <Logo />                 // just the wordmark
+//   <Logo mark />            // mark + wordmark
+//   <Logo size={28} mark markSize={40} />
+import Nest from "./Nest.astro";
+
+interface Props {
+  /** Wordmark font size in px. Default 22. */
+  size?: number;
+  /** Show the Nest Ring mark before the wordmark. Default false. */
+  mark?: boolean;
+  /** Mark size in px. Defaults to round(size * 1.2). */
+  markSize?: number;
+}
+
+const { size = 22, mark = false, markSize } = Astro.props;
+const resolvedMarkSize = markSize ?? Math.round(size * 1.2);
+---
+
+<div style="display: flex; align-items: center; gap: 9px;">
+  {mark && <Nest size={resolvedMarkSize} />}
+  <span class="wordmark" style={`font-size: ${size}px;`}>Nido</span>
+</div>
