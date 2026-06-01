@@ -1,33 +1,84 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+// Nido reskin of the Security suite hub. Logic (recovery + delegation lists,
+// mountRecoveryForm / mountDelegationForm, all IDs and localStorage walking)
+// is preserved verbatim from the original BaseLayout version; only the shell,
+// markup and copy are reskinned to the Nido "Warm Nest" voice.
+import NidoLayout from '../../layouts/NidoLayout.astro';
+import Toast from '../../components/Toast.astro';
+import PasskeySheet from '../../components/PasskeySheet.astro';
+import Icon from '../../components/Icon.astro';
+import Nest from '../../components/Nest.astro';
 ---
-<BaseLayout title="Security">
-  <main class="security">
-    <header>
-      <h1>Security</h1>
-      <p class="subtitle">Recovery friends, app delegations, and advanced rules for this account.</p>
-    </header>
+<NidoLayout title="Security">
+  <div class="col-scroll scroll-hide screen-in">
+    <div class="topbar">
+      <div class="disp" style="font-weight:800;font-size:21px;">Keeping you safe</div>
+    </div>
 
-    <section id="recovery-section">
-      <h2>Account Recovery</h2>
-      <div id="recovery-list"></div>
-      <button id="add-recovery">+ Set up recovery</button>
-      <div id="recovery-form" hidden></div>
-    </section>
+    <div class="pad" style="padding-top:8px;">
+      <p class="mut" style="font-size:13.5px;margin:0 0 4px;line-height:1.5;">
+        The people and devices that can help you get back in.
+      </p>
 
-    <section id="delegations-section">
-      <h2>App Delegations</h2>
-      <div id="delegation-list"></div>
-      <button id="add-delegation">+ Delegate to a dApp</button>
-      <div id="delegation-form" hidden></div>
-    </section>
+      <!-- ============ Trusted friends (recovery) ============ -->
+      <section id="recovery-section">
+        <span class="section-label" style="display:block;margin:24px 0 10px;">Trusted friends</span>
+        <div class="card" style="padding:18px;">
+          <p class="mut" style="font-size:13px;margin:0 0 14px;line-height:1.55;">
+            Lose your phone? Friends can let you back in. No friend can ever move your money.
+          </p>
+          <div id="recovery-list"></div>
+          <button id="add-recovery" class="btn soft sm" style="margin-top:14px;">
+            <Icon name="plus" size={17} /> Add a trusted friend
+          </button>
+          <div id="recovery-form" class="nido-form" hidden></div>
+        </div>
+      </section>
 
-    <section id="advanced-section">
-      <h2>Advanced</h2>
-      <p class="muted">Default rule · your primary passkey on this device</p>
-    </section>
-  </main>
-</BaseLayout>
+      <!-- ============ Apps you've let in (delegation) ============ -->
+      <section id="delegations-section">
+        <span class="section-label" style="display:block;margin:24px 0 10px;">Apps you've let in</span>
+        <div class="card" style="padding:18px;">
+          <p class="mut" style="font-size:13px;margin:0 0 14px;line-height:1.55;">
+            Apps you let act on your behalf for a while. You can cut them off any time.
+          </p>
+          <div id="delegation-list"></div>
+          <button id="add-delegation" class="btn soft sm" style="margin-top:14px;">
+            <Icon name="plus" size={17} /> Let in an app
+          </button>
+          <div id="delegation-form" class="nido-form" hidden></div>
+        </div>
+      </section>
+
+      <!-- ============ This device ============ -->
+      <section id="advanced-section">
+        <span class="section-label" style="display:block;margin:24px 0 10px;">This device</span>
+        <div class="card" style="overflow:hidden;padding:0;">
+          <div class="navrow" style="cursor:default;border-bottom:none;">
+            <div style="width:38px;height:38px;border-radius:11px;background:var(--good-soft);display:grid;place-items:center;">
+              <Icon name="key" size={20} color="var(--good)" />
+            </div>
+            <div style="flex:1;">
+              <div style="font-weight:700;font-size:14.5px;">Your passkey on this device</div>
+              <div class="mut" style="font-size:12.5px;">You're the only one who gets in</div>
+            </div>
+            <span class="chip good" style="font-size:11px;">On</span>
+          </div>
+        </div>
+      </section>
+
+      <div style="display:flex;justify-content:center;margin-top:28px;">
+        <Nest size={28} />
+      </div>
+      <div class="mut" style="text-align:center;font-size:12px;margin-top:10px;">
+        Nido · A safe place for everything
+      </div>
+    </div>
+  </div>
+
+  <Toast />
+  <PasskeySheet />
+</NidoLayout>
 
 <script>
   import {
@@ -49,11 +100,11 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 
   if (!account) {
     recoveryList.innerHTML =
-      '<p class="muted">No account selected. Open this page from an account subdomain.</p>';
+      '<p class="mut" style="font-size:13px;">Open this page from your account to manage who can help you.</p>';
     delegationList.innerHTML = '';
   } else {
-    recoveryList.innerHTML = '<p class="muted">Loading…</p>';
-    delegationList.innerHTML = '<p class="muted">Loading…</p>';
+    recoveryList.innerHTML = '<p class="mut" style="font-size:13px;">Loading…</p>';
+    delegationList.innerHTML = '<p class="mut" style="font-size:13px;">Loading…</p>';
     try {
       const overlay = {
         friendNicknames: loadFriendNicknames(account),
@@ -77,14 +128,16 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
         }
       }
       if (!recoveryList.children.length) {
-        recoveryList.innerHTML = '<p class="muted">No recovery rule yet.</p>';
+        recoveryList.innerHTML =
+          '<p class="mut" style="font-size:13px;">No trusted friends yet.</p>';
       }
       if (!delegationList.children.length) {
-        delegationList.innerHTML = '<p class="muted">No session keys yet.</p>';
+        delegationList.innerHTML =
+          '<p class="mut" style="font-size:13px;">No apps have been let in yet.</p>';
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      recoveryList.innerHTML = `<p class="muted">Failed to load rules: ${msg}</p>`;
+      recoveryList.innerHTML = `<p class="mut" style="font-size:13px;">Couldn't load: ${msg}</p>`;
       delegationList.innerHTML = '';
     }
   }
@@ -117,17 +170,51 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 </script>
 
 <style>
-  .security { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
-  header h1 { margin-bottom: 0.25rem; }
-  header .subtitle { color: #666; margin-top: 0; }
-  section { margin-bottom: 2rem; padding-top: 1rem; }
-  section h2 {
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    color: #666;
-    letter-spacing: 0.04em;
-    margin: 0 0 0.5rem 0;
+  section { margin: 0; }
+
+  /* The recovery/delegation cards and the forms injected by the preserved
+     lib mounters (recoveryForm.ts / delegationForm.ts / MultisigRecoveryCard.ts)
+     emit their own plain markup; give it a Nido-flavoured skin without touching
+     those files. */
+  .nido-form { margin-top: 14px; }
+  .nido-form :global(h3) {
+    font-family: var(--disp); font-weight: 800; font-size: 16px;
+    margin: 0 0 6px;
   }
-  .muted { color: #888; font-size: 0.9rem; }
-  button { margin-top: 0.5rem; }
+  .nido-form :global(.muted),
+  :global(.rule-card .muted) { color: var(--mut); font-size: 12.5px; }
+  .nido-form :global(label) {
+    font-size: 12.5px; font-weight: 700; color: var(--ink-soft);
+  }
+  .nido-form :global(input),
+  .nido-form :global(select),
+  .nido-form :global(textarea) {
+    font-family: var(--body); font-size: 14px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-sm);
+    padding: 9px 12px; background: var(--paper-2); outline: none;
+  }
+  .nido-form :global(input:focus),
+  .nido-form :global(select:focus),
+  .nido-form :global(textarea:focus) {
+    border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft);
+  }
+  .nido-form :global(button),
+  :global(.rule-card .actions button),
+  :global(.rule-card .actions a) {
+    font-family: var(--body); font-weight: 700; font-size: 13.5px;
+    border-radius: var(--r-sm); border: 1px solid var(--line);
+    background: var(--chip); color: var(--ink); padding: 8px 14px;
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .nido-form :global(.actions) { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Rule cards (recovery + session key) */
+  :global(.rule-card) {
+    background: var(--paper-3); border: 1px solid var(--line);
+    border-radius: var(--r-md); padding: 14px; margin-bottom: 10px;
+  }
+  :global(.rule-card strong) { font-weight: 700; font-size: 14.5px; }
+  :global(.rule-card .chips) { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  :global(.rule-card .actions) { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  :global(.rule-card .small) { font-size: 12px; }
 </style>
