@@ -1,0 +1,315 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Complete recovery">
+  <main class="recover">
+    <h1>Complete account recovery</h1>
+
+    <!-- Friend mode: shown when ?handoff=… is present -->
+    <section id="friend-mode" hidden>
+      <h2>A friend asked you to approve a recovery</h2>
+      <p class="muted">Account <code id="fm-account"></code> wants to rotate its
+        signers. Review the change, then sign with your own passkey. Your
+        signature only counts toward this specific rotation.</p>
+      <p><strong id="fm-desc"></strong></p>
+      <div class="actions">
+        <button id="fm-sign" type="button">Approve &amp; sign</button>
+      </div>
+      <div id="fm-result" hidden>
+        <p class="muted">Send this signature back to the person recovering the
+          account (paste it where they asked):</p>
+        <textarea id="fm-blob" rows="5" readonly></textarea>
+        <button id="fm-copy" type="button">Copy</button>
+      </div>
+      <p id="fm-status" class="muted"></p>
+    </section>
+
+    <!-- Originator mode -->
+    <section id="originator-mode" hidden>
+      <h2>Stage a rotation</h2>
+      <p class="muted">Your friends, acting together, will authorize replacing
+        the lost passkey on this account. First create a new passkey, then
+        share the link with each friend, collect their signatures, and submit.</p>
+
+      <div id="om-no-rule" hidden>
+        <p>No recovery rule found on this account. Recovery must be set up
+          <em>before</em> the key is lost. <a href="/security/">Back to security</a>.</p>
+      </div>
+
+      <div id="om-stage">
+        <h3>1. New passkey</h3>
+        <p class="muted">Create a fresh passkey on this device to become the
+          account's new primary signer.</p>
+        <button id="om-new-key" type="button">Create new passkey</button>
+        <p id="om-key-status" class="muted"></p>
+
+        <h3>2. (Optional) remove the lost signer</h3>
+        <label>Old signer id to remove
+          <input id="om-remove-id" type="number" min="0" placeholder="leave blank to keep" />
+        </label>
+
+        <h3>3. Stage &amp; share</h3>
+        <button id="om-prepare" type="button" disabled>Stage rotation</button>
+        <p id="om-prepare-status" class="muted"></p>
+      </div>
+
+      <div id="om-collect" hidden>
+        <h3>4. Collect friend signatures</h3>
+        <p class="muted">Share this link with each friend:</p>
+        <textarea id="om-link" rows="3" readonly></textarea>
+        <button id="om-copy-link" type="button">Copy link</button>
+        <p class="muted">Paste each friend's returned signature here:</p>
+        <textarea id="om-paste" rows="4" placeholder="friend signature blob"></textarea>
+        <button id="om-add-sig" type="button">Add signature</button>
+        <p id="om-progress" class="muted"></p>
+        <ul id="om-collected"></ul>
+
+        <h3>5. Submit</h3>
+        <button id="om-submit" type="button" disabled>Submit rotation</button>
+        <button id="om-cancel" type="button">Cancel rotation</button>
+        <p id="om-submit-status" class="muted"></p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  import { contractIdFromHostname, createSessionPasskey, buf2hex } from '@g2c/passkey-sdk';
+  import { fetchVerifierAddress } from '../../../lib/policyChainFetch.js';
+  import {
+    findRecoveryRules,
+    prepareRotation,
+    addFriendSignature,
+    submitRotation,
+    signRotationAsFriend,
+    getStaging,
+    clearStaging,
+    collectedCount,
+  } from '../../../lib/recoveryActions.js';
+
+  const account = contractIdFromHostname(window.location.hostname);
+  const params = new URLSearchParams(window.location.search);
+  const handoff = params.get('handoff');
+
+  const friendMode = document.getElementById('friend-mode')!;
+  const originatorMode = document.getElementById('originator-mode')!;
+
+  if (handoff) {
+    runFriendMode(handoff);
+  } else {
+    runOriginatorMode();
+  }
+
+  // ---- Friend mode --------------------------------------------------------
+  async function runFriendMode(encoded: string) {
+    friendMode.hidden = false;
+    const status = document.getElementById('fm-status')!;
+    if (!account) {
+      status.textContent = 'Open this link on your own account subdomain so your passkey can sign.';
+      return;
+    }
+    try {
+      // Lazily peek at the description by decoding via the helper inside sign.
+      document.getElementById('fm-account')!.textContent = account;
+    } catch { /* ignore */ }
+
+    document.getElementById('fm-sign')!.addEventListener('click', async () => {
+      const btn = document.getElementById('fm-sign') as HTMLButtonElement;
+      btn.disabled = true;
+      status.textContent = 'Signing…';
+      try {
+        const { blob, description } = await signRotationAsFriend(account!, encoded);
+        document.getElementById('fm-desc')!.textContent = description;
+        (document.getElementById('fm-blob') as HTMLTextAreaElement).value = blob;
+        document.getElementById('fm-result')!.hidden = false;
+        status.textContent = 'Signed. Send the blob back to the recovering account.';
+      } catch (e) {
+        status.textContent = 'Failed: ' + (e instanceof Error ? e.message : String(e));
+        btn.disabled = false;
+      }
+    });
+    document.getElementById('fm-copy')!.addEventListener('click', () => {
+      const ta = document.getElementById('fm-blob') as HTMLTextAreaElement;
+      navigator.clipboard.writeText(ta.value);
+    });
+  }
+
+  // ---- Originator mode ----------------------------------------------------
+  async function runOriginatorMode() {
+    originatorMode.hidden = false;
+    if (!account) {
+      document.getElementById('om-stage')!.innerHTML =
+        '<p class="muted">Open this page on the account subdomain you want to recover.</p>';
+      return;
+    }
+
+    let newPublicKey: Uint8Array | null = null;
+    let newCredentialId: string | null = null;
+    let recoveryRuleId: number | null = null;
+    let friends: string[] = [];
+    let threshold = 1;
+
+    const keyStatus = document.getElementById('om-key-status')!;
+    const prepareBtn = document.getElementById('om-prepare') as HTMLButtonElement;
+
+    // Discover recovery rule.
+    try {
+      const rules = await findRecoveryRules(account);
+      if (rules.length === 0) {
+        document.getElementById('om-no-rule')!.hidden = false;
+        document.getElementById('om-stage')!.hidden = true;
+        return;
+      }
+      // First cut: use the first recovery rule.
+      recoveryRuleId = rules[0].ruleId;
+      friends = rules[0].friends;
+      threshold = Math.max(1, Math.ceil(friends.length / 2)); // best-effort default
+    } catch (e) {
+      document.getElementById('om-stage')!.innerHTML =
+        '<p class="muted">Failed to read recovery rule: ' +
+        (e instanceof Error ? e.message : String(e)) + '</p>';
+      return;
+    }
+
+    // Resume an in-progress rotation if one is staged.
+    const existing = getStaging(account);
+    if (existing) {
+      threshold = existing.threshold;
+      showCollect(existing.threshold);
+      refreshProgress();
+    }
+
+    document.getElementById('om-new-key')!.addEventListener('click', async () => {
+      keyStatus.textContent = 'Creating passkey…';
+      try {
+        const k = await createSessionPasskey({
+          rpId: window.location.hostname,
+          rpName: window.location.host,
+          userName: `recovered-key:${account}`,
+        });
+        newPublicKey = k.publicKey;
+        newCredentialId = k.credentialId;
+        keyStatus.textContent = 'New passkey created (' + buf2hex(k.publicKey).slice(0, 12) + '…).';
+        prepareBtn.disabled = false;
+      } catch (e) {
+        keyStatus.textContent = 'Failed: ' + (e instanceof Error ? e.message : String(e));
+      }
+    });
+
+    prepareBtn.addEventListener('click', async () => {
+      prepareBtn.disabled = true;
+      const status = document.getElementById('om-prepare-status')!;
+      status.textContent = 'Staging…';
+      try {
+        const verifierAddress = await fetchVerifierAddress(account!);
+        const removeRaw = (document.getElementById('om-remove-id') as HTMLInputElement).value;
+        const removeSignerId = removeRaw === '' ? undefined : Number(removeRaw);
+        // Soroban allows one InvokeHostFunction op per tx, so a rotation is a
+        // single action: prefer adding the new key; if no new key was created,
+        // fall back to removing the old signer.
+        const request = newPublicKey
+          ? { defaultRuleId: 0, addPasskey: { verifierAddress, publicKey: newPublicKey } }
+          : { defaultRuleId: 0, removeSignerId };
+        if (!newPublicKey && removeSignerId === undefined) {
+          throw new Error('Create a new passkey or enter an old signer id to remove.');
+        }
+        const { handoffLink } = await prepareRotation({
+          account: account!,
+          recoveryRuleId: recoveryRuleId!,
+          friends,
+          threshold,
+          request,
+        });
+        // Persist the new passkey so the user can use it after recovery.
+        if (newCredentialId && newPublicKey) {
+          saveRecoveredKey(account!, newCredentialId, newPublicKey);
+        }
+        (document.getElementById('om-link') as HTMLTextAreaElement).value = handoffLink;
+        showCollect(threshold);
+        refreshProgress();
+        status.textContent = 'Staged. Share the link below.';
+      } catch (e) {
+        status.textContent = 'Failed: ' + (e instanceof Error ? e.message : String(e));
+        prepareBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('om-copy-link')!.addEventListener('click', () => {
+      navigator.clipboard.writeText((document.getElementById('om-link') as HTMLTextAreaElement).value);
+    });
+
+    document.getElementById('om-add-sig')!.addEventListener('click', () => {
+      const ta = document.getElementById('om-paste') as HTMLTextAreaElement;
+      try {
+        addFriendSignature(account!, ta.value);
+        ta.value = '';
+        refreshProgress();
+      } catch (e) {
+        alert('Could not add signature: ' + (e instanceof Error ? e.message : String(e)));
+      }
+    });
+
+    document.getElementById('om-submit')!.addEventListener('click', async () => {
+      const btn = document.getElementById('om-submit') as HTMLButtonElement;
+      btn.disabled = true;
+      const status = document.getElementById('om-submit-status')!;
+      status.textContent = 'Submitting…';
+      try {
+        const hash = await submitRotation(account!);
+        status.textContent = 'Rotation submitted: ' + hash + '. Your new passkey is now active.';
+      } catch (e) {
+        status.textContent = 'Failed: ' + (e instanceof Error ? e.message : String(e));
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('om-cancel')!.addEventListener('click', () => {
+      if (!confirm('Discard this staged rotation? Collected signatures will be lost.')) return;
+      clearStaging(account!);
+      location.reload();
+    });
+
+    function showCollect(_threshold: number) {
+      document.getElementById('om-collect')!.hidden = false;
+      const link = getStaging(account!)?.txXdr;
+      if (link && !(document.getElementById('om-link') as HTMLTextAreaElement).value) {
+        // Reconstruct the share link from staging on resume.
+        // (link param recomputed on next prepare; on resume we leave blank.)
+      }
+    }
+
+    function refreshProgress() {
+      const staging = getStaging(account!);
+      if (!staging) return;
+      const have = collectedCount(staging);
+      document.getElementById('om-progress')!.textContent =
+        `${have} of ${staging.threshold} required signatures collected.`;
+      const ul = document.getElementById('om-collected')!;
+      ul.innerHTML = Object.keys(staging.collected)
+        .map((f) => `<li><code>${f.slice(0, 8)}…${f.slice(-4)}</code> ✓</li>`)
+        .join('');
+      (document.getElementById('om-submit') as HTMLButtonElement).disabled =
+        have < staging.threshold;
+    }
+  }
+
+  function saveRecoveredKey(acc: string, credentialId: string, publicKey: Uint8Array) {
+    // Mirror saveCredential's storage shape so the wallet picks up the new key.
+    const prefix = `passkey:${acc}:`;
+    // base64url credentialId is already in the createSessionPasskey return.
+    localStorage.setItem(prefix + 'credentialId', credentialId);
+    localStorage.setItem(prefix + 'publicKey', buf2hex(publicKey));
+  }
+</script>
+
+<style>
+  .recover { max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+  .muted { color: #666; font-size: 0.9em; }
+  .actions { display: flex; gap: 0.5rem; margin: 1rem 0; }
+  code { background: #f4f4f4; padding: 1px 4px; border-radius: 2px; }
+  textarea { width: 100%; font-family: monospace; font-size: 0.8em; margin: 0.4rem 0; }
+  h3 { margin-top: 1.5rem; }
+  label { display: block; margin-top: 0.5rem; }
+  input[type=number] { display: block; margin-top: 0.25rem; }
+  ul { list-style: none; padding: 0; }
+</style>

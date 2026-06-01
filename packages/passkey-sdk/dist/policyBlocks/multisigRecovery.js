@@ -1,6 +1,10 @@
 import { Client as SmartAccountClient } from 'smart-account';
 import { extractXdrOperations } from '../assembledTx.js';
 import { registerPolicyBlockModule } from './registry.js';
+// Recovery *completion* (key rotation) lives in its own module; re-exported
+// here per the public-API layout (buildInstall/buildRevoke + buildRotation
+// all hang off the multisig-recovery block).
+export { buildRotation, planRotation, describeRotation, } from './multisigRotation.js';
 const TESTNET_PASSPHRASE = 'Test SDF Network ; September 2015';
 export const multisigRecoveryModule = {
     kind: 'multisig-recovery',
