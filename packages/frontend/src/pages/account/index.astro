@@ -306,6 +306,7 @@ import Logo from "../../components/Logo.astro";
   import { detectPasskeyLabel } from "../../lib/passkeyLabel";
   import { shortAddr } from "../../lib/address";
   import { formatXlm } from "../../lib/money";
+  import { checkPasskeySupport } from "../../lib/passkeySupport";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
 
@@ -507,6 +508,11 @@ import Logo from "../../components/Logo.astro";
     document.getElementById("sign-register-btn")!.addEventListener("click", async () => {
       clearError();
       const btn = document.getElementById("sign-register-btn") as HTMLButtonElement;
+      const support = checkPasskeySupport();
+      if (!support.ok) {
+        showError(support.message!);
+        return;
+      }
       try {
         btn.disabled = true;
         await withPasskeySheet(() => registerPasskey(), {
@@ -531,6 +537,11 @@ import Logo from "../../components/Logo.astro";
       clearError();
 
       const btn = document.getElementById("approve-btn") as HTMLButtonElement;
+      const support = checkPasskeySupport();
+      if (!support.ok) {
+        showError(support.message!);
+        return;
+      }
       try {
         btn.disabled = true;
 
@@ -626,6 +637,11 @@ import Logo from "../../components/Logo.astro";
     const $noKeyRegisterResult = document.getElementById("no-key-register-result") as HTMLPreElement;
     $registerBtn.addEventListener("click", async () => {
       clearError();
+      const support = checkPasskeySupport();
+      if (!support.ok) {
+        showError(support.message!);
+        return;
+      }
       try {
         $registerBtn.disabled = true;
 
@@ -670,6 +686,12 @@ import Logo from "../../components/Logo.astro";
       const hashHex = $hashInput.value.trim();
       if (!/^[0-9a-fA-F]{64}$/.test(hashHex)) {
         showError("Enter a valid 32-byte hash (64 hex characters)");
+        return;
+      }
+
+      const support = checkPasskeySupport();
+      if (!support.ok) {
+        showError(support.message!);
         return;
       }
 

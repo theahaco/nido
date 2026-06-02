@@ -88,6 +88,8 @@ const { title } = Astro.props;
 </style>
 
 <script>
+  import { checkPasskeySupport } from "../lib/passkeySupport";
+
   // Preview banner
   const sub = window.location.hostname.split(".")[0];
   const match = sub.match(/(?:--)?pr-(\d+)$/);
@@ -99,16 +101,29 @@ const { title } = Astro.props;
     banner.style.display = "block";
   }
 
-  // In-app WebView detection
-  // Real Safari / SFSafariViewController always include both "Safari" and "Version/" in the UA.
-  // WKWebViews (Twitter, Instagram, etc.) omit "Version/" even if they add "Safari".
+  // Passkey-context warning — two distinct problems get two messages:
+  //  · insecure context (http over Tailscale/LAN): the browser disables
+  //    passkeys; the fix is the https:// address, NOT "open in Safari".
+  //  · in-app WebView (Twitter/Instagram/…): passkeys can't run; open the real
+  //    browser. Real Safari/SFSafariViewController include both "Safari" and
+  //    "Version/"; WKWebViews omit "Version/".
   const ua = navigator.userAgent;
   const isIOS = /iPhone|iPad|iPod/.test(ua);
   const isInAppBrowser = (isIOS && (!/Safari/.test(ua) || !/Version\//.test(ua)))
-    || /Twitter|Instagram|FBAN|FBAV|Line\//.test(ua)
-    || !window.PublicKeyCredential;
+    || /Twitter|Instagram|FBAN|FBAV|Line\//.test(ua);
 
-  if (isInAppBrowser) {
-    document.getElementById("webview-warning")!.style.display = "block";
+  const support = checkPasskeySupport();
+  const warning = document.getElementById("webview-warning")!;
+
+  if (!support.ok && support.reason === "insecure-context") {
+    // Replace the in-app copy with the secure-connection message.
+    warning.innerHTML =
+      "<p>Passkeys need a secure connection to work.</p>" +
+      "<p>Open Nido at its <strong>https://</strong> address (or on <strong>localhost</strong>) and you're all set.</p>";
+    warning.style.display = "block";
+  } else if (isInAppBrowser || !support.ok) {
+    // In-app browser, or a secure context that still can't do WebAuthn — the
+    // default markup ("open in your browser") is the right advice.
+    warning.style.display = "block";
   }
 </script>
