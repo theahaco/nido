@@ -9,8 +9,6 @@ import {
   scValToNative,
   xdr,
 } from '@stellar/stellar-sdk';
-import { Client as SmartAccountClient } from 'smart-account';
-import type { ContextRule, ContextRuleType, Signer } from 'smart-account';
 import type { ChainRule, ChainSigner, PolicyState } from '@g2c/passkey-sdk';
 import { fetchRegistryAddress as sdkFetchRegistryAddress } from '@g2c/passkey-sdk';
 
@@ -50,20 +48,32 @@ export async function simulateView(
   return result.retval;
 }
 
-/** Read all installed context rules from a smart account via the typed bindings. */
+/** Read all installed context rules from a smart account.
+ *
+ *  Decodes rules RAW (`scValToNative` with no type hint) rather than through the
+ *  typed `smart-account` bindings. The typed Spec decode is strict and throws
+ *  `Type … was not vec, but … is` (stellar-sdk `spec.js` `scValToNative`) when an
+ *  account's on-chain `ContextRule` shape predates the regenerated bindings —
+ *  e.g. built against a slightly different soroban-sdk minor. `findRuleForPubkey`
+ *  and `fetchVerifierAddress` already decode raw for exactly this reason; this is
+ *  the last loader to follow suit, so the Trusted-friends list no longer breaks
+ *  with "Couldn't load: Type [object Object] was not vec…". */
 export async function fetchAllChainRules(account: string): Promise<ChainRule[]> {
-  const client = new SmartAccountClient({
-    contractId: account,
-    networkPassphrase: NETWORK_PASSPHRASE,
-    rpcUrl: RPC_URL,
-  });
-  const countTx = await client.get_context_rules_count();
-  const count = countTx.result as number;
+  const server = new rpc.Server(RPC_URL);
+  const contract = new Contract(account);
+
+  const countRv = await simulateView(server, contract, 'get_context_rules_count');
+  const count = scValToNative(countRv) as number;
 
   const out: ChainRule[] = [];
   for (let i = 0; i < count; i++) {
-    const ruleTx = await client.get_context_rule({ context_rule_id: i });
-    out.push(parseRule(ruleTx.result));
+    const ruleRv = await simulateView(
+      server,
+      contract,
+      'get_context_rule',
+      nativeToScVal(i, { type: 'u32' }),
+    );
+    out.push(parseRule(scValToNative(ruleRv)));
   }
   return out;
 }
@@ -216,34 +226,61 @@ export async function fetchVerifierAddress(account: string): Promise<string> {
 
 // --- Internal parsers ------------------------------------------------------
 
-function parseRule(native: ContextRule): ChainRule {
+/** Raw `scValToNative` shape of one ContextRule: a Soroban struct decodes to a
+ *  plain object with snake_case keys; its enum fields decode to tag-first arrays
+ *  (e.g. `["External", verifier, bytes]`). A fieldless variant may arrive as a
+ *  bare `"Default"` symbol or `["Default"]` — `enumTag` normalizes both. */
+interface RawContextRule {
+  id: number | bigint;
+  context_type: unknown;
+  name: string;
+  signers?: unknown[];
+  policies?: unknown[];
+  valid_until?: number | bigint | null;
+}
+
+/** Map a raw-decoded ContextRule into the typed `ChainRule` the UI consumes.
+ *  Exported for unit testing. */
+export function parseRule(native: RawContextRule): ChainRule {
   return {
-    ruleId: native.id,
+    ruleId: Number(native.id),
     contextType: parseContextType(native.context_type),
     name: native.name,
-    signers: native.signers.map(parseSigner),
-    policies: Array.from(native.policies) as string[],
-    validUntil: native.valid_until ?? null,
+    signers: (native.signers ?? []).map(parseSigner),
+    policies: Array.from(native.policies ?? []).map((p) => String(p)),
+    validUntil: native.valid_until == null ? null : Number(native.valid_until),
   };
 }
 
-function parseContextType(ct: ContextRuleType): ChainRule['contextType'] {
-  // ContextRuleType from bindings: { tag: 'Default' | 'CallContract' | 'CreateContract', values: [...] | void }
-  if (ct.tag === 'Default') return { kind: 'default' };
-  if (ct.tag === 'CallContract') return { kind: 'call-contract', contract: ct.values[0] };
-  if (ct.tag === 'CreateContract')
-    return { kind: 'create-contract', wasm: new Uint8Array(ct.values[0]) };
-  throw new Error(`unknown context type: ${JSON.stringify(ct)}`);
+/** Normalize a raw-decoded Soroban enum (tag-first array, or bare symbol for a
+ *  fieldless variant) to `{ tag, values }`. */
+function enumTag(v: unknown): { tag: string; values: unknown[] } {
+  if (Array.isArray(v)) return { tag: String(v[0]), values: v.slice(1) };
+  return { tag: String(v), values: [] };
 }
 
-function parseSigner(s: Signer): ChainSigner {
-  if (s.tag === 'Delegated') return { kind: 'delegated', address: s.values[0] };
-  if (s.tag === 'External') {
+function parseContextType(ct: unknown): ChainRule['contextType'] {
+  const { tag, values } = enumTag(ct);
+  if (tag === 'Default') return { kind: 'default' };
+  if (tag === 'CallContract')
+    return { kind: 'call-contract', contract: String(values[0]) };
+  if (tag === 'CreateContract')
+    return {
+      kind: 'create-contract',
+      wasm: new Uint8Array(values[0] as ArrayLike<number>),
+    };
+  throw new Error(`unknown context type: ${tag}`);
+}
+
+function parseSigner(s: unknown): ChainSigner {
+  const { tag, values } = enumTag(s);
+  if (tag === 'Delegated') return { kind: 'delegated', address: String(values[0]) };
+  if (tag === 'External') {
     return {
       kind: 'external',
-      verifier: s.values[0],
-      publicKey: new Uint8Array(s.values[1]),
+      verifier: String(values[0]),
+      publicKey: new Uint8Array(values[1] as ArrayLike<number>),
     };
   }
-  throw new Error(`unknown signer: ${JSON.stringify(s)}`);
+  throw new Error(`unknown signer: ${tag}`);
 }

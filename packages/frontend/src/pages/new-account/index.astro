@@ -149,6 +149,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { detectPasskeyLabel } from "../../lib/passkeyLabel";
   import { toast } from "../../lib/toast";
+  import { checkPasskeySupport } from "../../lib/passkeySupport";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
 
@@ -266,6 +267,12 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
     clearError();
     if (!contractId) {
       showError("No account found in this link. Please start again from the home page.");
+      return;
+    }
+
+    const support = checkPasskeySupport();
+    if (!support.ok) {
+      showError(support.message!);
       return;
     }
 
