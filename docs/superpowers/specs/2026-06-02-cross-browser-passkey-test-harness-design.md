@@ -2,7 +2,15 @@
 
 **Date:** 2026-06-02
 **Branch:** `test/passkey-e2e-harness` (off `feat/nido-rebrand`, PR #38)
-**Status:** Approved design, pre-implementation
+**Status:** Approved design; Phase 1 complete (PR #42), Phase 2 in progress
+
+> **Amendment (2026-06-02): real-device cloud is TestingBot, not BrowserStack.**
+> Wherever this doc says "BrowserStack," read **TestingBot** — the chosen
+> provider switched. The architecture is unchanged: TestingBot also drives
+> Playwright via a CDP/WS endpoint (`+ TestingBot Tunnel` for localhost) and is
+> isolated behind `tests/support/` + env-gated projects. The Phase 0 hard-gate
+> spike (does `addInitScript` run on real iOS Safari?) now targets TestingBot.
+> Credentials live in 1Password (`op://theahaco/TheTestingBot/key` + `/secret`).
 
 ## Problem
 
