@@ -396,9 +396,13 @@ a.link { color: var(--acc); font-weight: 700; text-decoration: none; }
 /* ≥1024: real desktop — sidebar + content rail, centered as a unit. */
 @media (min-width: 1024px) {
   .appwrap-app {
+    /* width:100% is load-bearing: as a flex child of .stage with auto inline
+       margins, without it the wrap shrinks to its content width (~930px) instead
+       of filling to max-width, so the grid never gets room for >1 column. */
+    width: 100%;
     max-width: 1200px;
     margin-inline: auto;
-    justify-content: flex-start; /* don't center-gap the sidebar + rail pair */
+    justify-content: flex-start;
     gap: 24px;
     padding: 28px 24px 36px;
     align-items: stretch;
