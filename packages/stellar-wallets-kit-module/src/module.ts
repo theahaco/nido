@@ -46,13 +46,12 @@ export const G2C_ID = 'g2c';
 const DEFAULT_NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 
 /**
- * A 1x1 transparent-ish g2c mark. Inline data-URI so the module has no asset
- * dependency. Replace with the production logo when available.
+ * Nido Nest-Ring mark. Inline data-URI so the module has no asset dependency.
  */
 const G2C_ICON =
   'data:image/svg+xml;base64,' +
   btoa(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1a6b3a"/><text x="16" y="22" font-family="sans-serif" font-size="16" font-weight="700" fill="#e0e0e0" text-anchor="middle">g2c</text></svg>`,
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="26" fill="#FFF8F0"/><circle cx="60" cy="60" r="34" fill="none" stroke="#F25C2A" stroke-width="6" stroke-dasharray="14 9" stroke-linecap="round"/><circle cx="60" cy="60" r="23" fill="none" stroke="#F5A623" stroke-width="6" stroke-dasharray="11 8" stroke-linecap="round"/><circle cx="60" cy="60" r="9" fill="#0E9AA8"/></svg>',
   );
 
 export interface G2cModuleParams {

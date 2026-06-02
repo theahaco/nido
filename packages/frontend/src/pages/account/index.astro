@@ -23,23 +23,17 @@ import Avatar from "../../components/Avatar.astro";
 import Icon from "../../components/Icon.astro";
 import Qr from "../../components/Qr.astro";
 import Logo from "../../components/Logo.astro";
+import Nest from "../../components/Nest.astro";
 ---
 
 <NidoLayout title="Your Nido">
   <div class="col-scroll scroll-hide">
     <!-- top bar -->
     <div class="topbar">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <Avatar seed="nido" size={36} class="js-avatar" />
-        <div style="text-align:left;">
-          <div id="account-nickname" style="font-weight:800; font-size:14.5px; white-space:nowrap;">Your Nido</div>
-          <div class="mut" style="font-size:11.5px; font-weight:600; display:flex; align-items:center; gap:5px; white-space:nowrap;">
-            <span class="dot" style="background:var(--good); width:6px; height:6px;"></span> Only you
-          </div>
-        </div>
-      </div>
-      <a id="home-link" class="btn ghost sm" href="/" style="width:42px; height:42px; padding:0; border-radius:13px;" title="Home" aria-label="Home">
-        <Icon name="home" size={20} />
+      <a id="home-link" href="/" class="topbar-mark" aria-label="Nido home"><Nest size={30} /></a>
+      <a href="/account/" class="topbar-account">
+        <span id="account-nickname" style="font-weight:800; font-size:14.5px; white-space:nowrap;">Your Nido</span>
+        <Avatar seed="nido" size={32} class="js-avatar" />
       </a>
     </div>
 
@@ -93,8 +87,9 @@ import Logo from "../../components/Logo.astro";
     <!-- HOME MODE                                                     -->
     <!-- ============================================================= -->
     <div id="home-mode" class="hidden screen-in">
-      <!-- balance -->
-      <div style="padding:14px 22px 0; text-align:center;">
+      <div class="card-grid">
+      <!-- balance — primary hero card, spans full width -->
+      <div class="span-all" style="padding:14px 22px 0; text-align:center;">
         <div class="mut" style="font-size:13px; font-weight:700;">Balance</div>
         <div class="disp" id="xlm-balance" style="font-weight:800; font-size:48px; letter-spacing:-.01em; line-height:1.04; margin-top:4px;">…</div>
         <div class="mut" style="font-size:14px; font-weight:600; margin-top:2px;">In your Nido</div>
@@ -109,8 +104,8 @@ import Logo from "../../components/Logo.astro";
         </div>
       </div>
 
-      <!-- quick actions -->
-      <div style="display:flex; gap:6px; padding:26px 30px 6px;">
+      <!-- quick actions — full-width action row -->
+      <div class="span-all" style="display:flex; gap:6px; padding:26px 30px 6px;">
         <button id="receive-action" class="qa" type="button">
           <div class="circ soft"><Icon name="receive" size={24} /></div>
           <span>Receive</span>
@@ -126,6 +121,7 @@ import Logo from "../../components/Logo.astro";
       </div>
 
       <!-- ============ RECEIVE PANEL (display-only) ============ -->
+      <div class="grid-cell">
       <section id="receive-section" class="hidden pad" style="text-align:center; padding-top:18px;">
         <span class="section-label" style="display:block; text-align:left; margin-bottom:12px;">Receive</span>
         <p class="mut" style="font-size:14px; line-height:1.5; max-width:320px; margin:0 auto 18px;">
@@ -145,8 +141,10 @@ import Logo from "../../components/Logo.astro";
           <Icon name="copy" size={18} /> Copy address
         </button>
       </section>
+      </div>
 
       <!-- ============ NAME SECTION ============ -->
+      <div class="grid-cell">
       <section id="name-section" class="hidden pad" style="padding-top:18px;">
         <span class="section-label" style="display:block; margin-bottom:12px;">Your name</span>
 
@@ -175,8 +173,10 @@ import Logo from "../../components/Logo.astro";
           <div id="name-result" class="mut mono" style="display:none; font-size:12.5px; margin-top:12px; text-align:center; line-height:1.5;"></div>
         </div>
       </section>
+      </div>
 
       <!-- ============ PASSKEY INFO (when registered) ============ -->
+      <div class="grid-cell">
       <section id="passkey-info-section" class="hidden pad" style="padding-top:18px;">
         <span class="section-label" style="display:block; margin-bottom:12px;">Your passkey</span>
         <div class="card" style="padding:16px;">
@@ -203,8 +203,10 @@ import Logo from "../../components/Logo.astro";
           </p>
         </div>
       </section>
+      </div>
 
       <!-- ============ REGISTER (when no passkey) ============ -->
+      <div class="grid-cell">
       <section id="register-section" class="hidden pad" style="padding-top:18px;">
         <span class="section-label" style="display:block; margin-bottom:12px;">Set up your passkey</span>
         <div class="card" style="padding:16px;">
@@ -217,43 +219,49 @@ import Logo from "../../components/Logo.astro";
           <pre id="no-key-register-result" class="mono" style="display:none; margin-top:14px; font-size:11.5px; white-space:pre-wrap; word-break:break-all; color:var(--ink-soft);"></pre>
         </div>
       </section>
+      </div>
 
-      <!-- ============ SIGN / TRY IT OUT ============ -->
-      <section id="sign-section" class="pad" style="padding-top:18px;">
-        <span class="section-label" style="display:block; margin-bottom:12px;">Try it out</span>
-        <div class="card" style="padding:16px;">
-          <p class="mut" style="font-size:13.5px; line-height:1.5; margin:0 0 14px;">
-            Curious how it works? Eventually other Stellar apps will send you here to confirm. For now, set a status
-            message on-chain or sign a hash yourself.
-          </p>
+      <!-- ============ DEVELOPER DISCLOSURE ============ -->
+      <details class="card dev-card span-all">
+        <summary>Developer</summary>
+        <!-- ============ SIGN / TRY IT OUT ============ -->
+        <section id="sign-section" style="padding-top:4px;">
+          <span class="section-label" style="display:block; margin-bottom:12px;">Try it out</span>
+          <div class="card" style="padding:16px;">
+            <p class="mut" style="font-size:13.5px; line-height:1.5; margin:0 0 14px;">
+              Curious how it works? Eventually other Stellar apps will send you here to confirm. For now, set a status
+              message on-chain or sign a hash yourself.
+            </p>
 
-          <div style="font-weight:700; font-size:14px; margin-bottom:8px;">Invoke a contract</div>
-          <a id="status-message-link" class="btn soft" style="margin-bottom:18px;">
-            <Icon name="bolt" size={18} /> Set a status message
-          </a>
+            <div style="font-weight:700; font-size:14px; margin-bottom:8px;">Invoke a contract</div>
+            <a id="status-message-link" class="btn soft" style="margin-bottom:18px;">
+              <Icon name="bolt" size={18} /> Set a status message
+            </a>
 
-          <div style="font-weight:700; font-size:14px; margin:6px 0 8px;">Sign a hash</div>
-          <p class="mut" style="font-size:13px; line-height:1.5; margin:0 0 12px;">
-            Confirm with your passkey to sign a 32-byte hash (e.g. a transaction hash).
-          </p>
-          <div class="field">
-            <label for="hash-input">Hash to sign (64 hex chars)</label>
-            <input id="hash-input" class="input mono" placeholder="a1b2c3…64 hex characters" maxlength="64" />
+            <div style="font-weight:700; font-size:14px; margin:6px 0 8px;">Sign a hash</div>
+            <p class="mut" style="font-size:13px; line-height:1.5; margin:0 0 12px;">
+              Confirm with your passkey to sign a 32-byte hash (e.g. a transaction hash).
+            </p>
+            <div class="field">
+              <label for="hash-input">Hash to sign (64 hex chars)</label>
+              <input id="hash-input" class="input mono" placeholder="a1b2c3…64 hex characters" maxlength="64" />
+            </div>
+            <div class="btn-row" style="margin-top:12px;">
+              <button id="sign-btn" class="btn acc" disabled>
+                <Icon name="faceid" size={18} color="#fff" /> <span class="js-confirm-label">Sign</span>
+              </button>
+              <button id="random-hash-btn" class="btn ghost">
+                <Icon name="refresh" size={18} /> Random
+              </button>
+            </div>
+            <pre id="sign-result" class="mono" style="display:none; margin-top:14px; font-size:11.5px; white-space:pre-wrap; word-break:break-all; color:var(--ink-soft);"></pre>
           </div>
-          <div class="btn-row" style="margin-top:12px;">
-            <button id="sign-btn" class="btn acc" disabled>
-              <Icon name="faceid" size={18} color="#fff" /> <span class="js-confirm-label">Sign</span>
-            </button>
-            <button id="random-hash-btn" class="btn ghost">
-              <Icon name="refresh" size={18} /> Random
-            </button>
-          </div>
-          <pre id="sign-result" class="mono" style="display:none; margin-top:14px; font-size:11.5px; white-space:pre-wrap; word-break:break-all; color:var(--ink-soft);"></pre>
-        </div>
-      </section>
+        </section>
+      </details>
 
-      <div style="display:flex; justify-content:center; margin:8px 0 28px;">
+      <div class="span-all" style="display:flex; justify-content:center; margin:8px 0 28px;">
         <Logo size={18} mark markSize={24} />
+      </div>
       </div>
     </div>
   </div>

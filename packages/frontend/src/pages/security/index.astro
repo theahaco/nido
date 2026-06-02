@@ -20,52 +20,60 @@ import Nest from '../../components/Nest.astro';
         The people and devices that can help you get back in.
       </p>
 
-      <!-- ============ Trusted friends (recovery) ============ -->
-      <section id="recovery-section">
-        <span class="section-label" style="display:block;margin:24px 0 10px;">Trusted friends</span>
-        <div class="card" style="padding:18px;">
-          <p class="mut" style="font-size:13px;margin:0 0 14px;line-height:1.55;">
-            Lose your phone? Friends can let you back in. No friend can ever move your money.
-          </p>
-          <div id="recovery-list"></div>
-          <button id="add-recovery" class="btn soft sm" style="margin-top:14px;">
-            <Icon name="plus" size={17} /> Add a trusted friend
-          </button>
-          <div id="recovery-form" class="nido-form" hidden></div>
-        </div>
-      </section>
-
-      <!-- ============ Apps you've let in (delegation) ============ -->
-      <section id="delegations-section">
-        <span class="section-label" style="display:block;margin:24px 0 10px;">Apps you've let in</span>
-        <div class="card" style="padding:18px;">
-          <p class="mut" style="font-size:13px;margin:0 0 14px;line-height:1.55;">
-            Apps you let act on your behalf for a while. You can cut them off any time.
-          </p>
-          <div id="delegation-list"></div>
-          <button id="add-delegation" class="btn soft sm" style="margin-top:14px;">
-            <Icon name="plus" size={17} /> Let in an app
-          </button>
-          <div id="delegation-form" class="nido-form" hidden></div>
-        </div>
-      </section>
-
-      <!-- ============ This device ============ -->
-      <section id="advanced-section">
-        <span class="section-label" style="display:block;margin:24px 0 10px;">This device</span>
-        <div class="card" style="overflow:hidden;padding:0;">
-          <div class="navrow" style="cursor:default;border-bottom:none;">
-            <div style="width:38px;height:38px;border-radius:11px;background:var(--good-soft);display:grid;place-items:center;">
-              <Icon name="key" size={20} color="var(--good)" />
+      <div class="card-grid">
+        <!-- ============ Trusted friends (recovery) ============ -->
+        <div class="grid-cell">
+          <section id="recovery-section">
+            <span class="section-label" style="display:block;margin:24px 0 10px;">Trusted friends</span>
+            <div class="card" style="padding:18px;">
+              <p class="mut" style="font-size:13px;margin:0 0 14px;line-height:1.55;">
+                Lose your phone? Friends can let you back in. No friend can ever move your money.
+              </p>
+              <div id="recovery-list"></div>
+              <button id="add-recovery" class="btn soft sm" style="margin-top:14px;">
+                <Icon name="plus" size={17} /> Add a trusted friend
+              </button>
+              <div id="recovery-form" class="nido-form" hidden></div>
             </div>
-            <div style="flex:1;">
-              <div style="font-weight:700;font-size:14.5px;">Your passkey on this device</div>
-              <div class="mut" style="font-size:12.5px;">You're the only one who gets in</div>
-            </div>
-            <span class="chip good" style="font-size:11px;">On</span>
-          </div>
+          </section>
         </div>
-      </section>
+
+        <!-- ============ Apps you've let in (delegation) ============ -->
+        <div class="grid-cell">
+          <section id="delegations-section">
+            <span class="section-label" style="display:block;margin:24px 0 10px;">Apps you've let in</span>
+            <div class="card" style="padding:18px;">
+              <p class="mut" style="font-size:13px;margin:0 0 14px;line-height:1.55;">
+                Apps you let act on your behalf for a while. You can cut them off any time.
+              </p>
+              <div id="delegation-list"></div>
+              <button id="add-delegation" class="btn soft sm" style="margin-top:14px;">
+                <Icon name="plus" size={17} /> Let in an app
+              </button>
+              <div id="delegation-form" class="nido-form" hidden></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ============ This device ============ -->
+        <div class="grid-cell">
+          <section id="advanced-section">
+            <span class="section-label" style="display:block;margin:24px 0 10px;">This device</span>
+            <div class="card" style="overflow:hidden;padding:0;">
+              <div class="navrow" style="cursor:default;border-bottom:none;">
+                <div style="width:38px;height:38px;border-radius:11px;background:var(--good-soft);display:grid;place-items:center;">
+                  <Icon name="key" size={20} color="var(--good)" />
+                </div>
+                <div style="flex:1;">
+                  <div style="font-weight:700;font-size:14.5px;">Your passkey on this device</div>
+                  <div class="mut" style="font-size:12.5px;">You're the only one who gets in</div>
+                </div>
+                <span class="chip good" style="font-size:11px;">On</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
 
       <div style="display:flex;justify-content:center;margin-top:28px;">
         <Nest size={28} />

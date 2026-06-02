@@ -376,3 +376,109 @@ a.link { color: var(--acc); font-weight: 700; text-decoration: none; }
 /* ---------- visibility helpers (existing scripts toggle these; the prototype CSS omits them) ---------- */
 .hidden { display: none; }
 [hidden] { display: none; }
+
+/* ---------- responsive shells (desktop redesign) ---------- */
+/* 800–1024: app pages widen to a centered ~820px column, no sidebar yet. */
+@media (min-width: 800px) {
+  /* app shell: a plain widened column here (the rounded rail frame is added at ≥1024) */
+  .col-app {
+    max-width: 820px;
+    margin-top: 0; /* cancel the +4px the base @media(800) .col rule adds */
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    min-height: 100vh;
+    max-height: none;
+    overflow: visible;
+  }
+  .appwrap-app > .nido-sidebar { display: none; }
+}
+/* ≥1024: real desktop — sidebar + content rail, centered as a unit. */
+@media (min-width: 1024px) {
+  .appwrap-app {
+    /* width:100% is load-bearing: as a flex child of .stage with auto inline
+       margins, without it the wrap shrinks to its content width (~930px) instead
+       of filling to max-width, so the grid never gets room for >1 column. */
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    justify-content: flex-start;
+    gap: 24px;
+    padding: 28px 24px 36px;
+    align-items: stretch;
+  }
+  .appwrap-app > .nido-sidebar { display: flex; }
+  .col-app {
+    max-width: none;
+    width: auto; /* cancel width:100% from base .col so flex-grow fills the rail */
+    flex: 1 1 auto;
+    min-height: min(860px, calc(100vh - 64px));
+    max-height: calc(100vh - 64px);
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    box-shadow: var(--sh-3);
+    overflow: hidden;
+  }
+}
+
+.nido-sidebar {
+  display: none; /* shown ≥1024 via .appwrap-app media query */
+  flex-direction: column;
+  width: 240px;
+  flex: 0 0 240px;
+  padding: 8px 4px;
+  gap: 6px;
+}
+.nido-sidebar-brand { display: flex; padding: 10px 12px 18px; text-decoration: none; }
+.nido-sidebar-nav { display: flex; flex-direction: column; gap: 4px; }
+.nido-navitem {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 13px;
+  color: var(--ink-soft); font-weight: 700; font-size: 15px;
+  text-decoration: none;
+}
+.nido-navitem:hover { background: var(--chip); color: var(--ink); }
+.nido-navitem.is-active { background: var(--acc-soft); color: var(--acc); }
+.nido-sidebar-account {
+  margin-top: auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--r-md);
+  text-decoration: none; color: var(--ink);
+}
+.nido-sidebar-account:hover { background: var(--chip); }
+.nido-account-name { font-weight: 700; font-size: 14px; }
+
+/* ---------- card grid (app pages) ---------- */
+/* A page's cards reflow into columns on wider viewports; single column <800. */
+.card-grid { display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 800px) {
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    align-content: start;
+  }
+  .card-grid > .span-all { grid-column: 1 / -1; }
+}
+/* In the desktop rail: pad the scroll area; keep NON-grid app pages readable
+   (capped + centered) while grid pages use the full rail width. */
+@media (min-width: 1024px) {
+  .col-app > .col-scroll { padding: 24px; }
+  .col-app > .col-scroll:not(:has(.card-grid)) { max-width: 600px; margin-inline: auto; }
+}
+
+/* account topbar: brand mark left, account chip right; the sidebar carries BOTH
+   the brand and the account chip ≥1024, so hide the account page's in-rail
+   topbar there (it's the only topbar with a .topbar-mark; the security/status
+   topbars hold a page title and stay visible). */
+.topbar-mark { display: inline-flex; text-decoration: none; }
+.topbar-account { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink); }
+@media (min-width: 1024px) { .col-app .topbar:has(.topbar-mark) { display: none; } }
+/* Developer disclosure */
+.dev-card > summary { list-style: none; cursor: pointer; font-weight: 700; font-size: 14px; }
+.dev-card > summary::-webkit-details-marker { display: none; }
+.dev-card[open] > summary { margin-bottom: 12px; }
+/* defensive: grid cells must not overflow on long content */
+.grid-cell { min-width: 0; }
