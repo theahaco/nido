@@ -504,18 +504,45 @@ git commit -m "feat(test): assertion builder reusing SDK buildSyntheticAssertion
 ## Task 5: Fake credential assembly
 
 **Files:**
+- Create: `tests/support/auth/der.ts` (compact→DER signature, since real authenticators return DER and the app's `parseAssertionResponse` calls `derToCompact`, which throws on a non-DER signature).
 - Create: `tests/support/auth/credential.ts`
-- Test: `tests/support/auth/credential.test.ts`
+- Test: `tests/support/auth/der.test.ts`, `tests/support/auth/credential.test.ts`
 
 Pure functions that build the objects `create()`/`get()` return, validated against the SDK's `parseRegistration` and `parseAssertionResponse`.
 
+**Why DER:** `buildSyntheticAssertion` returns a 64-byte compact `r‖s` signature (what the Rust tests consume directly). But a real `navigator.credentials.get()` returns a **DER**-encoded signature, and the app's `parseAssertionResponse` runs `derToCompact(signature)` (`packages/passkey-sdk/src/signature.ts:14` throws unless `sig[0] === 0x30`). So the `get()` credential's `response.signature` must be DER, or every signing flow (Phase 2+) breaks. `der.ts` encodes compact→DER; `derToCompact` then recovers the same low-S compact.
+
 - [ ] **Step 1: Write the failing test**
+
+`tests/support/auth/credential.test.ts`:
+`tests/support/auth/der.test.ts`:
+```ts
+import { describe, it, expect } from 'vitest';
+import { compactToDer } from './der';
+import { derToCompact } from '../../../packages/passkey-sdk/src/signature';
+import { makeAssertion } from './assertion';
+import { credentialIdForLabel } from './vault';
+
+const SEED = new Uint8Array(32).fill(7);
+
+describe('der', () => {
+  it('compact→DER round-trips through the SDK derToCompact', async () => {
+    const id = await credentialIdForLabel(SEED, 'originator');
+    const a = await makeAssertion(SEED, id, new Uint8Array(32).fill(9));
+    const der = compactToDer(a.signature);
+    expect(der[0]).toBe(0x30); // SEQUENCE — what a real authenticator returns
+    // a.signature is already low-S, so derToCompact recovers it byte-for-byte.
+    expect(Array.from(derToCompact(der))).toEqual(Array.from(a.signature));
+  });
+});
+```
 
 `tests/support/auth/credential.test.ts`:
 ```ts
 import { describe, it, expect } from 'vitest';
 import { makeCredential, makeAssertionCredential } from './credential';
 import { parseRegistration } from '../../../packages/passkey-sdk/src/webauthn';
+import { parseAssertionResponse } from '../../../packages/passkey-sdk/src/auth';
 import { credentialIdForLabel, privateKeyForCredentialId, publicKeyFromPrivate } from './vault';
 
 const SEED = new Uint8Array(32).fill(7);
@@ -531,22 +558,50 @@ describe('credential', () => {
     expect(cred.type).toBe('public-key');
   });
 
-  it('get-credential exposes assertion response buffers', async () => {
+  it('get-credential response parses via the SDK parseAssertionResponse', async () => {
     const id = await credentialIdForLabel(SEED, 'originator');
     const cred = await makeAssertionCredential(SEED, id, new Uint8Array(32).fill(9));
     const r = cred.response as AuthenticatorAssertionResponse;
     expect(new Uint8Array(r.authenticatorData).length).toBe(37);
-    expect(new Uint8Array(r.signature).length).toBe(64);
+    // This is the exact call the app's signing flow makes; DER signature required.
+    const parsed = parseAssertionResponse({
+      authenticatorData: r.authenticatorData,
+      clientDataJSON: r.clientDataJSON,
+      signature: r.signature,
+    });
+    expect(parsed.signature.length).toBe(64);
   });
 });
 ```
 
 - [ ] **Step 2: Run it; verify it fails**
 
-Run: `npx vitest run --config vitest.support.config.ts tests/support/auth/credential.test.ts`
-Expected: FAIL "Cannot find module './credential'".
+Run: `npx vitest run --config vitest.support.config.ts tests/support/auth/der.test.ts tests/support/auth/credential.test.ts`
+Expected: FAIL "Cannot find module './der'" / "./credential".
 
-- [ ] **Step 3: Implement `credential.ts`**
+- [ ] **Step 3: Implement `der.ts`**
+
+`tests/support/auth/der.ts`:
+```ts
+/** Encode a 64-byte compact (r‖s) ECDSA signature as ASN.1 DER — the form a
+ *  real authenticator returns. The app calls derToCompact() on
+ *  response.signature, which throws unless the first byte is 0x30. P-256 DER
+ *  is always < 128 bytes, so single-byte lengths suffice. */
+export function compactToDer(rs: Uint8Array): Uint8Array {
+  if (rs.length !== 64) throw new Error('compactToDer: expected 64-byte r||s');
+  const derInt = (int: Uint8Array): number[] => {
+    let i = 0;
+    while (i < int.length - 1 && int[i] === 0) i++; // strip leading zeros
+    let bytes = Array.from(int.slice(i));
+    if (bytes[0] & 0x80) bytes = [0x00, ...bytes]; // keep positive
+    return [0x02, bytes.length, ...bytes];
+  };
+  const body = [...derInt(rs.slice(0, 32)), ...derInt(rs.slice(32, 64))];
+  return new Uint8Array([0x30, body.length, ...body]);
+}
+```
+
+- [ ] **Step 4: Implement `credential.ts`**
 
 `tests/support/auth/credential.ts`:
 ```ts
@@ -554,6 +609,7 @@ import { credentialIdForLabel, privateKeyForCredentialId, publicKeyFromPrivate }
 import { buildSpki } from './spki';
 import { buildAttestationObject } from './attestation';
 import { makeAssertion } from './assertion';
+import { compactToDer } from './der';
 
 function toArrayBuffer(u: Uint8Array): ArrayBuffer {
   return u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) as ArrayBuffer;
@@ -606,7 +662,8 @@ export async function makeAssertionCredential(
     response: {
       authenticatorData: toArrayBuffer(a.authenticatorData),
       clientDataJSON: toArrayBuffer(a.clientDataJSON),
-      signature: toArrayBuffer(a.signature),
+      // DER-encoded (real authenticators return DER; app calls derToCompact).
+      signature: toArrayBuffer(compactToDer(a.signature)),
       userHandle: null,
     },
     getClientExtensionResults: () => ({}),
@@ -614,16 +671,16 @@ export async function makeAssertionCredential(
 }
 ```
 
-- [ ] **Step 4: Run it; verify it passes**
+- [ ] **Step 5: Run it; verify it passes**
 
-Run: `npx vitest run --config vitest.support.config.ts tests/support/auth/credential.test.ts`
-Expected: PASS.
+Run: `npx vitest run --config vitest.support.config.ts tests/support/auth/der.test.ts tests/support/auth/credential.test.ts`
+Expected: PASS (3 tests). The credential get-path now parses via the exact `parseAssertionResponse` the app uses.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add tests/support/auth/credential.ts tests/support/auth/credential.test.ts
-git commit -m "feat(test): assemble fake PublicKeyCredential objects"
+git add tests/support/auth/der.ts tests/support/auth/der.test.ts tests/support/auth/credential.ts tests/support/auth/credential.test.ts
+git commit -m "feat(test): fake PublicKeyCredential objects (DER signature for app parse path)"
 ```
 
 ---
