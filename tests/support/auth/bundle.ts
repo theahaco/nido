@@ -1,8 +1,12 @@
 import { build } from 'esbuild';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 
-const here = dirname(fileURLToPath(import.meta.url));
+// Resolve this file's directory without `import.meta.url`. Both runtimes that
+// load this module — Playwright's test loader and Vitest (`environment: node`)
+// — transpile to a CJS context where `__dirname` is defined. Referencing
+// `import.meta` here would instead force Playwright's loader into ESM mode,
+// where `exports` is undefined, and the module fails to load.
+const here = __dirname;
 let cached: string | null = null;
 
 /** Bundle the in-page TestAuthenticator into one IIFE string (memoized). */
