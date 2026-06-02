@@ -24,6 +24,7 @@
   /* accent — coral */
   --acc:      #F25C2A;
   --acc-ink:  #d8491c;
+  --acc-btn:  #cf4a1e;  /* AA-safe coral for primary buttons: white label clears WCAG AA (4.51:1 vs 3.31:1 for --acc) */
   --acc-soft: #FCE3D6;
   --acc-glow: rgba(242,92,42,.28);
   /* semantic — teal carries "confirmed / received / you" */
@@ -38,7 +39,7 @@
   --sh-1: 0 1px 2px rgba(42,26,18,.05);
   --sh-2: 0 10px 34px rgba(42,26,18,.10), 0 2px 6px rgba(42,26,18,.05);
   --sh-3: 0 28px 70px rgba(42,26,18,.16), 0 6px 16px rgba(42,26,18,.07);
-  --sh-acc: 0 10px 26px var(--acc-glow);
+  --sh-acc: 0 10px 26px rgba(42,26,18,.14), 0 2px 6px rgba(42,26,18,.06);
   /* type */
   --disp: "Fraunces", serif;
   --body: "Hanken Grotesk", sans-serif;
@@ -72,7 +73,7 @@ button { font-family: inherit; }
 }
 .halo {
   position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
-  background: radial-gradient(circle, var(--acc-glow), rgba(43,80,232,0) 68%);
+  background: radial-gradient(circle, var(--acc-glow), rgba(242,92,42,0) 68%);
   opacity: .5;
 }
 
@@ -119,8 +120,8 @@ button { font-family: inherit; }
   transition: transform .14s cubic-bezier(.2,.7,.3,1), box-shadow .18s, background .15s, opacity .15s;
 }
 .btn:active { transform: scale(.975); }
-.btn.acc { background: var(--acc); color: #fff; box-shadow: var(--sh-acc); }
-.btn.acc:hover { background: var(--acc-ink); }
+.btn.acc { background: var(--acc-btn); color: #fff; box-shadow: var(--sh-acc); }
+.btn.acc:hover { background: #b83e14; }
 .btn.soft { background: var(--chip); color: var(--ink); }
 .btn.soft:hover { background: #e4ddcd; }
 .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
