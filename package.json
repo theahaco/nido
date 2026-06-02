@@ -14,5 +14,8 @@
     "@noble/curves": "^2.2.0",
     "esbuild": "^0.27.3",
     "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "protobufjs": "^7.5.6"
   }
 }
