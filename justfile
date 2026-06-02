@@ -100,3 +100,13 @@ test-e2e: build-astro
 # Chromium CDP virtual-authenticator fidelity lane; builds the frontend first
 test-e2e-cdp: build-astro
     npx playwright test --project=chromium-cdp
+
+# Sources tests/.env.testnet if present (set G2C_TEST_BANK_SECRET there to a
+# funded testnet G-account secret to skip friendbot for the name submitter);
+# otherwise the app funds its own submitter via friendbot.
+# Quarantined real-testnet e2e tier (create+deploy + name-claim); builds first
+test-e2e-testnet: build-astro
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -f tests/.env.testnet ]; then set -a; source tests/.env.testnet; set +a; fi
+    npx playwright test --project=testnet-chromium --project=testnet-webkit
