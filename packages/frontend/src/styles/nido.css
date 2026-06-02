@@ -460,3 +460,15 @@ a.link { color: var(--acc); font-weight: 700; text-decoration: none; }
   .col-app > .col-scroll { padding: 24px; }
   .col-app > .col-scroll:not(:has(.card-grid)) { max-width: 600px; margin-inline: auto; }
 }
+
+/* account topbar: brand mark left, account chip right; sidebar carries the
+   brand ≥1024 so hide the in-bar mark there. */
+.topbar-mark { display: inline-flex; text-decoration: none; }
+.topbar-account { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink); }
+@media (min-width: 1024px) { .col-app .topbar-mark { display: none; } }
+/* Developer disclosure */
+.dev-card > summary { list-style: none; cursor: pointer; font-weight: 700; font-size: 14px; }
+.dev-card > summary::-webkit-details-marker { display: none; }
+.dev-card[open] > summary { margin-bottom: 12px; }
+/* defensive: grid cells must not overflow on long content */
+.grid-cell { min-width: 0; }
