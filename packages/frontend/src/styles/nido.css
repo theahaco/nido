@@ -379,8 +379,17 @@ a.link { color: var(--acc); font-weight: 700; text-decoration: none; }
 /* ---------- responsive shells (desktop redesign) ---------- */
 /* 800–1024: app pages widen to a centered ~820px column, no sidebar yet. */
 @media (min-width: 800px) {
-  .appwrap-app { align-items: flex-start; }
-  .col-app { max-width: 820px; }
+  /* app shell: a plain widened column here (the rounded rail frame is added at ≥1024) */
+  .col-app {
+    max-width: 820px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    min-height: 100vh;
+    max-height: none;
+    overflow: visible;
+  }
   .appwrap-app > .nido-sidebar { display: none; }
 }
 /* ≥1024: real desktop — sidebar + content rail, centered as a unit. */
@@ -427,7 +436,7 @@ a.link { color: var(--acc); font-weight: 700; text-decoration: none; }
 .nido-sidebar-account {
   margin-top: auto;
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; border-radius: 14px;
+  padding: 10px 12px; border-radius: var(--r-md);
   text-decoration: none; color: var(--ink);
 }
 .nido-sidebar-account:hover { background: var(--chip); }
