@@ -441,3 +441,22 @@ a.link { color: var(--acc); font-weight: 700; text-decoration: none; }
 }
 .nido-sidebar-account:hover { background: var(--chip); }
 .nido-account-name { font-weight: 700; font-size: 14px; }
+
+/* ---------- card grid (app pages) ---------- */
+/* A page's cards reflow into columns on wider viewports; single column <800. */
+.card-grid { display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 800px) {
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    align-content: start;
+  }
+  .card-grid > .span-all { grid-column: 1 / -1; }
+}
+/* In the desktop rail: pad the scroll area; keep NON-grid app pages readable
+   (capped + centered) while grid pages use the full rail width. */
+@media (min-width: 1024px) {
+  .col-app > .col-scroll { padding: 24px; }
+  .col-app > .col-scroll:not(:has(.card-grid)) { max-width: 600px; margin-inline: auto; }
+}
