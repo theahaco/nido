@@ -19,6 +19,13 @@ createServer((req, res) => {
   const urlPath = (req.url || '/').split('?')[0];
   let filePath = join(DIST_DIR, urlPath === '/' ? '/index.html' : urlPath);
   if (!extname(filePath)) filePath = join(filePath, 'index.html');
+  // Reject path traversal: this server binds 0.0.0.0 (reachable over Tailscale),
+  // so a `..` URL must not escape DIST_DIR and serve arbitrary repo files.
+  if (!filePath.startsWith(DIST_DIR)) {
+    res.writeHead(404);
+    res.end('Not found');
+    return;
+  }
   try {
     const content = readFileSync(filePath);
     res.writeHead(200, { 'Content-Type': TYPES[extname(filePath)] || 'application/octet-stream' });
