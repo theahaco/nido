@@ -57,9 +57,16 @@ builds the contract, deploys it to the network selected by `STELLAR_SCAFFOLD_ENV
 > (`CBXVJXHPSYORSAHPX4I6NYPQMDJWK2STQCE6JTIM7FNV4OZSIDJFGNDM`) and
 > `packages/status_message/` (source) + `src/contracts/status_message.ts` are
 > tracked. Local `development`/`testing` runs still regenerate the client via
-> `npm start`, overwriting it for the network you're on. To repoint the demo at
-> a new deployment, update the `staging` id and re-run
-> `STELLAR_SCAFFOLD_ENV=staging stellar scaffold build --build-clients`.
+> `npm start`, overwriting it for the network you're on.
+>
+> **Staleness:** the committed client is pinned to that testnet id. If the
+> contract is redeployed with an ABI change, the live demo silently breaks until
+> the client is regenerated. To repoint the demo at a new deployment, update the
+> `staging` id in `environments.toml` and re-run
+> `STELLAR_SCAFFOLD_ENV=staging stellar scaffold build --build-clients`, then
+> commit the refreshed `packages/status_message/` + `src/contracts/status_message.ts`.
+> You can spot drift with
+> `stellar contract info interface --network testnet --id <id>`.
 
 ### Local network (default)
 
