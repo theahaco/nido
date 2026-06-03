@@ -1,79 +1,137 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro';
+// Nido reskin of the account-recovery ceremony page. BOTH modes are preserved:
+//  - friend mode (?handoff=…): a friend approves & signs a rotation
+//  - originator mode: stage an M-of-N rotation, collect friend signatures, submit
+// The entire <script> (recoveryActions wiring, M-of-N logic, handoff, staging
+// resume, key persistence) is preserved verbatim from the BaseLayout version.
+// Element IDs are unchanged so the script keeps working; only shell, markup and
+// copy are reskinned to Nido voice ("friends can let you back in").
+import NidoLayout from '../../../layouts/NidoLayout.astro';
+import Toast from '../../../components/Toast.astro';
+import PasskeySheet from '../../../components/PasskeySheet.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<BaseLayout title="Complete recovery">
-  <main class="recover">
-    <h1>Complete account recovery</h1>
+<NidoLayout title="Get back in">
+  <div class="col-scroll scroll-hide screen-in">
+    <div class="topbar">
+      <a href="/security/" class="btn ghost sm" style="width:40px;height:40px;padding:0;border-radius:12px;" aria-label="Back">
+        <Icon name="back" size={18} />
+      </a>
+      <div class="disp" style="font-weight:800;font-size:19px;">Get back in</div>
+      <span style="width:40px;"></span>
+    </div>
 
-    <!-- Friend mode: shown when ?handoff=… is present -->
-    <section id="friend-mode" hidden>
-      <h2>A friend asked you to approve a recovery</h2>
-      <p class="muted">Account <code id="fm-account"></code> wants to rotate its
-        signers. Review the change, then sign with your own passkey. Your
-        signature only counts toward this specific rotation.</p>
-      <p><strong id="fm-desc"></strong></p>
-      <div class="actions">
-        <button id="fm-sign" type="button">Approve &amp; sign</button>
-      </div>
-      <div id="fm-result" hidden>
-        <p class="muted">Send this signature back to the person recovering the
-          account (paste it where they asked):</p>
-        <textarea id="fm-blob" rows="5" readonly></textarea>
-        <button id="fm-copy" type="button">Copy</button>
-      </div>
-      <p id="fm-status" class="muted"></p>
-    </section>
+    <div class="pad" style="padding-top:8px;">
+      <!-- Friend mode: shown when ?handoff=… is present -->
+      <section id="friend-mode" hidden>
+        <div class="card" style="padding:18px;">
+          <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px;">
+            <div style="width:40px;height:40px;border-radius:12px;background:var(--acc-soft);display:grid;place-items:center;">
+              <Icon name="shieldcheck" size={20} color="var(--acc)" />
+            </div>
+            <div class="disp" style="font-weight:800;font-size:17px;">A friend needs your help</div>
+          </div>
+          <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 12px;">
+            Your friend <code id="fm-account" class="mono"></code> lost their phone and is
+            getting back in. Take a look, then approve with your own passkey — your
+            okay only counts toward this one request.
+          </p>
+          <p style="margin:0 0 14px;"><strong id="fm-desc" style="font-size:14px;"></strong></p>
+          <div class="actions" style="display:flex;gap:10px;">
+            <button id="fm-sign" class="btn acc" type="button">Approve &amp; sign</button>
+          </div>
+          <div id="fm-result" hidden style="margin-top:16px;">
+            <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 8px;">
+              Send this back to the friend getting in (paste it where they asked):
+            </p>
+            <textarea id="fm-blob" class="input mono" rows="5" readonly></textarea>
+            <button id="fm-copy" class="btn soft sm" type="button" style="margin-top:8px;">
+              <Icon name="copy" size={16} /> Copy
+            </button>
+          </div>
+          <p id="fm-status" class="mut" style="font-size:12.5px;margin-top:12px;"></p>
+        </div>
+      </section>
 
-    <!-- Originator mode -->
-    <section id="originator-mode" hidden>
-      <h2>Stage a rotation</h2>
-      <p class="muted">Your friends, acting together, will authorize replacing
-        the lost passkey on this account. First create a new passkey, then
-        share the link with each friend, collect their signatures, and submit.</p>
+      <!-- Originator mode -->
+      <section id="originator-mode" hidden>
+        <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 6px;">
+          Your trusted friends, together, can put a new passkey on this account.
+          Make a new passkey, share the link with each friend, gather their okays,
+          then finish.
+        </p>
 
-      <div id="om-no-rule" hidden>
-        <p>No recovery rule found on this account. Recovery must be set up
-          <em>before</em> the key is lost. <a href="/security/">Back to security</a>.</p>
-      </div>
+        <div id="om-no-rule" hidden>
+          <div class="card" style="padding:18px;margin-top:14px;">
+            <p style="margin:0;font-size:14px;line-height:1.55;">
+              No trusted friends are set up on this account. Friends have to be added
+              <em>before</em> a phone is lost. <a href="/security/" class="link">Back to safety</a>.
+            </p>
+          </div>
+        </div>
 
-      <p id="om-multi-rule" class="muted" hidden></p>
+        <p id="om-multi-rule" class="mut" style="font-size:12.5px;margin-top:12px;" hidden></p>
 
-      <div id="om-stage">
-        <h3>1. New passkey</h3>
-        <p class="muted">Create a fresh passkey on this device to become the
-          account's new primary signer.</p>
-        <button id="om-new-key" type="button">Create new passkey</button>
-        <p id="om-key-status" class="muted"></p>
+        <div id="om-stage">
+          <span class="section-label" style="display:block;margin:22px 0 10px;">Step 1 · New passkey</span>
+          <div class="card" style="padding:18px;">
+            <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 12px;">
+              Create a fresh passkey on this device. It becomes the way you get in
+              from now on.
+            </p>
+            <button id="om-new-key" class="btn acc" type="button">
+              <Icon name="key" size={18} /> Create new passkey
+            </button>
+            <p id="om-key-status" class="mut" style="font-size:12.5px;margin-top:10px;"></p>
+          </div>
 
-        <h3>2. (Optional) remove the lost signer</h3>
-        <label>Old signer id to remove
-          <input id="om-remove-id" type="number" min="0" placeholder="leave blank to keep" />
-        </label>
+          <span class="section-label" style="display:block;margin:22px 0 10px;">Step 2 · Optional</span>
+          <div class="card" style="padding:18px;">
+            <div class="field">
+              <label for="om-remove-id">Remove the lost device's key</label>
+              <input id="om-remove-id" class="input mono" type="number" min="0"
+                     placeholder="leave blank to keep" style="margin-top:7px;" />
+            </div>
+          </div>
 
-        <h3>3. Stage &amp; share</h3>
-        <button id="om-prepare" type="button" disabled>Stage rotation</button>
-        <p id="om-prepare-status" class="muted"></p>
-      </div>
+          <span class="section-label" style="display:block;margin:22px 0 10px;">Step 3 · Share with friends</span>
+          <div class="card" style="padding:18px;">
+            <button id="om-prepare" class="btn acc" type="button" disabled>Share with my friends</button>
+            <p id="om-prepare-status" class="mut" style="font-size:12.5px;margin-top:10px;"></p>
+          </div>
+        </div>
 
-      <div id="om-collect" hidden>
-        <h3>4. Collect friend signatures</h3>
-        <p class="muted">Share this link with each friend:</p>
-        <textarea id="om-link" rows="3" readonly></textarea>
-        <button id="om-copy-link" type="button">Copy link</button>
-        <p class="muted">Paste each friend's returned signature here:</p>
-        <textarea id="om-paste" rows="4" placeholder="friend signature blob"></textarea>
-        <button id="om-add-sig" type="button">Add signature</button>
-        <p id="om-progress" class="muted"></p>
-        <ul id="om-collected"></ul>
+        <div id="om-collect" hidden>
+          <span class="section-label" style="display:block;margin:22px 0 10px;">Step 4 · Gather okays</span>
+          <div class="card" style="padding:18px;">
+            <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 8px;">Send this link to each friend:</p>
+            <textarea id="om-link" class="input mono" rows="3" readonly></textarea>
+            <button id="om-copy-link" class="btn soft sm" type="button" style="margin:8px 0 16px;">
+              <Icon name="copy" size={16} /> Copy link
+            </button>
+            <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 8px;">Paste each friend's reply here:</p>
+            <textarea id="om-paste" class="input mono" rows="4" placeholder="paste your friend's reply"></textarea>
+            <button id="om-add-sig" class="btn soft sm" type="button" style="margin-top:8px;">Add reply</button>
+            <p id="om-progress" class="mut" style="font-size:12.5px;margin-top:12px;"></p>
+            <ul id="om-collected"></ul>
+          </div>
 
-        <h3>5. Submit</h3>
-        <button id="om-submit" type="button" disabled>Submit rotation</button>
-        <button id="om-cancel" type="button">Cancel rotation</button>
-        <p id="om-submit-status" class="muted"></p>
-      </div>
-    </section>
-  </main>
-</BaseLayout>
+          <span class="section-label" style="display:block;margin:22px 0 10px;">Step 5 · Finish</span>
+          <div class="card" style="padding:18px;">
+            <div class="actions" style="display:flex;gap:10px;">
+              <button id="om-submit" class="btn acc" type="button" disabled style="flex:1;">Get back in</button>
+              <button id="om-cancel" class="btn ghost" type="button" style="flex:0 0 auto;width:auto;">Cancel</button>
+            </div>
+            <p id="om-submit-status" class="mut" style="font-size:12.5px;margin-top:10px;"></p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <Toast />
+  <PasskeySheet />
+</NidoLayout>
 
 <script>
   import { contractIdFromHostname, createSessionPasskey, buf2hex } from '@g2c/passkey-sdk';
@@ -316,13 +374,18 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 </script>
 
 <style>
-  .recover { max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
-  .muted { color: #666; font-size: 0.9em; }
-  .actions { display: flex; gap: 0.5rem; margin: 1rem 0; }
-  code { background: #f4f4f4; padding: 1px 4px; border-radius: 2px; }
-  textarea { width: 100%; font-family: monospace; font-size: 0.8em; margin: 0.4rem 0; }
-  h3 { margin-top: 1.5rem; }
-  label { display: block; margin-top: 0.5rem; }
-  input[type=number] { display: block; margin-top: 0.25rem; }
-  ul { list-style: none; padding: 0; }
+  section { margin: 0; }
+  .pad code, .pad .mono { font-family: var(--mono); }
+  textarea.input { font-family: var(--mono); font-size: 12px; }
+  #om-collected { list-style: none; padding: 0; margin: 12px 0 0; }
+  #om-collected :global(li) {
+    font-family: var(--mono); font-size: 12px; color: var(--good);
+    padding: 4px 0;
+  }
+  #om-collected :global(code) {
+    background: var(--good-soft); color: var(--good);
+    padding: 1px 6px; border-radius: var(--r-sm);
+  }
+  /* status / error markup the script may inject into om-stage uses .muted */
+  :global(.muted) { color: var(--mut); font-size: 13px; }
 </style>

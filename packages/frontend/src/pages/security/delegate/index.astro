@@ -1,30 +1,77 @@
 ---
-import BaseLayout from '../../../layouts/BaseLayout.astro';
+// Nido reskin of the session-key delegation approval page. The ENTIRE <script>
+// is preserved verbatim from the BaseLayout version — including the origin /
+// return-URL validation (anti-redirect-abuse) which is copied VERBATIM — and all
+// element IDs and query-param names (origin, target, pubkey, duration, return)
+// are unchanged. Only the shell, markup and copy are reskinned to Nido voice
+// ("an app wants to act on your behalf").
+import NidoLayout from '../../../layouts/NidoLayout.astro';
+import Toast from '../../../components/Toast.astro';
+import PasskeySheet from '../../../components/PasskeySheet.astro';
+import Icon from '../../../components/Icon.astro';
 ---
-<BaseLayout title="Delegate session key">
-  <main class="delegate">
-    <h1>Delegate a session key</h1>
-    <p>The dApp at <code id="origin-text"></code> wants to install a session
-       key on this account scoped to the contract below. The key it provided
-       was generated in the dApp's own origin; your wallet only signs the
-       installation transaction.</p>
-
-    <dl class="kv">
-      <dt>Target contract</dt><dd><code id="target-text"></code></dd>
-      <dt>Session public key</dt><dd><code id="pubkey-text" class="wrap"></code></dd>
-      <dt>Expires</dt><dd id="expiry-text"></dd>
-    </dl>
-
-    <p class="muted">After signing, you'll be sent back to the dApp. To revoke
-       later, visit <a href="/security/">/security</a>.</p>
-
-    <div class="actions">
-      <button id="approve" type="button">Approve &amp; sign</button>
-      <button id="deny" type="button">Cancel</button>
+<NidoLayout title="Let an app in">
+  <div class="col-scroll scroll-hide screen-in">
+    <div class="topbar">
+      <div class="disp" style="font-weight:800;font-size:19px;">Let an app in?</div>
     </div>
-    <p id="status" class="muted"></p>
-  </main>
-</BaseLayout>
+
+    <div class="pad" style="padding-top:8px;">
+      <div class="card" style="padding:18px;">
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;">
+          <div style="width:42px;height:42px;border-radius:13px;background:var(--acc-soft);display:grid;place-items:center;">
+            <Icon name="link" size={20} color="var(--acc)" />
+          </div>
+          <div style="min-width:0;">
+            <div style="font-weight:700;font-size:14.5px;">App wants to act for you</div>
+            <div class="mut mono" id="origin-text" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+          </div>
+        </div>
+        <p class="mut" style="font-size:13px;line-height:1.55;margin:0;">
+          This app made its own key and wants permission to use it with the contract
+          below — just for a while. You stay in control: approve with your passkey,
+          and you can cut it off any time.
+        </p>
+      </div>
+
+      <span class="section-label" style="display:block;margin:22px 0 10px;">What you're allowing</span>
+      <div class="card" style="overflow:hidden;padding:0;">
+        <div class="navrow" style="cursor:default;">
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:13.5px;">Allowed to use</div>
+            <div class="mut mono" style="font-size:12px;"><code id="target-text"></code></div>
+          </div>
+        </div>
+        <div class="navrow" style="cursor:default;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:700;font-size:13.5px;">App's key</div>
+            <div class="mut mono" style="font-size:11.5px;word-break:break-all;"><code id="pubkey-text" class="wrap"></code></div>
+          </div>
+        </div>
+        <div class="navrow" style="cursor:default;border-bottom:none;">
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:13.5px;">Expires</div>
+            <div class="mut" id="expiry-text" style="font-size:12.5px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="mut" style="font-size:12.5px;line-height:1.55;margin:14px 0 0;">
+        After you approve, we'll send you back to the app. To cut it off later,
+        visit <a href="/security/" class="link">your safety settings</a>.
+      </p>
+
+      <div class="actions" style="display:flex;gap:10px;margin-top:18px;">
+        <button id="approve" class="btn acc" type="button" style="flex:1;">Approve &amp; sign</button>
+        <button id="deny" class="btn ghost" type="button" style="flex:0 0 auto;width:auto;">Cancel</button>
+      </div>
+      <p id="status" class="mut" style="font-size:12.5px;margin-top:12px;"></p>
+    </div>
+  </div>
+
+  <Toast />
+  <PasskeySheet />
+</NidoLayout>
 
 <script>
   import { contractIdFromHostname, extractXdrOperations, hex2buf } from '@g2c/passkey-sdk';
@@ -162,12 +209,6 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 </script>
 
 <style>
-  .delegate { max-width: 560px; margin: 2rem auto; padding: 0 1rem; }
-  .muted { color: #666; font-size: 0.9em; }
-  .actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; }
-  code { background: #f4f4f4; padding: 1px 4px; border-radius: 2px; }
+  .pad code { font-family: var(--mono); }
   code.wrap { word-break: break-all; }
-  dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1rem; margin: 1rem 0; }
-  dl.kv dt { color: #666; }
-  dl.kv dd { margin: 0; }
 </style>

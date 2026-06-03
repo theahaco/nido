@@ -1,0 +1,24 @@
+---
+// Toast host — mount once per page (e.g. inside the layout). Controlled
+// imperatively by `src/lib/toast.ts`:  toast("Copied address").
+//
+// Ported from the prototype's `ToastHost` (`app/ui.jsx`). Pre-renders the icon
+// glyphs that copy may reference; `toast.ts` flips visibility by `data-icon`.
+import Icon from "./Icon.astro";
+
+// Icon glyphs that copy is allowed to show. Extend as call sites need them.
+const icons = ["check", "copy", "info", "shieldcheck"] as const;
+---
+
+<div class="toastwrap" id="nido-toast-host">
+  <div class="toast">
+    <span id="nido-toast-icon" hidden>
+      {icons.map((name) => (
+        <span data-icon={name} hidden>
+          <Icon name={name} size={16} color="var(--paper)" />
+        </span>
+      ))}
+    </span>
+    <span id="nido-toast-msg"></span>
+  </div>
+</div>
