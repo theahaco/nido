@@ -35,7 +35,9 @@ import { rpcUrl, networkPassphrase } from "../contracts/util"
 import { getFriendbotUrl } from "../util/friendbot"
 import { findRuleForPubkey, fetchVerifierAddress } from "./policyChainFetch"
 
-const FEE_PAYER_KEY = "sm:feePayerSecret"
+// Same key the g2c frontend uses for its status-message fee payer, so tooling
+// that seeds a funded bank account (e.g. the e2e harness) funds this too.
+const FEE_PAYER_KEY = "sm:keypairSecret"
 
 /** True when a session passkey is already delegated for (account, contract). */
 export function hasSessionKey(account: string, contractId: string): boolean {
