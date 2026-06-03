@@ -130,7 +130,7 @@
     const title = esc(row.name ?? "Your Nido");
     if (row.status === "pending") {
       const href = accountUrl(window.location.host, row.contractId, `/new-account/?key=${row.resumeKey}`);
-      return `<a class="mn-row mn-pending" role="menuitem" href="${href}">${av}
+      return `<a class="mn-row mn-pending" role="menuitem" href="${esc(href)}">${av}
         <span class="mn-main"><span class="mn-name">${title}</span><span class="mn-meta">Finishing setup…</span></span>
         <span class="mn-chev">›</span></a>`;
     }
