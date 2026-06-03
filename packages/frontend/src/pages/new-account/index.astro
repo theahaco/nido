@@ -150,6 +150,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
   } from "@g2c/passkey-sdk";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { detectPasskeyLabel } from "../../lib/passkeyLabel";
+  import { shortAddr } from "../../lib/address";
   import { toast } from "../../lib/toast";
   import { checkPasskeySupport } from "../../lib/passkeySupport";
 
@@ -231,7 +232,11 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
 
   // --- Init: surface the contract id + apply the passkey label to copy ---
 
-  $contractIdEl.textContent = contractId || "(unknown)";
+  // Show a shortened address so the 56-char contract ID never overflows the
+  // quiet pill chip (full ID stays in the URL / localStorage). The chip carries
+  // a title with the full value for hover/inspection.
+  $contractIdEl.textContent = contractId ? shortAddr(contractId, 6, 6) : "(unknown)";
+  if (contractId) $accountChip.title = contractId;
   $pkLabelBtn.textContent = pk.label;
   $pkLabelInline.textContent = pk.label;
 

@@ -74,6 +74,13 @@ import Toast from "../components/Toast.astro";
           <h2 class="disp lp-h2" style="text-align: left;">Your Nidos</h2>
         </div>
         <div id="accounts-list"></div>
+        <!-- Returning visitors who already have a Nido see this instead of the
+             marketing create-hero — a quiet secondary "create another". -->
+        <div id="create-another" class="hidden" style="margin-top: 22px;">
+          <button id="create-another-btn" class="btn ghost" style="width: auto; padding: 0 22px; height: 48px;">
+            <Icon name="sparkle" size={16} color="var(--acc)" /> Create another Nido
+          </button>
+        </div>
       </section>
 
       <!-- F-01: no interstitial "Set up your face" hand-off card — "Create your
@@ -214,6 +221,19 @@ import Toast from "../components/Toast.astro";
   const $errorBox = document.getElementById("error-box")!;
   const $accountsSection = document.getElementById("accounts-section")!;
   const $accountsList = document.getElementById("accounts-list")!;
+  const $createAnother = document.getElementById("create-another")!;
+  const $createAnotherBtn = document.getElementById("create-another-btn") as HTMLButtonElement;
+
+  // Welcome-back mode: a returning visitor who already has a Nido shouldn't be
+  // shown the marketing "Create your Nido" hero again. Lead with "Your Nidos"
+  // and demote creation to a quiet secondary button.
+  function enterWelcomeBack() {
+    document.querySelector<HTMLElement>(".lp-hero")?.classList.add("hidden");
+    document.getElementById("how")?.classList.add("hidden");
+    document.getElementById("why")?.classList.add("hidden");
+    document.querySelector<HTMLElement>(".lp-band")?.classList.add("hidden");
+    $createAnother.classList.remove("hidden");
+  }
 
   function showError(msg: string) {
     $errorBox.textContent = msg;
@@ -281,6 +301,10 @@ import Toast from "../components/Toast.astro";
   for (const cAddress of activeAccounts) {
     addAccountRow(cAddress);
   }
+  // Already have a Nido on this device → welcome-back view, not the create pitch.
+  if (activeAccounts.length > 0) {
+    enterWelcomeBack();
+  }
 
   // --- Check pending accounts against chain ---
 
@@ -302,6 +326,8 @@ import Toast from "../components/Toast.astro";
       if (exists) {
         activateAccount(contractId);
         addAccountRow(contractId);
+        // A pending Nido just confirmed on-chain → switch to welcome-back too.
+        enterWelcomeBack();
       }
     }
   })();
@@ -356,5 +382,8 @@ import Toast from "../components/Toast.astro";
   $createBtn.addEventListener("click", () => createAccount($createBtn));
   if ($createBtnBand) {
     $createBtnBand.addEventListener("click", () => createAccount($createBtnBand));
+  }
+  if ($createAnotherBtn) {
+    $createAnotherBtn.addEventListener("click", () => createAccount($createAnotherBtn));
   }
 </script>
