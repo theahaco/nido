@@ -217,7 +217,7 @@ import Icon from "../../components/Icon.astro";
     fetchRegistryAddress,
   } from "@g2c/passkey-sdk";
   import { findRuleForPubkey, fetchVerifierAddress } from "../../lib/policyChainFetch.js";
-  import { startDelegation, readDelegationReturn } from "../../lib/delegationHandover.js";
+  import { startDelegation, readDelegationReturn, consumePendingDelegation } from "../../lib/delegationHandover.js";
   import { Keypair, Networks, TransactionBuilder, Transaction, rpc, xdr } from "@stellar/stellar-sdk";
   import { defineG2cWalletButton, WALLET_CHANGED_EVENT } from "../../components/g2c-wallet-button.js";
   import { signTransaction as kitSignTransaction, isG2cWallet, type WalletSession } from "../../lib/walletConnect.js";
@@ -294,15 +294,28 @@ import Icon from "../../components/Icon.astro";
   // outcome and clean the URL so reloads don't re-trigger the banner.
   {
     const ret = readDelegationReturn();
-    if (ret === "ok") {
-      alert("Delegation succeeded. The dApp will now sign in-page for this contract.");
+    if (ret) {
+      // The wallet's return redirect carries only `?delegation=...` — it
+      // overwrites our returnUrl query string, so the account we delegated for
+      // is NOT in the URL. Recover it from the record startDelegation
+      // persisted and repopulate the input, so the delegation banner (and the
+      // in-page session-key signing path) find the saved material instead of
+      // the user having to re-paste the C-address.
+      const pending = consumePendingDelegation();
+      if (pending?.account && !$contractInput.value) {
+        $contractInput.value = pending.account;
+      }
+      alert(
+        ret === "ok"
+          ? "Delegation succeeded. The dApp will now sign in-page for this contract."
+          : "Delegation cancelled. Local session-key material was kept; the next attempt will overwrite it.",
+      );
+      // Drop ?delegation but keep the account in the URL so a reload stays on
+      // this contract (the pending record is single-use and already consumed).
       const clean = new URL(window.location.href);
       clean.searchParams.delete("delegation");
-      window.history.replaceState({}, "", clean.toString());
-    } else if (ret === "cancelled") {
-      alert("Delegation cancelled. Local session-key material was kept; the next attempt will overwrite it.");
-      const clean = new URL(window.location.href);
-      clean.searchParams.delete("delegation");
+      const acc = $contractInput.value.trim();
+      if (acc) clean.searchParams.set("contract", acc);
       window.history.replaceState({}, "", clean.toString());
     }
   }
