@@ -31,7 +31,7 @@ const G2C_ICON = 'data:image/svg+xml;base64,' +
 export class G2cModule {
     moduleType = ModuleType.HOT_WALLET;
     productId = G2C_ID;
-    productName = 'g2c (passkey)';
+    productName = 'Nido (passkey)';
     productUrl;
     productIcon = G2C_ICON;
     base;

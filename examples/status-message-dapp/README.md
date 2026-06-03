@@ -90,7 +90,7 @@ wallet: the passkey ceremony runs at the g2c deployment, not in this app. Set
 which deployment via `.env`:
 
 ```dotenv
-PUBLIC_G2C_BASE="https://mysoroban.xyz"
+PUBLIC_G2C_BASE="https://nido.fyi"
 ```
 
 `getAddress` opens `<base>/connect/` to pick a smart account; signing opens

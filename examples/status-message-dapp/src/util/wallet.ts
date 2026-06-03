@@ -29,12 +29,12 @@ import storage from "./storage"
 export { G2C_ID }
 
 /**
- * The g2c deployment apex origin (e.g. `https://mysoroban.xyz`). The module
+ * The g2c deployment apex origin (e.g. `https://nido.fyi`). The module
  * opens `<base>/connect/` for account selection and `<account>.<base>/sign/`
  * for the passkey ceremony.
  */
 export function g2cBase(): string {
-	return import.meta.env.PUBLIC_G2C_BASE ?? "https://mysoroban.xyz"
+	return import.meta.env.PUBLIC_G2C_BASE ?? "https://nido.fyi"
 }
 
 /**
