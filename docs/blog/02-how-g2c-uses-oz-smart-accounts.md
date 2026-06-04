@@ -593,8 +593,9 @@ to pick a verifier (passkeys), seed a rule (the default passkey), and add a poli
 
 ## Next in the series
 
-- [**Part 3 — Passkeys & on-chain WebAuthn**](./README.md): every byte of the
-  assertion, the secp256r1 digest, the flags, and why verification is trustless.
+- [**Part 3 — Passkeys & on-chain WebAuthn**](./03-passkeys-and-on-chain-webauthn.md):
+  every byte of the assertion, the secp256r1 digest, the flags, and why
+  verification is trustless.
 - **Part 4 — Scoped sessions & policies:** building custom policies (spending
   limits, allow-lists) and composing them.
 - **Part 5 — Social recovery:** the delegated-friend nested-auth dance, in full.
