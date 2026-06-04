@@ -305,6 +305,18 @@ import Nest from "../../components/Nest.astro";
   let contractId = contractIdFromHostname(hostname);
   const rpId = hostname;
 
+  // Point the home link at the apex as early as possible, before any code
+  // that could throw. The static fallback is href="/", but on a contract
+  // subdomain the root page redirects straight back here — so if a later
+  // runtime error skipped this, the home button would loop. Setting it here
+  // (independent of contractId resolution) keeps it safe.
+  {
+    const $homeLinkEarly = document.getElementById("home-link") as HTMLAnchorElement | null;
+    if ($homeLinkEarly) {
+      $homeLinkEarly.href = `//${stripSubdomain(window.location.host)}/`;
+    }
+  }
+
   // --- Name resolution ---
   // If the subdomain is a human-readable name (not a 56-char contract ID),
   // resolve it to a contract ID. Stay on the name subdomain for shareability.
@@ -649,12 +661,8 @@ import Nest from "../../components/Nest.astro";
 
   initAccountCard();
 
-  // Set navigation links
-  if (contractId) {
-    const rootHost = stripSubdomain(window.location.host);
-    const $homeLink = document.getElementById("home-link") as HTMLAnchorElement;
-    $homeLink.href = `//${rootHost}/`;
-  }
+  // Home link is set unconditionally near the top of the script (before any
+  // code that can throw), so it doesn't need setting here.
 
   if (isSigningMode) {
     initSigningMode();
