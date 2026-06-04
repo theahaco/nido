@@ -33,7 +33,9 @@
   .mynido-open .mynido-caret { transform: rotate(180deg); }
 
   .mynido-panel {
-    position: absolute; top: calc(100% + 9px); right: 0; width: 300px; z-index: 90;
+    /* width caps to the viewport (minus a small gutter) so the right-anchored
+       panel never clips off the left edge on the smallest phones (~320px). */
+    position: absolute; top: calc(100% + 9px); right: 0; width: min(300px, calc(100vw - 32px)); z-index: 90;
     background: var(--paper-2); border: 1px solid var(--line); border-radius: 20px;
     box-shadow: 0 28px 70px rgba(42,26,18,.20), 0 6px 16px rgba(42,26,18,.08);
     overflow: hidden; transform-origin: top right; display: none;
