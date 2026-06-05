@@ -265,10 +265,14 @@
     if (root.classList.contains("mynido-open") && !root.contains(e.target as Node)) close();
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
-  // Hero / CTA-band buttons open the same menu.
+  // Hero / CTA-band buttons open the same menu. Defer open() to the next tick:
+  // the click that dispatched this event is still bubbling and would reach the
+  // document-level "click outside closes" handler above, instantly closing a
+  // menu opened synchronously here (the button "does nothing"). Opening on the
+  // next tick lets that click settle first.
   window.addEventListener("nido:open-menu", () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-    open();
+    setTimeout(open, 0);
   });
 
   // Background: promote freshly-deployed pending accounts.
