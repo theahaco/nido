@@ -8,131 +8,482 @@ import MyNidoMenu from "../components/MyNidoMenu.astro";
 ---
 
 <NidoLayout title="Nido — A safe place for everything" shell="bleed">
-    <div class="lp">
-      <div class="halo" style="width: 420px; height: 420px; top: -180px; right: -140px;"></div>
+  <div class="lp">
+    <div
+      class="halo"
+      style="width: 420px; height: 420px; top: -180px; right: -140px;"
+    >
+    </div>
 
-      <nav class="lp-nav">
-        <Logo size={22} mark markSize={28} />
-        <a
-          class="lp-navlink"
-          href="https://github.com/theahaco/g2c"
-          target="_blank"
-          rel="noopener"
-          title="View on GitHub"
-          style="margin-left: auto; display: inline-flex; align-items: center;"
+    <nav class="lp-nav">
+      <Logo size={22} mark markSize={28} />
+      <a
+        class="lp-navlink"
+        href="https://github.com/theahaco/g2c"
+        target="_blank"
+        rel="noopener"
+        title="View on GitHub"
+        style="margin-left: auto; display: inline-flex; align-items: center;"
+      >
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"
+          ><path
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
+          ></path></svg
         >
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
-        </a>
-        <MyNidoMenu />
-      </nav>
+      </a>
+      <MyNidoMenu />
+    </nav>
 
-      <header class="lp-hero">
-        <div class="lp-hero-copy">
-          <span class="chip acc lp-eyebrow"><span class="dot"></span> Money · Identity · Access</span>
-          <h1 class="disp lp-h1">A safe place<br />for <span class="acc" style="font-style: italic;">everything.</span></h1>
-          <p class="lp-sub">
-            Nido is a safe place for everything you own — money, identity, and access.
-            Set up in seconds with just your face. Nothing to memorize, and no way to get locked out.
-          </p>
-          <div class="lp-cta">
-            <button id="get-started-hero" class="btn acc" style="width: auto; padding: 0 26px; height: 54px;">
-              Get started <Icon name="arrow" size={18} color="#fff" />
-            </button>
+    <header class="lp-hero">
+      <div class="lp-hero-copy">
+        <span class="chip acc lp-eyebrow"
+          ><span class="dot"></span> Money · Identity · Access</span
+        >
+        <h1 class="disp lp-h1">
+          A safe place<br />for <span class="acc" style="font-style: italic;"
+            >everything.</span>
+        </h1>
+        <p class="lp-sub">
+          Nido is a safe place for everything you own — money, identity, and
+          access. Set up in seconds with just your face. Nothing to memorize,
+          and no way to get locked out.
+        </p>
+        <div class="lp-cta">
+          <button
+            id="get-started-hero"
+            class="btn acc"
+            style="width: auto; padding: 0 26px; height: 54px;"
+          >
+            Get started <Icon name="arrow" size={18} color="#fff" />
+          </button>
+        </div>
+        <div
+          class="mut"
+          style="font-size: 12.5px; font-weight: 600; margin-top: 12px; display:inline-flex; align-items:center; gap:7px;"
+        >
+          <span
+            class="dot acc"
+            style="width:7px;height:7px;border-radius:50%;background:var(--acc);display:inline-block;"
+          ></span> Demo on Stellar testnet — no real funds.
+        </div>
+        <div class="lp-trust">
+          <span
+            ><Icon name="faceid" size={15} color="var(--mut)" /> Set up with your
+            face</span
+          >
+          <span
+            ><Icon name="bolt" size={15} color="var(--mut)" /> Ready in seconds</span
+          >
+          <span
+            ><Icon name="shieldcheck" size={15} color="var(--mut)" /> Never locked
+            out</span
+          >
+        </div>
+      </div>
+
+      <div class="lp-preview">
+        <div class="lp-card">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center;"
+          >
+            <Logo size={17} mark markSize={22} />
+            <span class="chip good" style="font-size: 11px;"
+              ><Icon name="lock" size={13} color="var(--good)" /> Only you</span
+            >
           </div>
-          <div class="mut" style="font-size: 12.5px; font-weight: 600; margin-top: 12px; display:inline-flex; align-items:center; gap:7px;"><span class="dot acc" style="width:7px;height:7px;border-radius:50%;background:var(--acc);display:inline-block;"></span> Demo on Stellar testnet — no real funds.</div>
-          <div class="lp-trust">
-            <span><Icon name="faceid" size={15} color="var(--mut)" /> Set up with your face</span>
-            <span><Icon name="bolt" size={15} color="var(--mut)" /> Ready in seconds</span>
-            <span><Icon name="shieldcheck" size={15} color="var(--mut)" /> Never locked out</span>
+          <div
+            class="mut"
+            style="font-size: 12.5px; font-weight: 700; margin-top: 26px;"
+          >
+            Balance
+          </div>
+          <div
+            class="disp"
+            style="font-weight: 800; font-size: 44px; letter-spacing: -.01em; line-height: 1; margin-top: 3px;"
+          >
+            250 <span class="mut" style="font-size: 24px;">XLM</span>
+          </div>
+          <div class="mut" style="font-size: 13px; font-weight: 600;">
+            In your Nido
+          </div>
+          <div class="btn-row" style="margin-top: 20px;">
+            <div
+              class="btn acc"
+              style="height: 46px; font-size: 14px; pointer-events: none;"
+            >
+              <Icon name="receive" size={17} color="#fff" /> Receive
+            </div>
+            <div
+              class="btn soft"
+              style="height: 46px; font-size: 14px; pointer-events: none;"
+            >
+              <Icon name="shieldcheck" size={17} /> Approve
+            </div>
           </div>
         </div>
-
-        <div class="lp-preview">
-          <div class="lp-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <Logo size={17} mark markSize={22} />
-              <span class="chip good" style="font-size: 11px;"><Icon name="lock" size={13} color="var(--good)" /> Only you</span>
-            </div>
-            <div class="mut" style="font-size: 12.5px; font-weight: 700; margin-top: 26px;">Balance</div>
-            <div class="disp" style="font-weight: 800; font-size: 44px; letter-spacing: -.01em; line-height: 1; margin-top: 3px;">250 <span class="mut" style="font-size: 24px;">XLM</span></div>
-            <div class="mut" style="font-size: 13px; font-weight: 600;">In your Nido</div>
-            <div class="btn-row" style="margin-top: 20px;">
-              <div class="btn acc" style="height: 46px; font-size: 14px; pointer-events: none;"><Icon name="receive" size={17} color="#fff" /> Receive</div>
-              <div class="btn soft" style="height: 46px; font-size: 14px; pointer-events: none;"><Icon name="shieldcheck" size={17} /> Approve</div>
-            </div>
-          </div>
-          <div class="lp-float lp-float-1"><Icon name="faceid" size={26} color="var(--coral)" /></div>
-          <div class="lp-float lp-float-2"><Icon name="shieldcheck" size={16} color="var(--teal)" /> <span style="font-size: 12px; font-weight: 700;">Proved</span></div>
+        <div class="lp-float lp-float-1">
+          <Icon name="faceid" size={26} color="var(--coral)" />
         </div>
-      </header>
+        <div class="lp-float lp-float-2">
+          <Icon name="shieldcheck" size={16} color="var(--teal)" />
+          <span style="font-size: 12px; font-weight: 700;">Proved</span>
+        </div>
+      </div>
+    </header>
 
-      <!-- F-01: no interstitial "Set up your face" hand-off card — "Get started"
+    <!-- F-01: no interstitial "Set up your face" hand-off card — "Get started"
            opens the My Nido menu which routes into the /new-account/
            "Lock it to you" passkey step, which makes the same promise better. -->
 
-      <!-- How it works -->
-      <section class="lp-how" id="how">
-        <div class="lp-secthead" style="text-align: left;">
-          <span class="section-label acc">How it works</span>
-          <h2 class="disp lp-h2" style="text-align: left;">Set up in about thirty seconds.</h2>
-        </div>
-        <div class="lp-steps">
-          <div class="lp-step">
-            <div class="lp-stepnum">1</div>
-            <div class="lp-stepicon"><Icon name="sparkle" size={22} color="var(--acc)" /></div>
-            <div class="disp" style="font-weight: 800; font-size: 19px; margin-top: 14px;">Create your Nido</div>
-            <p class="mut" style="font-size: 14.5px; line-height: 1.55; margin-top: 7px;">Tap once and we'll reserve your account. No codes to copy, no waiting around.</p>
+    <!-- How it works -->
+    <section class="lp-how" id="how">
+      <div class="lp-secthead" style="text-align: left;">
+        <span class="section-label acc">How it works</span>
+        <h2 class="disp lp-h2" style="text-align: left;">
+          Set up in about thirty seconds.
+        </h2>
+      </div>
+      <div class="lp-steps">
+        <div class="lp-step">
+          <div class="lp-stepnum">1</div>
+          <div class="lp-stepicon">
+            <Icon name="sparkle" size={22} color="var(--acc)" />
           </div>
-          <div class="lp-step">
-            <div class="lp-stepnum">2</div>
-            <div class="lp-stepicon"><Icon name="faceid" size={22} color="var(--acc)" /></div>
-            <div class="disp" style="font-weight: 800; font-size: 19px; margin-top: 14px;">Set up with your face</div>
-            <p class="mut" style="font-size: 14.5px; line-height: 1.55; margin-top: 7px;">Your face is all it takes — nothing to write down, nothing to lose.</p>
+          <div
+            class="disp"
+            style="font-weight: 800; font-size: 19px; margin-top: 14px;"
+          >
+            Create your Nido
           </div>
-          <div class="lp-step">
-            <div class="lp-stepnum">3</div>
-            <div class="lp-stepicon"><Icon name="shieldcheck" size={22} color="var(--acc)" /></div>
-            <div class="disp" style="font-weight: 800; font-size: 19px; margin-top: 14px;">You're in</div>
-            <p class="mut" style="font-size: 14.5px; line-height: 1.55; margin-top: 7px;">Your Nido is ready the moment you're set up. No extra steps, no hand-offs.</p>
+          <p
+            class="mut"
+            style="font-size: 14.5px; line-height: 1.55; margin-top: 7px;"
+          >
+            Tap once and we'll reserve your account. No codes to copy, no
+            waiting around.
+          </p>
+        </div>
+        <div class="lp-step">
+          <div class="lp-stepnum">2</div>
+          <div class="lp-stepicon">
+            <Icon name="faceid" size={22} color="var(--acc)" />
+          </div>
+          <div
+            class="disp"
+            style="font-weight: 800; font-size: 19px; margin-top: 14px;"
+          >
+            Set up with your face
+          </div>
+          <p
+            class="mut"
+            style="font-size: 14.5px; line-height: 1.55; margin-top: 7px;"
+          >
+            Your face is all it takes — nothing to write down, nothing to lose.
+          </p>
+        </div>
+        <div class="lp-step">
+          <div class="lp-stepnum">3</div>
+          <div class="lp-stepicon">
+            <Icon name="shieldcheck" size={22} color="var(--acc)" />
+          </div>
+          <div
+            class="disp"
+            style="font-weight: 800; font-size: 19px; margin-top: 14px;"
+          >
+            You're in
+          </div>
+          <p
+            class="mut"
+            style="font-size: 14.5px; line-height: 1.55; margin-top: 7px;"
+          >
+            Your Nido is ready the moment you're set up. No extra steps, no
+            hand-offs.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Nido -->
+    <section class="lp-feat" id="why">
+      <div class="lp-featcard">
+        <div class="lp-featicon"><Icon name="wallet" size={22} /></div>
+        <div class="disp" style="font-weight: 800; font-size: 18px;">
+          A safe place for everything
+        </div>
+        <p
+          class="mut"
+          style="font-size: 14px; line-height: 1.55; margin-top: 6px;"
+        >
+          Money, identity, and access — all in one account you actually own.
+        </p>
+      </div>
+      <div class="lp-featcard">
+        <div class="lp-featicon"><Icon name="lock" size={22} /></div>
+        <div class="disp" style="font-weight: 800; font-size: 18px;">
+          Only you get in
+        </div>
+        <p
+          class="mut"
+          style="font-size: 14px; line-height: 1.55; margin-top: 6px;"
+        >
+          Your face is the key. It works across your phone and laptop, and can't
+          be faked.
+        </p>
+      </div>
+      <div class="lp-featcard">
+        <div class="lp-featicon"><Icon name="shieldcheck" size={22} /></div>
+        <div class="disp" style="font-weight: 800; font-size: 18px;">
+          Never locked out
+        </div>
+        <p
+          class="mut"
+          style="font-size: 14px; line-height: 1.55; margin-top: 6px;"
+        >
+          Lose your phone? People you trust can let you back in. You're always
+          covered.
+        </p>
+      </div>
+    </section>
+
+    <!-- Why you should trust us -->
+    <section class="lp-trust-section" id="trust">
+      <div class="lp-secthead" style="text-align: center; margin-bottom: 52px;">
+        <span class="section-label acc">Under the hood</span>
+        <h2 class="disp lp-h2">Why you should trust us.</h2>
+      </div>
+
+      <!-- 1. Biometrics stay on device -->
+      <div class="lp-trust-block">
+        <div class="lp-trust-vis">
+          <div class="td-flow-row">
+            <div class="td-node">
+              <div class="td-ico" style="background: var(--acc-soft);">
+                <Icon name="faceid" size={30} color="var(--acc)" />
+              </div>
+              <div class="td-lbl disp">Your device</div>
+              <div class="td-sub">Secure enclave</div>
+            </div>
+            <div class="td-connector">
+              <div class="td-connector-tag">signed proof →</div>
+              <div class="td-line"></div>
+            </div>
+            <div class="td-node">
+              <div class="td-ico" style="background: var(--good-soft);">
+                <Icon name="shieldcheck" size={30} color="var(--good)" />
+              </div>
+              <div class="td-lbl disp">Nido</div>
+              <div class="td-sub">Verified ✓</div>
+            </div>
           </div>
         </div>
-      </section>
-
-      <!-- Why Nido -->
-      <section class="lp-feat" id="why">
-        <div class="lp-featcard">
-          <div class="lp-featicon"><Icon name="wallet" size={22} /></div>
-          <div class="disp" style="font-weight: 800; font-size: 18px;">A safe place for everything</div>
-          <p class="mut" style="font-size: 14px; line-height: 1.55; margin-top: 6px;">Money, identity, and access — all in one account you actually own.</p>
+        <div class="lp-trust-copy">
+          <h3
+            class="disp"
+            style="font-weight: 800; font-size: clamp(22px, 3vw, 28px); letter-spacing: -.01em;"
+          >
+            Your face never leaves your device.
+          </h3>
+          <p
+            class="ink-soft"
+            style="font-size: 15.5px; line-height: 1.65; margin-top: 14px;"
+          >
+            Your face scan lives in a secure chip that even Nido can't access.
+            We send a challenge; your device signs it cryptographically. The
+            proof travels — your biometrics don't.
+          </p>
         </div>
-        <div class="lp-featcard">
-          <div class="lp-featicon"><Icon name="lock" size={22} /></div>
-          <div class="disp" style="font-weight: 800; font-size: 18px;">Only you get in</div>
-          <p class="mut" style="font-size: 14px; line-height: 1.55; margin-top: 6px;">Your face is the key. It works across your phone and laptop, and can't be faked.</p>
-        </div>
-        <div class="lp-featcard">
-          <div class="lp-featicon"><Icon name="shieldcheck" size={22} /></div>
-          <div class="disp" style="font-weight: 800; font-size: 18px;">Never locked out</div>
-          <p class="mut" style="font-size: 14px; line-height: 1.55; margin-top: 6px;">Lose your phone? People you trust can let you back in. You're always covered.</p>
-        </div>
-      </section>
+      </div>
 
-      <!-- CTA band -->
-      <section class="lp-band">
-        <div class="halo" style="width: 360px; height: 360px; bottom: -220px; left: 50%; transform: translateX(-50%);"></div>
-        <div style="display: flex; justify-content: center; margin-bottom: 22px; position: relative;"><Nest size={64} /></div>
-        <h2 class="disp" style="font-weight: 800; font-size: clamp(28px,7vw,40px); letter-spacing: -.01em; position: relative; line-height: 1.05;">Everything you own,<br />in one safe place.</h2>
-        <p class="lp-sub" style="margin: 14px auto 0; max-width: 360px; position: relative;">Create your Nido in under a minute. Just your face — nothing to memorize.</p>
-        <button id="get-started-band" class="btn acc" style="width: auto; padding: 0 28px; height: 54px; margin: 26px auto 0; position: relative;">
-          Get started <Icon name="arrow" size={18} color="#fff" />
-        </button>
-      </section>
+      <!-- 2. Real cryptography -->
+      <div class="lp-trust-block lp-trust-block--rev">
+        <div class="lp-trust-vis">
+          <div class="td-flow-row">
+            <div class="td-node">
+              <div class="td-ico" style="background: var(--chip);">
+                <Icon name="key" size={30} color="var(--ink-soft)" />
+              </div>
+              <div class="td-lbl disp">Private key</div>
+              <div class="td-sub">On your device</div>
+            </div>
+            <div class="td-connector">
+              <div class="td-connector-tag">↔ same protocol</div>
+              <div class="td-line"></div>
+            </div>
+            <div class="td-node">
+              <div class="td-ico" style="background: var(--acc-soft);">
+                <Icon name="key" size={30} color="var(--acc)" />
+              </div>
+              <div class="td-lbl disp">Public key</div>
+              <div class="td-sub">Stellar blockchain</div>
+            </div>
+          </div>
+        </div>
+        <div class="lp-trust-copy">
+          <h3
+            class="disp"
+            style="font-weight: 800; font-size: clamp(22px, 3vw, 28px); letter-spacing: -.01em;"
+          >
+            Built on real cryptography.
+          </h3>
+          <p
+            class="ink-soft"
+            style="font-size: 15.5px; line-height: 1.65; margin-top: 14px;"
+          >
+            Nido uses the Stellar blockchain for what blockchains genuinely do
+            best: cryptographic signing. The same open protocols that power your
+            device's secure enclave also protect your account on‑chain.
+          </p>
+        </div>
+      </div>
 
-      <footer class="lp-foot">
-        <Logo size={18} mark markSize={22} />
-        <span class="mut" style="font-size: 13px;">A safe place for everything.</span>
-      </footer>
-    </div>
+      <!-- 3. Sign-in evolved -->
+      <div class="lp-trust-block">
+        <div class="lp-trust-vis">
+          <div class="td-trio">
+            <div class="td-trio-item">
+              <div class="td-ico td-ico--sm" style="background: #fbe7e2;">
+                <Icon name="lock" size={22} color="var(--danger)" />
+              </div>
+              <div class="td-lbl disp">Passwords</div>
+              <div class="td-sub">Shared secret</div>
+              <div class="td-badge td-badge--bad">✗ Dev sees it</div>
+            </div>
+            <div class="td-trio-item">
+              <div
+                class="td-ico td-ico--sm"
+                style="background: var(--warn-soft);"
+              >
+                <Icon name="lock" size={22} color="var(--warn)" />
+              </div>
+              <div class="td-lbl disp">Google / Apple</div>
+              <div class="td-sub">Delegated identity</div>
+              <div class="td-badge td-badge--mid">⚠ They control it</div>
+            </div>
+            <div class="td-trio-item">
+              <div
+                class="td-ico td-ico--sm"
+                style="background: var(--good-soft);"
+              >
+                <Icon name="lock" size={22} color="var(--good)" />
+              </div>
+              <div class="td-lbl disp">Nido</div>
+              <div class="td-sub">Your biometrics</div>
+              <div class="td-badge td-badge--good">✓ You control it</div>
+            </div>
+          </div>
+        </div>
+        <div class="lp-trust-copy">
+          <h3
+            class="disp"
+            style="font-weight: 800; font-size: clamp(22px, 3vw, 28px); letter-spacing: -.01em;"
+          >
+            Sign‑in, evolved.
+          </h3>
+          <p
+            class="ink-soft"
+            style="font-size: 15.5px; line-height: 1.65; margin-top: 14px;"
+          >
+            Passwords trust unknown developers with your secrets. Google sign‑in
+            gives Big Tech control of your identity. Nido gives you a smart
+            contract account controlled directly by your biometrics. No
+            middleman.
+          </p>
+        </div>
+      </div>
+
+      <!-- 4. Recovery -->
+      <div class="lp-trust-block lp-trust-block--rev">
+        <div class="lp-trust-vis">
+          <div class="td-recovery">
+            <div class="td-recovery-group">
+              <div class="td-recovery-row">
+                <div class="td-ico td-ico--sm" style="background: var(--chip);">
+                  <Icon name="device" size={20} color="var(--ink-soft)" />
+                </div>
+                <div class="td-ico td-ico--sm" style="background: var(--chip);">
+                  <Icon name="device" size={20} color="var(--ink-soft)" />
+                </div>
+                <div class="td-ico td-ico--sm" style="background: var(--chip);">
+                  <Icon name="device" size={20} color="var(--ink-soft)" />
+                </div>
+              </div>
+              <div class="td-lbl disp">Your devices</div>
+              <div class="td-sub">Laptop · Phone · Tablet</div>
+            </div>
+            <div class="td-recovery-plus disp">+</div>
+            <div class="td-recovery-group">
+              <div class="td-recovery-row">
+                <div class="td-friend td-friend--on"></div>
+                <div class="td-friend td-friend--on"></div>
+                <div class="td-friend td-friend--on"></div>
+                <div class="td-friend"></div>
+                <div class="td-friend"></div>
+              </div>
+              <div class="td-lbl disp">Trusted friends</div>
+              <div class="td-sub">3 of 5 to recover</div>
+            </div>
+          </div>
+        </div>
+        <div class="lp-trust-copy">
+          <h3
+            class="disp"
+            style="font-weight: 800; font-size: clamp(22px, 3vw, 28px); letter-spacing: -.01em;"
+          >
+            Lose your phone, keep your Nido.
+          </h3>
+          <p
+            class="ink-soft"
+            style="font-size: 15.5px; line-height: 1.65; margin-top: 14px;"
+          >
+            Register your laptop, phone, and tablet as signers. For extra
+            safety, choose friends who can recover your account together — any
+            three of five, say. Real cryptography, real peace of mind.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA band -->
+    <section class="lp-band">
+      <div
+        class="halo"
+        style="width: 360px; height: 360px; bottom: -220px; left: 50%; transform: translateX(-50%);"
+      >
+      </div>
+      <div
+        style="display: flex; justify-content: center; margin-bottom: 22px; position: relative;"
+      >
+        <Nest size={64} />
+      </div>
+      <h2
+        class="disp"
+        style="font-weight: 800; font-size: clamp(28px,7vw,40px); letter-spacing: -.01em; position: relative; line-height: 1.05;"
+      >
+        Everything you own,<br />in one safe place.
+      </h2>
+      <p
+        class="lp-sub"
+        style="margin: 14px auto 0; max-width: 360px; position: relative;"
+      >
+        Create your Nido in under a minute. Just your face — nothing to
+        memorize.
+      </p>
+      <button
+        id="get-started-band"
+        class="btn acc"
+        style="width: auto; padding: 0 28px; height: 54px; margin: 26px auto 0; position: relative;"
+      >
+        Get started <Icon name="arrow" size={18} color="#fff" />
+      </button>
+    </section>
+
+    <footer class="lp-foot">
+      <Logo size={18} mark markSize={22} />
+      <span class="mut" style="font-size: 13px;"
+        >A safe place for everything.</span
+      >
+    </footer>
+  </div>
 
   <Toast />
 </NidoLayout>
@@ -191,6 +542,10 @@ import MyNidoMenu from "../components/MyNidoMenu.astro";
   function openMenu() {
     window.dispatchEvent(new CustomEvent("nido:open-menu"));
   }
-  document.getElementById("get-started-hero")?.addEventListener("click", openMenu);
-  document.getElementById("get-started-band")?.addEventListener("click", openMenu);
+  document
+    .getElementById("get-started-hero")
+    ?.addEventListener("click", openMenu);
+  document
+    .getElementById("get-started-band")
+    ?.addEventListener("click", openMenu);
 </script>
