@@ -50,16 +50,19 @@ test.describe('account page — UI only (no chain) @fast', () => {
     expect(fatal).toEqual([]);
   });
 
-  test('name-claim form is parked behind SHOW_NAME_SECTION @fast', async ({ page }) => {
+  test('name-claim form is revealed and validates input @fast', async ({ page }) => {
     await page.goto(ACCOUNT_URL, { waitUntil: 'networkidle' });
     await expect(page.locator('#home-mode')).toBeVisible();
 
-    // The claim-name feature is parked behind SHOW_NAME_SECTION (=false) in
-    // account/index.astro: the markup still ships (asserted by the test above)
-    // but the JS never reveals the form on a contract subdomain. When the flag
-    // is flipped back on, restore the client-side "1-15 characters" validation
-    // assertion here (click #claim-name-btn → expect #error-box).
-    await expect(page.locator('#name-section')).toBeHidden();
-    await expect(page.locator('#claim-name-btn')).toBeHidden();
+    // SHOW_NAME_SECTION is on: on a contract subdomain the JS reveals the
+    // name section and the claim form (no chain required). The claim button is
+    // wired to client-side validation — an empty name surfaces the 1-15 chars
+    // error before any network call.
+    await expect(page.locator('#name-section')).toBeVisible();
+    await expect(page.locator('#claim-name-btn')).toBeVisible();
+
+    await page.locator('#claim-name-btn').click();
+    await expect(page.locator('#error-box')).toBeVisible();
+    await expect(page.locator('#error-box')).toContainText('1-15 characters');
   });
 });

@@ -286,10 +286,11 @@ import Nest from "../../components/Nest.astro";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
 
-  // Name/claim feature is parked for now. Flip to `true` to bring back the
-  // on-page "Your name" / "Claim a name" card. (Name-subdomain *resolution*
-  // below is independent of this flag and stays active.)
-  const SHOW_NAME_SECTION = false;
+  // The on-page "Your name" / "Claim a name" card. Was parked while the claim
+  // round-trip was broken (bug #3); re-enabled now that the finalize flow signs
+  // and submits correctly. (Name-subdomain *resolution* below is independent of
+  // this flag and stays active.)
+  const SHOW_NAME_SECTION = true;
 
   // Friendly platform label for confirm copy ("Confirm with Face ID", etc.).
   const passkey = detectPasskeyLabel();

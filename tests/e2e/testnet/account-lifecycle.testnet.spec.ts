@@ -7,10 +7,9 @@ const PORT = Number(process.env.E2E_PORT || 4399);
 test.describe('@testnet account lifecycle', () => {
   test.describe.configure({ timeout: 180_000 });
 
-  // PARKED: the claim-name feature is hidden behind SHOW_NAME_SECTION (=false)
-  // in account/index.astro, so step 4's `#name-claim` never appears. Re-enable
-  // this bug-#3 pin (remove `.skip`) when the flag is flipped back on.
-  test.skip('create + deploy (v0.7), then claim a name — pins bug #3 (UnvalidatedContext)', async ({ page, context }) => {
+  // Un-parked: SHOW_NAME_SECTION is back on and bug #3 is fixed, so the full
+  // claim round-trip should land on-chain (asserted at step 8).
+  test('create + deploy (v0.7), then claim a name end-to-end', async ({ page, context }) => {
     await seedBank(context);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
