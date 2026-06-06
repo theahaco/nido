@@ -53,11 +53,15 @@ function oldestFromRangeError(err: unknown): number | null {
 }
 
 /**
- * Fetch the wallet's recent activity (the full retained ~7-day window) from
- * Soroban RPC: the account's own admin events plus native-SAC `transfer` events
- * to/from the account. This is the source of truth for the history feature —
- * Stellar Expert's full-history `/tx` endpoint is gated to its own origin and is
- * unusable cross-origin from this app.
+ * Fetch the wallet's recent activity (a ~6-day window inside the RPC's retained
+ * events) from Soroban RPC: the account's own admin events plus native-SAC
+ * `transfer` events to/from the account. This is the source of truth for the
+ * history feature — Stellar Expert's full-history `/tx` endpoint is gated to its
+ * own origin and is unusable cross-origin from this app.
+ *
+ * Each filter is capped at PAGE_LIMIT events (no cursor follow-up); a very busy
+ * account could exceed that, dropping the oldest events in the window. Fine for a
+ * "recent activity" view.
  */
 export async function fetchRpcRecent(address: string): Promise<ActivityPage> {
   const server = new rpc.Server(RPC_URL);

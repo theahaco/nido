@@ -3,12 +3,11 @@
 /** Coarse bucket driving the row icon + grouping priority. */
 export type ActivityKind =
   | "payment"   // SAC transfer in/out (never collapsed)
-  | "recovery"  // social-recovery rule created/used
-  | "rule"      // context_rule_added/removed/updated (non-recovery)
+  | "rule"      // context_rule_added/removed/updated (incl. recovery rules)
   | "signer"    // signer_added/removed
   | "policy"    // policy_added/removed
   | "registry"  // signer/policy registered/deregistered (low-signal bookkeeping)
-  | "other";    // recognized invocation w/o a richer bucket, or generic fallback
+  | "other";    // unrecognized event — generic fallback
 
 /** A normalized, source-agnostic Soroban contract event. */
 export interface DecodedEvent {
@@ -17,13 +16,11 @@ export interface DecodedEvent {
   data: unknown;             // scValToNative'd (e.g. BigInt stroops for transfer)
 }
 
-/** Output of decoding one Stellar Expert tx record (or one RPC tx group). */
+/** One transaction's normalized events, grouped for classification. */
 export interface DecodedTx {
   txHash: string;
   ts: number;                 // unix seconds
   events: DecodedEvent[];
-  invokedFn?: string;         // best-effort top-level invokeContract fn name
-  invokedContract?: string;   // best-effort top-level target C-address
 }
 
 /** One rendered history row. */

@@ -49,8 +49,7 @@ function paymentRow(e: DecodedEvent, idx: number, self: string, txHash: string, 
 }
 
 /** Map a non-payment event name -> {kind, title}. Unknown names -> null. */
-function adminMeta(name: string, isRecovery: boolean): { kind: ActivityKind; title: string } | null {
-  if (isRecovery) return { kind: "recovery", title: "Set up social recovery" };
+function adminMeta(name: string): { kind: ActivityKind; title: string } | null {
   switch (name) {
     case "context_rule_added": return { kind: "rule", title: "Created a rule" };
     case "context_rule_removed": return { kind: "rule", title: "Removed a rule" };
@@ -69,14 +68,14 @@ function adminMeta(name: string, isRecovery: boolean): { kind: ActivityKind; tit
 
 // Higher number = higher priority when collapsing a tx's admin events into one row.
 const PRIORITY: Record<ActivityKind, number> = {
-  recovery: 5, rule: 4, signer: 3, policy: 2, registry: 1, other: 0, payment: 0,
+  rule: 4, signer: 3, policy: 2, registry: 1, other: 0, payment: 0,
 };
 
 /**
  * Turn one decoded transaction into display rows:
  *  - one row per `transfer` event that involves `self` (payments aren't collapsed);
  *  - all administrative events collapse into ONE representative row (highest priority);
- *  - a tx with no classifiable event -> one row from the invoked fn, else a generic row.
+ *  - a tx with no classifiable event -> one generic "Contract activity" row.
  * Never returns an empty array (never drops a tx).
  */
 export function groupTxRows(decoded: DecodedTx, self: string): ActivityItem[] {
@@ -90,10 +89,9 @@ export function groupTxRows(decoded: DecodedTx, self: string): ActivityItem[] {
     }
   });
 
-  const isRecovery = decoded.invokedFn === "add_multisig_recovery";
   let best: { kind: ActivityKind; title: string } | null = null;
   for (const e of events) {
-    const meta = adminMeta(eventName(e), isRecovery && eventName(e) === "context_rule_added");
+    const meta = adminMeta(eventName(e));
     if (meta && (!best || PRIORITY[meta.kind] > PRIORITY[best.kind])) best = meta;
   }
   if (best) {
@@ -106,7 +104,7 @@ export function groupTxRows(decoded: DecodedTx, self: string): ActivityItem[] {
   if (rows.length === 0) {
     rows.push({
       id: txHash, txHash, timestamp: ts, kind: "other",
-      title: decoded.invokedFn ? `Called ${decoded.invokedFn}` : "Contract activity",
+      title: "Contract activity",
       explorerUrl: explorerUrl(txHash),
     });
   }

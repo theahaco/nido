@@ -65,22 +65,23 @@ describe("groupTxRows", () => {
     expect(admin.title).toMatch(/rule|created/i);
   });
 
-  it("maps signer + policy + recovery events by priority", () => {
+  it("maps signer + policy events and collapses a tx's admin events to the highest priority", () => {
     expect(groupTxRows(tx([{ contractId: SELF, topics: ["signer_added", 1], data: {} }]), SELF)[0].title).toBe("Added a signer");
     expect(groupTxRows(tx([{ contractId: SELF, topics: ["policy_removed", 1], data: {} }]), SELF)[0].title).toBe("Removed a policy");
+    // rule (priority 4) wins over signer (3) when both fire in one tx (e.g. recovery setup)
     const rec = groupTxRows(
       tx([
         { contractId: SELF, topics: ["context_rule_added", 2], data: { name: "recovery" } },
         { contractId: SELF, topics: ["signer_added", 2], data: {} },
-      ], { invokedFn: "add_multisig_recovery" }),
+      ]),
       SELF,
     );
     expect(rec).toHaveLength(1);
-    expect(rec[0]).toMatchObject({ kind: "recovery", title: "Set up social recovery" });
+    expect(rec[0]).toMatchObject({ kind: "rule", title: "Created a rule" });
   });
 
-  it("falls back to the invoked fn, then to a generic row, never dropping a tx", () => {
-    expect(groupTxRows(tx([], { invokedFn: "do_thing" }), SELF)[0]).toMatchObject({ kind: "other", title: "Called do_thing" });
+  it("falls back to a generic row for unrecognized events, never dropping a tx", () => {
+    expect(groupTxRows(tx([]), SELF)[0]).toMatchObject({ kind: "other", title: "Contract activity" });
     const generic = groupTxRows(tx([{ contractId: SELF, topics: ["mystery_event"], data: {} }]), SELF);
     expect(generic).toHaveLength(1);
     expect(generic[0].kind).toBe("other");

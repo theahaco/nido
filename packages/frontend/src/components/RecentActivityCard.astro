@@ -27,21 +27,8 @@
 
 <script>
   import { loadActivityPage } from "../lib/activity/history.js";
-  import type { ActivityItem } from "../lib/activity/types.js";
+  import { activityRowHtml } from "../lib/activity/rowHtml.js";
   import { contractIdFromHostname } from "@g2c/passkey-sdk";
-
-  function rowHtml(it: ActivityItem): string {
-    const icon = it.kind === "payment" ? (it.direction === "in" ? "↓" : "↑") : "•";
-    const iconCls = it.kind === "payment" && it.direction === "in" ? "in" : "acc";
-    const when = new Date(it.timestamp * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    const sign = it.kind === "payment" ? (it.direction === "in" ? "+" : "−") : "";
-    const amt = it.amount ? `<span class="ramt">${sign}${it.amount} <small>${it.asset}</small></span>` : "";
-    const sub = it.subtitle ?? when;
-    return `<a class="row" href="${it.explorerUrl}" target="_blank" rel="noopener noreferrer">
-      <span class="ricon ${iconCls}">${icon}</span>
-      <span class="rmain"><span class="rtitle">${it.title}</span><span class="rsub">${sub}</span></span>${amt}
-    </a>`;
-  }
 
   async function init() {
     const card = document.querySelector<HTMLElement>(".recent-activity");
@@ -57,7 +44,7 @@
       skel.hidden = true;
       const top = page.items.slice(0, 5);
       if (top.length === 0) { empty.hidden = false; return; }
-      list.innerHTML = top.map(rowHtml).join("");
+      list.innerHTML = top.map(activityRowHtml).join("");
       list.hidden = false;
       body.dataset.state = "ready";
     } catch {
