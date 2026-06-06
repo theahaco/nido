@@ -250,6 +250,7 @@ import Nest from "../../components/Nest.astro";
     Operation,
     Keypair,
     rpc,
+    xdr,
     nativeToScVal,
   } from "@stellar/stellar-sdk";
   import {
@@ -971,17 +972,45 @@ import Nest from "../../components/Nest.astro";
               lastLedger
             );
 
-            // Re-simulate with real signature
+            // Re-simulate the now-signed tx in ENFORCE mode. This both verifies
+            // the passkey auth before submit AND recomputes the resource
+            // footprint to cover the storage keys __check_auth reads (the
+            // verifier + the account's context-rule data). The initial assemble
+            // (built from a sim with no auth entries) doesn't size those reads,
+            // so submit would otherwise trap with an out-of-footprint error.
+            // Default "record" mode IGNORES our injected signature entirely —
+            // pass "enforce" so the simulator runs __check_auth against it.
+            // (Mirrors primaryPasskeySigner.signAndSubmit / walletSign.)
             $nameResult.textContent = "Simulating signed transaction…";
             const server = new rpc.Server(RPC_URL);
-            const sim = await server.simulateTransaction(authTxn);
+            const sim = await server.simulateTransaction(authTxn, undefined, "enforce");
 
             if (rpc.Api.isSimulationError(sim) || rpc.Api.isSimulationRestore(sim)) {
               throw new Error(`Re-simulation failed: ${"error" in sim ? sim.error : "restore needed"}`);
             }
+            const successSim = sim as rpc.Api.SimulateTransactionSuccessResponse;
 
-            // Assemble and sign with source keypair
-            const finalTx = rpc.assembleTransaction(authTxn, sim).build();
+            // Splice the fresh sorobanData (footprint + resource fee) into the
+            // signed tx via cloneFrom. Do NOT use rpc.assembleTransaction here:
+            // it rebuilds the auth entries from the sim's UNSIGNED templates and
+            // silently discards our passkey signature. cloneFrom carries the
+            // signed auth entry across intact.
+            const newSorobanData = successSim.transactionData.build();
+            const newResourceFee = BigInt(newSorobanData.resourceFee().toString());
+            const classicFee =
+              BigInt(authTxn.fee) -
+              BigInt(
+                (authTxn.toEnvelope().v1().tx().ext().value() as
+                  | xdr.SorobanTransactionData
+                  | undefined)
+                  ?.resourceFee()
+                  .toString() ?? "0"
+              );
+            const finalTx = TransactionBuilder.cloneFrom(authTxn, {
+              fee: (classicFee + newResourceFee).toString(),
+              sorobanData: newSorobanData,
+              networkPassphrase: Networks.TESTNET,
+            }).build();
             finalTx.sign(keypair);
 
             // Submit
