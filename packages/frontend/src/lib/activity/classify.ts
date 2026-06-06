@@ -14,14 +14,29 @@ function assetLabel(topic3: unknown): string {
   return s.includes(":") ? s.split(":")[0] : s;
 }
 
+/**
+ * Stroops moved by a transfer event. SAC `transfer` data is either a bare i128
+ * (→ bigint) or, for muxed destinations, a struct `{ amount: i128, to_muxed_id }`.
+ * Returns null for anything else, so a malformed event is skipped, never thrown.
+ */
+function transferAmount(data: unknown): bigint | null {
+  if (typeof data === "bigint") return data;
+  if (data && typeof data === "object" && typeof (data as { amount?: unknown }).amount === "bigint") {
+    return (data as { amount: bigint }).amount;
+  }
+  return null;
+}
+
 /** A single transfer event -> a payment row. Returns null if it doesn't involve `self`. */
 function paymentRow(e: DecodedEvent, idx: number, self: string, txHash: string, ts: number): ActivityItem | null {
   const [, from, to, asset] = e.topics as unknown[];
   const fromS = String(from), toS = String(to);
   const isOut = fromS === self, isIn = toS === self;
   if (!isOut && !isIn) return null;
+  const amountRaw = transferAmount(e.data);
+  if (amountRaw === null) return null;
   const counterparty = isOut ? toS : fromS;
-  const amount = formatXlm(stroopsToXlm(e.data as bigint));
+  const amount = formatXlm(stroopsToXlm(amountRaw));
   return {
     id: `${txHash}:transfer:${idx}`,
     txHash, timestamp: ts, kind: "payment",

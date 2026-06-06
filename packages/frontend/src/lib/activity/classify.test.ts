@@ -32,6 +32,24 @@ describe("groupTxRows", () => {
     expect(rows[0]).toMatchObject({ kind: "payment", direction: "out", title: "Sent", amount: "0.5", asset: "XLM" });
   });
 
+  it("reads the amount from a muxed transfer's struct data { amount, to_muxed_id }", () => {
+    const rows = groupTxRows(
+      tx([{ contractId: SAC, topics: ["transfer", OTHER, SELF, "native"], data: { amount: 10000000n, to_muxed_id: 42n } }]),
+      SELF,
+    );
+    expect(rows[0]).toMatchObject({ kind: "payment", direction: "in", amount: "1" });
+  });
+
+  it("skips a transfer whose data is undecodable instead of throwing", () => {
+    expect(() =>
+      groupTxRows(tx([{ contractId: SAC, topics: ["transfer", OTHER, SELF, "native"], data: null }]), SELF),
+    ).not.toThrow();
+    // no payment row, and the tx never drops — falls back to a generic row
+    const rows = groupTxRows(tx([{ contractId: SAC, topics: ["transfer", OTHER, SELF, "native"], data: null }]), SELF);
+    expect(rows.every((r) => r.kind !== "payment")).toBe(true);
+    expect(rows).toHaveLength(1);
+  });
+
   it("collapses account-creation admin events into one row but keeps the funding payment", () => {
     const rows = groupTxRows(
       tx([

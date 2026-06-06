@@ -42,7 +42,7 @@ describe("fetchRpcRecent", () => {
     const page = await fetchRpcRecent(SELF);
 
     expect(getEventsSpy).toHaveBeenCalledTimes(3);
-    // startLedger floored at 1 (1000 - OVERSHOOT_LEDGERS < 1); no range error → no retry.
+    // startLedger floored at 1 (1000 - WINDOW_LEDGERS < 1); no range error → no retry.
     expect((getEventsSpy.mock.calls[0][0] as any).startLedger).toBe(1);
     // filter 0 = account's own events (no topics); filters 1 & 2 = SAC transfer topic filters
     const f0 = (getEventsSpy.mock.calls[0][0] as any).filters[0];

@@ -3,11 +3,14 @@ import { RPC_URL, NATIVE_SAC_ID } from "../network.js";
 import { groupTxRows } from "./classify.js";
 import type { ActivityPage, DecodedEvent, DecodedTx } from "./types.js";
 
-// The public testnet RPC retains roughly the last 7 days of events. We ask for a
-// window deliberately older than retention and let the range-error retry pin the
-// start to the oldest retained ledger, so we always cover the full available
-// window without hardcoding a fragile constant.
-const OVERSHOOT_LEDGERS = 200_000;
+// The public testnet RPC retains roughly the last week of events (~120k ledgers).
+// We query a conservative window comfortably *inside* that retention so the
+// request stays valid even as the retained window slides forward between calls
+// (testnet closes a ledger every ~5s). If retention is unexpectedly shorter, the
+// range-error retry pins the start to the oldest retained ledger plus a small
+// buffer to survive the slide.
+const WINDOW_LEDGERS = 100_000; // ≈ 5.8 days at ~5s/ledger, ~16% inside retention
+const RANGE_BUFFER_LEDGERS = 120; // ≈ 10 min of slide headroom for the retry
 const PAGE_LIMIT = 1000;
 
 type RawEvent = {
@@ -59,7 +62,7 @@ function oldestFromRangeError(err: unknown): number | null {
 export async function fetchRpcRecent(address: string): Promise<ActivityPage> {
   const server = new rpc.Server(RPC_URL);
   const { sequence } = await server.getLatestLedger();
-  let startLedger = Math.max(1, sequence - OVERSHOOT_LEDGERS);
+  let startLedger = Math.max(1, sequence - WINDOW_LEDGERS);
 
   // EventFilter.topics is string[][] — each segment a base64 ScVal or "*" (any one
   // segment). Protocol-23+ SAC `transfer` emits 4 topics: [transfer, from, to, asset].
@@ -83,10 +86,11 @@ export async function fetchRpcRecent(address: string): Promise<ActivityPage> {
         res = await server.getEvents({ startLedger, filters: [filter], limit: PAGE_LIMIT });
       } catch (e) {
         // startLedger was older than retention — pin to the oldest retained ledger
-        // (for this and every subsequent filter) and retry once.
+        // plus a buffer (so a ledger or two of slide before the retry can't push it
+        // back out of range), for this and every subsequent filter, then retry.
         const oldest = oldestFromRangeError(e);
         if (oldest === null) throw e;
-        startLedger = oldest;
+        startLedger = oldest + RANGE_BUFFER_LEDGERS;
         res = await server.getEvents({ startLedger, filters: [filter], limit: PAGE_LIMIT });
       }
       raw.push(...(res.events as unknown as RawEvent[]));
