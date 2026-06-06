@@ -1,0 +1,99 @@
+import { stroopsToXlm, formatXlm } from "../money.js";
+import { shortAddr } from "../address.js";
+import { EXPLORER_BASE } from "../network.js";
+import type { ActivityItem, ActivityKind, DecodedEvent, DecodedTx } from "./types.js";
+
+const explorerUrl = (txHash: string) => `${EXPLORER_BASE}/tx/${txHash}`;
+const eventName = (e: DecodedEvent): string =>
+  Array.isArray(e.topics) && typeof e.topics[0] === "string" ? (e.topics[0] as string) : "";
+
+/** Asset label from a transfer's topic[3] ("native" | "CODE:ISSUER" | undefined). */
+function assetLabel(topic3: unknown): string {
+  if (topic3 === "native" || topic3 == null) return "XLM";
+  const s = String(topic3);
+  return s.includes(":") ? s.split(":")[0] : s;
+}
+
+/** A single transfer event -> a payment row. Returns null if it doesn't involve `self`. */
+function paymentRow(e: DecodedEvent, idx: number, self: string, txHash: string, ts: number): ActivityItem | null {
+  const [, from, to, asset] = e.topics as unknown[];
+  const fromS = String(from), toS = String(to);
+  const isOut = fromS === self, isIn = toS === self;
+  if (!isOut && !isIn) return null;
+  const counterparty = isOut ? toS : fromS;
+  const amount = formatXlm(stroopsToXlm(e.data as bigint));
+  return {
+    id: `${txHash}:transfer:${idx}`,
+    txHash, timestamp: ts, kind: "payment",
+    direction: isOut ? "out" : "in",
+    title: isOut ? "Sent" : "Received",
+    subtitle: `${isOut ? "to" : "from"} ${shortAddr(counterparty, 4, 4)}`,
+    amount, asset: assetLabel(asset), counterparty,
+    explorerUrl: explorerUrl(txHash),
+  };
+}
+
+/** Map a non-payment event name -> {kind, title}. Unknown names -> null. */
+function adminMeta(name: string, isRecovery: boolean): { kind: ActivityKind; title: string } | null {
+  if (isRecovery) return { kind: "recovery", title: "Set up social recovery" };
+  switch (name) {
+    case "context_rule_added": return { kind: "rule", title: "Created a rule" };
+    case "context_rule_removed": return { kind: "rule", title: "Removed a rule" };
+    case "context_rule_updated":
+    case "context_rule_meta_updated": return { kind: "rule", title: "Updated a rule" };
+    case "signer_added": return { kind: "signer", title: "Added a signer" };
+    case "signer_removed": return { kind: "signer", title: "Removed a signer" };
+    case "policy_added": return { kind: "policy", title: "Added a policy" };
+    case "policy_removed": return { kind: "policy", title: "Removed a policy" };
+    case "signer_registered": case "policy_registered":
+    case "signer_deregistered": case "policy_deregistered":
+      return { kind: "registry", title: "Updated account keys" };
+    default: return null;
+  }
+}
+
+// Higher number = higher priority when collapsing a tx's admin events into one row.
+const PRIORITY: Record<ActivityKind, number> = {
+  recovery: 5, rule: 4, signer: 3, policy: 2, registry: 1, other: 0, payment: 0,
+};
+
+/**
+ * Turn one decoded transaction into display rows:
+ *  - one row per `transfer` event that involves `self` (payments aren't collapsed);
+ *  - all administrative events collapse into ONE representative row (highest priority);
+ *  - a tx with no classifiable event -> one row from the invoked fn, else a generic row.
+ * Never returns an empty array (never drops a tx).
+ */
+export function groupTxRows(decoded: DecodedTx, self: string): ActivityItem[] {
+  const { txHash, ts, events } = decoded;
+  const rows: ActivityItem[] = [];
+
+  events.forEach((e, i) => {
+    if (eventName(e) === "transfer") {
+      const r = paymentRow(e, i, self, txHash, ts);
+      if (r) rows.push(r);
+    }
+  });
+
+  const isRecovery = decoded.invokedFn === "add_multisig_recovery";
+  let best: { kind: ActivityKind; title: string } | null = null;
+  for (const e of events) {
+    const meta = adminMeta(eventName(e), isRecovery && eventName(e) === "context_rule_added");
+    if (meta && (!best || PRIORITY[meta.kind] > PRIORITY[best.kind])) best = meta;
+  }
+  if (best) {
+    rows.push({
+      id: txHash, txHash, timestamp: ts, kind: best.kind, title: best.title,
+      explorerUrl: explorerUrl(txHash),
+    });
+  }
+
+  if (rows.length === 0) {
+    rows.push({
+      id: txHash, txHash, timestamp: ts, kind: "other",
+      title: decoded.invokedFn ? `Called ${decoded.invokedFn}` : "Contract activity",
+      explorerUrl: explorerUrl(txHash),
+    });
+  }
+  return rows;
+}
