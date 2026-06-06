@@ -260,7 +260,6 @@ import Nest from "../../components/Nest.astro";
     computeAuthDigest,
     getAuthEntry,
     injectPasskeySignature,
-    computeAccountAddress,
     buf2hex,
     hex2buf,
     contractIdFromHostname,
@@ -275,6 +274,7 @@ import Nest from "../../components/Nest.astro";
     loadAccountName,
     fetchRegistryAddress,
   } from "@g2c/passkey-sdk";
+  import { fetchVerifierAddress } from "../../lib/policyChainFetch";
   import { toast } from "../../lib/toast";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { detectPasskeyLabel } from "../../lib/passkeyLabel";
@@ -807,19 +807,6 @@ import Nest from "../../components/Nest.astro";
       $nameClaim.classList.remove("hidden");
     }
 
-    // Helper: lazily compute verifier address (needs Buffer polyfill)
-    let _verifierAddress: string | null = null;
-    async function getVerifierAddress(): Promise<string> {
-      if (_verifierAddress) return _verifierAddress;
-      const { Buffer } = await import("buffer");
-      const FACTORY_ID = await fetchRegistryAddress("factory");
-      const VERIFIER_HASH = Buffer.from([
-        0xb9,0x39,0x33,0x11,0xf9,0x7b,0x49,0x8f,0xbb,0x89,0x76,0xec,0x50,0xdd,0x85,0x85,
-        0xdd,0x99,0xad,0x44,0x3b,0x8f,0x13,0xec,0x5f,0x75,0x19,0x86,0x72,0x9f,0x99,0xbe,
-      ]);
-      _verifierAddress = computeAccountAddress(FACTORY_ID, VERIFIER_HASH, Networks.TESTNET);
-      return _verifierAddress;
-    }
 
     // Helper: lazily get funded keypair for tx submission
     async function getNameKeypair(): Promise<Keypair> {
@@ -955,7 +942,11 @@ import Nest from "../../components/Nest.astro";
 
             const lastLedger = parseInt(lastLedgerStr, 10);
             const keypair = Keypair.fromSecret(keypairSecret);
-            const verifierAddr = await getVerifierAddress();
+            // Read the verifier from the account's actual on-chain rule-0 signer.
+            // Computing it from a hardcoded WASM hash yields a stale address that
+            // won't match the registered signer, so __check_auth can't validate
+            // the context (UnvalidatedContext / #3002). Mirrors walletSign.
+            const verifierAddr = await fetchVerifierAddress(contractId);
 
             // Reconstruct transaction from stored XDR
             const authTxn = TransactionBuilder.fromXDR(txXdr, Networks.TESTNET) as Transaction;
