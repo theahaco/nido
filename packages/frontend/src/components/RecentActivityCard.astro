@@ -1,0 +1,75 @@
+---
+// packages/frontend/src/components/RecentActivityCard.astro
+// No SSR address exists — the smart account is resolved client-side from the
+// hostname subdomain (same as account/index.astro and the sign/recover pages).
+---
+<section class="card recent-activity">
+  <header class="ra-head">
+    <span class="section-label">Recent activity</span>
+    <a class="ra-all" href="/account/activity/">View all →</a>
+  </header>
+  <div class="ra-body" data-state="loading">
+    <div class="ra-skeleton">
+      <span class="skeleton">&nbsp;</span><span class="skeleton">&nbsp;</span><span class="skeleton">&nbsp;</span>
+    </div>
+    <div class="ra-list" hidden></div>
+    <div class="empty ra-empty" hidden>No activity yet</div>
+    <div class="ra-note mut" hidden>Showing recent activity</div>
+  </div>
+</section>
+
+<style is:global>
+  /* is:global: rows are injected via innerHTML, so scoped styles wouldn't reach them. */
+  .recent-activity .ra-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .recent-activity .ra-all { font-size: 13px; color: var(--acc-btn, #c2410c); text-decoration: none; }
+  .recent-activity .ra-skeleton { display: grid; gap: 10px; }
+  .recent-activity .ra-skeleton .skeleton { height: 42px; border-radius: 10px; display: block; }
+  .recent-activity .ra-note { font-size: 12px; margin-top: 8px; }
+</style>
+
+<script>
+  import { loadActivityPage } from "../lib/activity/history.js";
+  import type { ActivityItem } from "../lib/activity/types.js";
+  import { contractIdFromHostname } from "@g2c/passkey-sdk";
+
+  function rowHtml(it: ActivityItem): string {
+    const icon = it.kind === "payment" ? (it.direction === "in" ? "↓" : "↑") : "•";
+    const iconCls = it.kind === "payment" && it.direction === "in" ? "in" : "acc";
+    const when = new Date(it.timestamp * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const sign = it.kind === "payment" ? (it.direction === "in" ? "+" : "−") : "";
+    const amt = it.amount ? `<span class="ramt">${sign}${it.amount} <small>${it.asset}</small></span>` : "";
+    const sub = it.subtitle ?? when;
+    return `<a class="row" href="${it.explorerUrl}" target="_blank" rel="noopener noreferrer">
+      <span class="ricon ${iconCls}">${icon}</span>
+      <span class="rmain"><span class="rtitle">${it.title}</span><span class="rsub">${sub}</span></span>${amt}
+    </a>`;
+  }
+
+  async function init() {
+    const card = document.querySelector<HTMLElement>(".recent-activity");
+    if (!card) return;
+    const skel = card.querySelector<HTMLElement>(".ra-skeleton")!;
+    const list = card.querySelector<HTMLElement>(".ra-list")!;
+    const empty = card.querySelector<HTMLElement>(".ra-empty")!;
+    const note = card.querySelector<HTMLElement>(".ra-note")!;
+    const body = card.querySelector<HTMLElement>(".ra-body")!;
+    const address = contractIdFromHostname(window.location.hostname);
+    if (!address) { skel.hidden = true; empty.hidden = false; return; }
+    try {
+      const page = await loadActivityPage({ address });
+      skel.hidden = true;
+      const top = page.items.slice(0, 5);
+      if (top.length === 0) { empty.hidden = false; return; }
+      list.innerHTML = top.map(rowHtml).join("");
+      list.hidden = false;
+      if (page.partial) note.hidden = false;
+      body.dataset.state = "ready";
+    } catch {
+      skel.hidden = true;
+      empty.textContent = "Couldn’t load activity";
+      empty.hidden = false;
+      body.dataset.state = "error";
+    }
+  }
+  init();
+</script>
