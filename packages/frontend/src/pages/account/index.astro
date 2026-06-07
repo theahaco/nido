@@ -852,9 +852,14 @@ import Nest from "../../components/Nest.astro";
 
     $nameSection.classList.remove("hidden");
 
-    // Check if this account already has a name (from localStorage)
-    const existingName = loadAccountName(contractId);
+    // The name is known authoritatively when we arrived via a name subdomain
+    // (detectedName already resolved to THIS account); otherwise fall back to a
+    // locally-saved name. On a name subdomain, persist it so later contract-id
+    // visits in this browser show the name too. Either way: show the name (with
+    // the contract id in the account card above), never the claim card.
+    const existingName = detectedName ?? loadAccountName(contractId);
     if (existingName) {
+      if (detectedName) saveAccountName(contractId, detectedName);
       $nameDisplay.classList.remove("hidden");
       document.getElementById("account-name")!.textContent = existingName;
       // Reflect the claimed name in the top bar nickname too.
