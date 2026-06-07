@@ -31,6 +31,9 @@ describe('normalizeRecipientInput', () => {
   it('leaves an unknown dotted string alone', () => {
     expect(normalizeRecipientInput('alice.example')).toBe('alice.example');
   });
+  it('normalizes a suffix-only input to empty string', () => {
+    expect(normalizeRecipientInput('.nido')).toBe('');
+  });
 });
 
 describe('resolveSendRecipient', () => {
@@ -49,6 +52,12 @@ describe('resolveSendRecipient', () => {
     const res = await resolveSendRecipient(C, { resolveName });
     expect(resolveName).not.toHaveBeenCalled();
     expect(res).toEqual({ kind: 'contract', address: C, input: C });
+  });
+  it('returns a G-address account without calling resolveName', async () => {
+    const resolveName = vi.fn();
+    const res = await resolveSendRecipient(G, { resolveName });
+    expect(resolveName).not.toHaveBeenCalled();
+    expect(res).toEqual({ kind: 'account', address: G, input: G });
   });
   it('returns null for garbage input', async () => {
     const resolveName = vi.fn();
