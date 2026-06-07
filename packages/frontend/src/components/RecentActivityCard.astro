@@ -23,7 +23,10 @@
   /* is:global: rows are injected via innerHTML, so scoped styles wouldn't reach them. */
   .recent-activity .ra-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
   .recent-activity .ra-all { font-size: 13px; color: var(--acc-btn, #c2410c); text-decoration: none; }
-  .recent-activity .ra-skeleton { display: grid; gap: 10px; }
+  /* :not([hidden]) so the `hidden` attribute can actually hide it — a bare
+     `display: grid` out-specifies the UA `[hidden] { display: none }` rule and
+     would leave the skeleton animating under the loaded rows. */
+  .recent-activity .ra-skeleton:not([hidden]) { display: grid; gap: 10px; }
   .recent-activity .ra-skeleton .skeleton { height: 42px; border-radius: 10px; display: block; }
   .recent-activity .ra-fh { color: var(--acc-btn, #c2410c); text-decoration: none; white-space: nowrap; }
   .recent-activity .ra-fh:hover { text-decoration: underline; }

@@ -23,7 +23,10 @@ import NidoLayout from "../../../layouts/NidoLayout.astro";
 </NidoLayout>
 
 <style is:global>
-  #activity-skeleton { display: grid; gap: 10px; }
+  /* :not([hidden]) so the `hidden` attribute can hide it — a bare `display: grid`
+     (id selector) out-specifies `[hidden] { display: none }`, leaving the skeleton
+     animating under the loaded rows. */
+  #activity-skeleton:not([hidden]) { display: grid; gap: 10px; }
   #activity-skeleton .skeleton { height: 48px; border-radius: 10px; display: block; }
   .activity-window { font-size: 13px; margin: -2px 0 14px; }
   .full-history { display: inline-block; margin-top: 16px; font-size: 13px; color: var(--acc-btn, #c2410c); text-decoration: none; }
