@@ -642,10 +642,9 @@ import Nest from "../../components/Nest.astro";
     const $sendSubmit = document.getElementById("send-submit") as HTMLButtonElement;
 
     const NAME_NETWORK = "Test SDF Network ; September 2015";
-    let _nameRegistryId: string | null = null;
-    async function nameRegistryId(): Promise<string> {
-      if (!_nameRegistryId) _nameRegistryId = await fetchRegistryAddress("name-registry");
-      return _nameRegistryId;
+    let _nameRegistryIdPromise: Promise<string> | null = null;
+    function nameRegistryId(): Promise<string> {
+      return (_nameRegistryIdPromise ??= fetchRegistryAddress("name-registry"));
     }
     // Always resolve FRESH (no cache) so a just-transferred name can't bind stale.
     const resolveNameFresh = async (name: string): Promise<string | null> =>
@@ -659,6 +658,7 @@ import Nest from "../../components/Nest.astro";
       clearTimeout(resolveTimer);
       const raw = $sendTo.value;
       if (!raw.trim()) {
+        resolveSeq++;            // invalidate any in-flight debounced resolve
         $sendResolve.textContent = "";
         return;
       }
