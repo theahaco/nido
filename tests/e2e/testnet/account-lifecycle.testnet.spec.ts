@@ -7,10 +7,9 @@ const PORT = Number(process.env.E2E_PORT || 4399);
 test.describe('@testnet account lifecycle', () => {
   test.describe.configure({ timeout: 180_000 });
 
-  // PARKED: the claim-name feature is hidden behind SHOW_NAME_SECTION (=false)
-  // in account/index.astro, so step 4's `#name-claim` never appears. Re-enable
-  // this bug-#3 pin (remove `.skip`) when the flag is flipped back on.
-  test.skip('create + deploy (v0.7), then claim a name — pins bug #3 (UnvalidatedContext)', async ({ page, context }) => {
+  // Un-parked: SHOW_NAME_SECTION is back on and bug #3 is fixed, so the full
+  // claim round-trip should land on-chain (asserted at step 8).
+  test('create + deploy (v0.7), then claim a name end-to-end', async ({ page, context }) => {
     await seedBank(context);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
@@ -66,17 +65,16 @@ test.describe('@testnet account lifecycle', () => {
     await page.locator('#approve-btn').click();
     await page.waitForURL(/nameresult=1/, { timeout: 60_000 });
 
-    // 8) PINS BUG #3 — UnvalidatedContext (smart-account contract error #3002).
-    //    After the registry repoint, accounts are v0.7 and the
-    //    challenge/signature/pubkey/verifier all verify on-chain — but the
-    //    account's __check_auth rejects the external `registry.register` context
-    //    under the Default rule (UnvalidatedContext). So the claim fails on-chain
-    //    rather than landing on the name subdomain. No prior test caught this:
-    //    `register_name_via_smart_account` uses env.mock_all_auths(), which
-    //    bypasses __check_auth entirely.
-    //    >>> WHEN BUG #3 IS FIXED (contract auth-model authorizes the register
-    //        context): flip the expect below to 'name-claimed', i.e. assert
-    //        success — the race already detects the name-subdomain redirect.
+    // 8) The full claim lands on-chain and the page redirects to the name
+    //    subdomain. Bug #3 (previously pinned here) was NOT a contract
+    //    auth-model issue — the Default rule authorizes the external
+    //    `registry.register` context fine (proven by the non-mocked
+    //    `smart_account_check_auth_with_passkey` integration test). The real
+    //    cause was the frontend finalize step: it re-simulated the signed tx in
+    //    default ("record") mode and re-ran `assembleTransaction`, which ignores
+    //    the injected signature and sizes a footprint that omits __check_auth's
+    //    reads. Fixed to re-simulate in "enforce" mode and splice sorobanData
+    //    via cloneFrom (mirrors primaryPasskeySigner.signAndSubmit).
     const outcome = await Promise.race([
       page
         .getByText(/InvalidAction|Couldn't finish claiming|Re-simulation failed/i)
@@ -87,7 +85,7 @@ test.describe('@testnet account lifecycle', () => {
         .waitForURL((u) => u.hostname.startsWith(`${name}.`), { timeout: 90_000 })
         .then(() => 'name-claimed' as const),
     ]).catch(() => 'timeout' as const);
-    expect(outcome).toBe('rejected-on-chain'); // BUG #3 pin — flip to 'name-claimed' once fixed
+    expect(outcome).toBe('name-claimed');
 
     expect(errors.filter((e) => /Buffer|is not defined|Unexpected token/.test(e))).toEqual([]);
     test.info().annotations.push({ type: 'cAddress', description: cAddress });
