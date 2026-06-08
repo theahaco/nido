@@ -414,8 +414,18 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 .lp-safe-head { text-align: center; max-width: 660px; margin: 0 auto 60px; position: relative; z-index: 1; }
 .lp-safe-lede { color: var(--ink-soft); font-size: clamp(16px, 1.5vw, 18px); line-height: 1.62; margin: 18px 0 0; }
 .lp-safe-rows { display: flex; flex-direction: column; gap: clamp(44px, 6vw, 76px); position: relative; z-index: 1; }
-.lp-safe-row { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(28px, 5vw, 64px); align-items: center; }
-.lp-safe-row:nth-child(even) .lp-safe-art { order: 2; }
+.lp-safe-row {
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto auto auto 1fr;
+  column-gap: clamp(28px, 5vw, 64px);
+}
+.lp-safe-row .lp-safe-art  { grid-column: 1; grid-row: 1 / -1; align-self: center; }
+.lp-safe-row .lp-safe-num  { grid-column: 2; grid-row: 2; }
+.lp-safe-row .lp-safe-h3   { grid-column: 2; grid-row: 3; }
+.lp-safe-row .lp-safe-body { grid-column: 2; grid-row: 4; }
+.lp-safe-row:where(:nth-child(even)) .lp-safe-art { grid-column: 2; }
+.lp-safe-row:where(:nth-child(even)) .lp-safe-num,
+.lp-safe-row:where(:nth-child(even)) .lp-safe-h3,
+.lp-safe-row:where(:nth-child(even)) .lp-safe-body { grid-column: 1; }
 .lp-safe-art {
   position: relative; border-radius: var(--r-xl); padding: 1.625em; min-height: 15.5em;
   display: flex; align-items: center; justify-content: center;
@@ -464,10 +474,15 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 .lp-safe-h3 { font-family: var(--disp); font-weight: 800; font-size: clamp(22px, 2.4vw, 30px); letter-spacing: -.015em; line-height: 1.12; margin: 9px 0 0; }
 .lp-safe-body { color: var(--ink-soft); font-size: 16.5px; line-height: 1.62; margin: 14px 0 0; max-width: 34ch; }
 @media (max-width: 860px) {
-  .lp-safe-row { grid-template-columns: 1fr; gap: 22px; }
-  .lp-safe-art { order: -1 !important; min-height: 13.75em; }
-  .lp-safe-copy { order: 0 !important; }
-  .lp-safe-body { max-width: none; }
+  .lp-safe-row { grid-template-columns: 1fr; grid-template-rows: auto; gap: 0; }
+  .lp-safe-row .lp-safe-art,
+  .lp-safe-row .lp-safe-num,
+  .lp-safe-row .lp-safe-h3,
+  .lp-safe-row .lp-safe-body { grid-column: 1; grid-row: auto; }
+  .lp-safe-num  { order: 1; }
+  .lp-safe-h3   { order: 2; }
+  .lp-safe-art  { order: 3; min-height: 13.75em; margin-top: 1em; margin-bottom: 0.375em; }
+  .lp-safe-body { order: 4; max-width: none; }
 }
 /* Scroll-reveal is progressive enhancement. The base row is visible; only the
    JS-added .reveal-ready hides it, and only where motion is welcome — so a
