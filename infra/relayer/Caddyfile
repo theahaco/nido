@@ -1,3 +1,8 @@
+{
+	admin off
+	persist_config off
+}
+
 :8080 {
 	@preflight {
 		method OPTIONS
@@ -7,9 +12,14 @@
 		header Access-Control-Allow-Origin "*"
 		header Access-Control-Allow-Methods "POST, OPTIONS"
 		header Access-Control-Allow-Headers "Content-Type"
+		header Access-Control-Max-Age "86400"
 		respond 204
 	}
-	handle /relay {
+	@relay {
+		method POST
+		path /relay
+	}
+	handle @relay {
 		header Access-Control-Allow-Origin "*"
 		request_header Authorization "Bearer {$API_KEY}"
 		request_header x-api-key "nido-wallet"
