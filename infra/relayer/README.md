@@ -13,6 +13,7 @@ Run from the repo root unless noted.
 fly apps create nido-relayer --org aha-684
 
 # 2. Create the Redis instance (record the redis:// URL it prints — you need it for secrets)
+#    Lost the output? `fly redis status nido-relayer-redis` re-prints the connection string.
 fly redis create --name nido-relayer-redis --org aha-684 --region iad --no-replicas
 
 # 3. Generate keystores
@@ -21,26 +22,39 @@ fly redis create --name nido-relayer-redis --org aha-684 --region iad --no-repli
 KEYSTORE_PASSPHRASE='<generate and save to 1Password first>' \
   ./infra/relayer/scripts/create-keys.sh /tmp/relayer-keys
 
-# 4. Set all 8 Fly secrets in one call
+# 4. Generate the random secrets into shell variables FIRST
+API_KEY=$(openssl rand -hex 32)
+PLUGIN_ADMIN_SECRET=$(openssl rand -hex 32)
+STORAGE_ENCRYPTION_KEY=$(openssl rand -base64 32)
+# save all three to 1Password NOW — Fly secrets cannot be read back
+
+# 5. Set all 8 Fly secrets in one call
+#    (macOS: BSD base64 has no -w flag — use `openssl base64 -A -in <file>` instead of `base64 -w0 <file>`)
 fly secrets set -a nido-relayer \
   REDIS_URL="<redis-url-from-step-2>" \
-  API_KEY="$(openssl rand -hex 32)" \
-  STORAGE_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
+  API_KEY="$API_KEY" \
+  STORAGE_ENCRYPTION_KEY="$STORAGE_ENCRYPTION_KEY" \
   KEYSTORE_PASSPHRASE="<same passphrase used in step 3>" \
-  PLUGIN_ADMIN_SECRET="$(openssl rand -hex 32)" \
+  PLUGIN_ADMIN_SECRET="$PLUGIN_ADMIN_SECRET" \
   KEYSTORE_FUND_B64="$(base64 -w0 /tmp/relayer-keys/fund.json)" \
   KEYSTORE_CHANNEL_001_B64="$(base64 -w0 /tmp/relayer-keys/channel-001.json)" \
   KEYSTORE_CHANNEL_002_B64="$(base64 -w0 /tmp/relayer-keys/channel-002.json)"
 
-# 5. Deploy (--ha=false is mandatory — see Scaling warning below)
+# 6. Deploy (--ha=false is mandatory — see Scaling warning below)
 fly deploy --config infra/relayer/fly.toml --remote-only --ha=false
 ```
 
-After deploy, save every generated secret value plus the three keystore JSON files to 1Password vault `theahaco`, then clean up:
+After deploy, confirm every generated secret value plus the three keystore JSON files are in 1Password vault `theahaco`, then clean up:
 
 ```bash
 rm -rf /tmp/relayer-keys
 ```
+
+## Secret handling
+
+- **Fly secrets are write-only.** `fly secrets list` shows digests only and there is no `fly secrets get` — save every value to 1Password (vault `theahaco`) at the moment you generate it. Escape hatch if a value was lost after deploy: `fly ssh console -a nido-relayer -C "printenv API_KEY"` (works for any secret name).
+- **macOS base64**: BSD `base64` rejects `-w`; wherever this runbook says `base64 -w0 <file>`, macOS operators should use `openssl base64 -A -in <file>`.
+- **Shell history**: the commands above put secret material on the command line. Prefix them with a space (with `HISTCONTROL=ignorespace` set) so they stay out of history, or pull values directly from 1Password via `op read` instead of pasting.
 
 ## Fund + activate
 
@@ -55,8 +69,10 @@ Syncing sequence for relayer: channels-fund (G...)
 Retrieve them:
 
 ```bash
-fly logs -a nido-relayer | grep "Syncing sequence"
+fly logs -a nido-relayer --no-tail | grep "Syncing sequence"
 ```
+
+If no lines appear, `fly apps restart nido-relayer` and re-run — the addresses are logged at boot.
 
 Fund all three accounts on testnet via Friendbot:
 
@@ -81,8 +97,8 @@ fly proxy 8090:8090 -a nido-relayer
 
 **Terminal 2** — run the activation script:
 ```bash
-API_KEY=<value-from-fly-secrets> \
-PLUGIN_ADMIN_SECRET=<value-from-fly-secrets> \
+API_KEY=<value-from-1Password> \
+PLUGIN_ADMIN_SECRET=<value-from-1Password> \
   ./infra/relayer/scripts/activate-channels.sh http://localhost:8090
 ```
 
@@ -117,7 +133,7 @@ Expected: a JSON error body (not a 404 or connection refused). Any structured JS
 - **Memory**: the default 512 MB VM (`shared-cpu-1x`) may be tight once the ts-node Channels plugin is loaded. If the first plugin call OOMs, bump the machine to 1024 MB (`fly scale memory 1024 -a nido-relayer`).
 - **Rate limiting**: the rate limit (20 req/s, burst 60) is global across all origins and CORS is wildcard (`*`). Per-origin tightening is a mainnet TODO.
 - **Version pin**: pinned to OZ Relayer v1.5.0 deliberately — Stellar support is under active development and minor upgrades may be breaking. Review the changelog before bumping.
-- **Max fee**: the relayer's default `max_fee` is 1,000,000 stroops per transaction. It is a per-relayer policy; override it in `config/config.json` if needed.
+- **Max fee**: the relayer's default `max_fee` is 1,000,000 stroops per transaction. It is a per-relayer policy; override it in `infra/relayer/config/config.json` if needed.
 - **Memos**: memos are not supported on Soroban operations; do not set memo fields in relay requests.
 - **Secret rotation**: before mainnet, replace the user-level Fly token with a scoped deploy token and migrate signers from local keystores to a KMS (e.g., AWS KMS or HashiCorp Vault).
 - **CI deploys**: deploys also run via GitHub Actions (`.github/workflows/deploy-relayer.yml`, added in the next task) using the 1Password → Fly token chain. That workflow also passes `--ha=false`.
