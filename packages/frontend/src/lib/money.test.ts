@@ -1,5 +1,27 @@
 import { describe, it, expect } from "vitest";
-import { xlmToStroops, stroopsToXlm } from "./money";
+import { xlmToStroops, stroopsToXlm, rawToDecimal } from "./money";
+
+describe("rawToDecimal", () => {
+  it("handles arbitrary decimals", () => {
+    expect(rawToDecimal(1_500_000n, 6)).toBe("1.5");
+    expect(rawToDecimal(123n, 2)).toBe("1.23");
+    expect(rawToDecimal(123n, 0)).toBe("123");
+    expect(rawToDecimal(0n, 9)).toBe("0");
+  });
+
+  it("trims trailing fraction zeros and keeps leading ones", () => {
+    expect(rawToDecimal(1_000_000_0n, 7)).toBe("1");
+    expect(rawToDecimal(1n, 7)).toBe("0.0000001");
+  });
+
+  it("handles negatives", () => {
+    expect(rawToDecimal(-15_000_000n, 7)).toBe("-1.5");
+  });
+
+  it("backs stroopsToXlm (7 decimals)", () => {
+    expect(rawToDecimal(125_000_000n, 7)).toBe(stroopsToXlm(125_000_000n));
+  });
+});
 
 describe("xlmToStroops", () => {
   it("converts whole numbers", () => {

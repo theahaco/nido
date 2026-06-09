@@ -16,7 +16,7 @@ const MIN_CHUNK_LEDGERS = 1_000;  // shrink a chunk down to this on -32001 befor
 const MAX_CHUNKS = 6;             // upper bound on requests (~3 days of coverage when the SAC allows)
 const PAGE_LIMIT = 1000;
 
-type RawEvent = {
+export type RawEvent = {
   contractId?: { toString(): string } | string;
   topic: xdr.ScVal[];
   value: xdr.ScVal;
@@ -66,21 +66,16 @@ function accountFilters(address: string): rpc.Api.EventFilter[] {
 }
 
 /**
- * Fetch the wallet's latest activity from Soroban RPC by scanning fixed ledger
- * chunks backward from the chain tip (newest first). Each chunk is one bounded
- * request; if the dense native SAC trips the RPC's `[-32001]` processing limit we
- * shrink that chunk's span and retry, and if even the smallest span fails we stop
- * — returning whatever contiguous recent span we could fetch.
- *
- * This is the source of truth for the in-app history view. It is deliberately
- * NOT full history: Stellar Expert's `/tx` API is origin-gated (unusable from
- * this app) and the public RPC can neither retain (~1 week) nor cheaply scan the
- * busy SAC far back. Older history is reached via the explorer link in the UI.
+ * Scan fixed ledger chunks backward from the chain tip (newest first) for
+ * events matching `filters`. Each chunk is one bounded request; if a dense
+ * range trips the RPC's `[-32001]` processing limit we shrink that chunk's
+ * span and retry, and if even the smallest span fails we stop — returning
+ * whatever contiguous recent span we could fetch. Shared by the activity feed
+ * and asset discovery (lib/assets), which differ only in their filters.
  */
-export async function fetchRpcRecent(address: string, maxChunks = MAX_CHUNKS): Promise<ActivityPage> {
+export async function walkEventChunks(filters: rpc.Api.EventFilter[], maxChunks = MAX_CHUNKS): Promise<RawEvent[]> {
   const server = new rpc.Server(RPC_URL);
   const { sequence: latest } = await server.getLatestLedger();
-  const filters = accountFilters(address);
 
   const raw: RawEvent[] = [];
   let endLedger = latest;
@@ -113,5 +108,18 @@ export async function fetchRpcRecent(address: string, maxChunks = MAX_CHUNKS): P
     }
     endLedger = startLedger - 1; // chain to the next-older chunk with no gap
   }
+  return raw;
+}
+
+/**
+ * Fetch the wallet's latest activity from Soroban RPC via `walkEventChunks`.
+ *
+ * This is the source of truth for the in-app history view. It is deliberately
+ * NOT full history: Stellar Expert's `/tx` API is origin-gated (unusable from
+ * this app) and the public RPC can neither retain (~1 week) nor cheaply scan the
+ * busy SAC far back. Older history is reached via the explorer link in the UI.
+ */
+export async function fetchRpcRecent(address: string, maxChunks = MAX_CHUNKS): Promise<ActivityPage> {
+  const raw = await walkEventChunks(accountFilters(address), maxChunks);
   return mapRpcEvents(raw, address);
 }

@@ -1,0 +1,71 @@
+---
+// packages/frontend/src/components/AssetsCard.astro
+// Assets the smart account holds (issue #71). Same client-side resolution as
+// RecentActivityCard: the address comes from the hostname subdomain, so no
+// SSR address exists.
+---
+<section class="card assets-card">
+  <header class="as-head">
+    <span class="section-label">Assets</span>
+    <a class="as-explorer" target="_blank" rel="noopener noreferrer" hidden>View on explorer →</a>
+  </header>
+  <div class="as-body">
+    <div class="as-skeleton">
+      <span class="skeleton">&nbsp;</span><span class="skeleton">&nbsp;</span>
+    </div>
+    <div class="as-list" hidden></div>
+    <div class="empty as-empty" hidden>
+      <span class="as-empty-text">No assets yet.</span>
+    </div>
+  </div>
+</section>
+
+<style is:global>
+  /* is:global: rows are injected via innerHTML, so scoped styles wouldn't reach them. */
+  .assets-card .as-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .assets-card .as-explorer { font-size: 13px; color: var(--acc-btn, #c2410c); text-decoration: none; white-space: nowrap; }
+  .assets-card .as-explorer:hover { text-decoration: underline; }
+  /* :not([hidden]) so the `hidden` attribute can actually hide it — a bare
+     `display: grid` out-specifies the UA `[hidden] { display: none }` rule. */
+  .assets-card .as-skeleton:not([hidden]) { display: grid; gap: 10px; }
+  .assets-card .as-skeleton .skeleton { height: 42px; border-radius: 10px; display: block; }
+  .assets-card .asset-row { text-decoration: none; color: inherit; }
+  .assets-card .asset-initial { font-weight: 800; font-size: 15px; }
+</style>
+
+<script>
+  import { loadAssets } from "../lib/assets/assets.js";
+  import { assetRowHtml } from "../lib/assets/rowHtml.js";
+  import { EXPLORER_BASE } from "../lib/network.js";
+  import { contractIdFromHostname } from "@g2c/passkey-sdk";
+
+  async function init() {
+    const card = document.querySelector<HTMLElement>(".assets-card");
+    if (!card) return;
+    const skel = card.querySelector<HTMLElement>(".as-skeleton")!;
+    const list = card.querySelector<HTMLElement>(".as-list")!;
+    const empty = card.querySelector<HTMLElement>(".as-empty")!;
+    const emptyText = card.querySelector<HTMLElement>(".as-empty-text")!;
+    const address = contractIdFromHostname(window.location.hostname);
+    if (!address) { skel.hidden = true; empty.hidden = false; return; }
+    // Stellar Expert's contract page lists every held asset (its balances API
+    // is origin-gated for us, but the human-facing page isn't) — so the
+    // explorer link doubles as the full, indexer-backed view.
+    const explorer = card.querySelector<HTMLAnchorElement>(".as-explorer")!;
+    explorer.href = `${EXPLORER_BASE}/contract/${address}`;
+    explorer.hidden = false;
+    try {
+      const holdings = await loadAssets(address);
+      skel.hidden = true;
+      if (holdings.length === 0) { empty.hidden = false; return; }
+      list.innerHTML = holdings.map(assetRowHtml).join("");
+      list.hidden = false;
+    } catch {
+      // Update only the text node so the explorer link stays usable.
+      skel.hidden = true;
+      emptyText.textContent = "Couldn’t load assets.";
+      empty.hidden = false;
+    }
+  }
+  init();
+</script>

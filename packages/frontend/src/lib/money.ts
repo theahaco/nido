@@ -46,6 +46,28 @@ export function formatXlmAmount(
 }
 
 /**
+ * Convert a token amount in its smallest integer unit to a plain decimal
+ * string for an arbitrary number of decimals (generalizes {@link stroopsToXlm}
+ * beyond XLM's 7 — SACs are always 7, but SEP-41 tokens choose their own).
+ *
+ * @param raw       smallest-unit amount
+ * @param decimals  the token's decimal places (>= 0)
+ * @returns decimal string (no grouping, no unit)
+ */
+export function rawToDecimal(raw: bigint, decimals: number): string {
+  const negative = raw < 0n;
+  const abs = negative ? -raw : raw;
+  const sign = negative ? "-" : "";
+  if (decimals <= 0) return `${sign}${abs.toString()}`;
+  const unit = 10n ** BigInt(decimals);
+  const whole = abs / unit;
+  const frac = abs % unit;
+  if (frac === 0n) return `${sign}${whole.toString()}`;
+  const fracStr = frac.toString().padStart(decimals, "0").replace(/0+$/, "");
+  return `${sign}${whole.toString()}.${fracStr}`;
+}
+
+/**
  * Convert an integer stroop count to a display XLM string.
  *
  * @param stroops  raw stroop count (bigint, number, or numeric string)
@@ -54,14 +76,7 @@ export function formatXlmAmount(
 export function stroopsToXlm(stroops: bigint | number | string): string {
   const s =
     typeof stroops === "bigint" ? stroops : BigInt(Math.trunc(Number(stroops)));
-  const negative = s < 0n;
-  const abs = negative ? -s : s;
-  const whole = abs / STROOPS_PER_XLM;
-  const frac = abs % STROOPS_PER_XLM;
-  const sign = negative ? "-" : "";
-  if (frac === 0n) return `${sign}${whole.toString()}`;
-  const fracStr = frac.toString().padStart(XLM_FRACTION_DIGITS, "0").replace(/0+$/, "");
-  return `${sign}${whole.toString()}.${fracStr}`;
+  return rawToDecimal(s, XLM_FRACTION_DIGITS);
 }
 
 /**
