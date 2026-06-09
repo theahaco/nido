@@ -68,6 +68,34 @@ export function rawToDecimal(raw: bigint, decimals: number): string {
 }
 
 /**
+ * Group a plain decimal string for display WITHOUT round-tripping through
+ * Number — exact for arbitrary-precision token amounts (formatXlm loses
+ * digits past 2^53 and collapses sub-1e-7 fractions of high-decimal tokens
+ * to "0"). The fraction is truncated to `maxFractionDigits`; a nonzero
+ * amount whose displayable digits all truncate away renders as the smallest
+ * displayable unit with a "<" prefix (e.g. "<0.0000001") rather than "0".
+ *
+ * @param decimal  plain decimal string, e.g. from {@link rawToDecimal}
+ * @param opts.maxFractionDigits  cap on displayed decimal places (default 7)
+ * @returns grouped string without a unit, e.g. "1,234.5"
+ */
+export function formatDecimal(
+  decimal: string,
+  opts: { maxFractionDigits?: number } = {},
+): string {
+  const { maxFractionDigits = XLM_FRACTION_DIGITS } = opts;
+  const negative = decimal.startsWith("-");
+  const [whole, fracRaw = ""] = (negative ? decimal.slice(1) : decimal).split(".");
+  if (!/^\d+$/.test(whole) || (fracRaw && !/^\d+$/.test(fracRaw))) return "0";
+  const frac = fracRaw.slice(0, maxFractionDigits).replace(/0+$/, "");
+  if (whole === "0" && !frac && /[1-9]/.test(fracRaw)) {
+    return maxFractionDigits > 0 ? `<0.${"0".repeat(maxFractionDigits - 1)}1` : "<1";
+  }
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${negative ? "-" : ""}${grouped}${frac ? `.${frac}` : ""}`;
+}
+
+/**
  * Convert an integer stroop count to a display XLM string.
  *
  * @param stroops  raw stroop count (bigint, number, or numeric string)

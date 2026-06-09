@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { nativeToScVal, Address, xdr } from "@stellar/stellar-sdk";
-import { discoveryFilters, extractTokenCandidates } from "./discover.js";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { nativeToScVal, Address, rpc, xdr } from "@stellar/stellar-sdk";
+import { discoveryFilters, extractTokenCandidates, discoverFromEvents } from "./discover.js";
 import { NATIVE_SAC_ID } from "../network.js";
 import type { RawEvent } from "../activity/rpcSource.js";
 
@@ -69,5 +69,31 @@ describe("extractTokenCandidates", () => {
       ev(USDC_SAC, [sym("transfer"), addr(SELF), addr(OTHER), nativeToScVal(`USDC:${OTHER}`, { type: "string" })], "TX2"),
     ];
     expect(extractTokenCandidates(raw, SELF)).toHaveLength(1);
+  });
+
+  it("normalizes an empty code from a malformed asset topic to absent", () => {
+    const raw = [ev(USDC_SAC, [sym("transfer"), addr(OTHER), addr(SELF), nativeToScVal(`:${OTHER}`, { type: "string" })])];
+    expect(extractTokenCandidates(raw, SELF)[0].code).toBeUndefined();
+  });
+});
+
+describe("discoverFromEvents", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("walks chunks with the discovery filters", async () => {
+    vi.spyOn(rpc.Server.prototype, "getLatestLedger").mockResolvedValue({ sequence: 3_000_000 } as never);
+    const spy = vi
+      .spyOn(rpc.Server.prototype, "getEvents")
+      .mockResolvedValue({ events: [], latestLedger: 3_000_000 } as never);
+
+    expect(await discoverFromEvents(SELF)).toEqual([]);
+
+    expect(spy).toHaveBeenCalledTimes(2); // default maxChunks
+    expect((spy.mock.calls[0][0] as { filters: unknown }).filters).toEqual(discoveryFilters(SELF));
+  });
+
+  it("resolves [] when the walk fails — discovery must never blank the card", async () => {
+    vi.spyOn(rpc.Server.prototype, "getLatestLedger").mockRejectedValue(new Error("rpc down"));
+    expect(await discoverFromEvents(SELF)).toEqual([]);
   });
 });

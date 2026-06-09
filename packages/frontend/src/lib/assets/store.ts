@@ -1,15 +1,16 @@
 import type { AssetCandidate } from "./types.js";
 
 // Cap the persisted set so a hostile token spray can't grow localStorage (and
-// the balance probe) without bound. Oldest entries are dropped first.
+// the balance probe) without bound.
 const MAX_STORED = 100;
 
 const storageKey = (account: string) => `g2c:assets:known:${account}`;
 
 /**
- * Tokens this browser has seen the account hold or move. Event discovery only
- * reaches ~7 days back (RPC retention), so persisting finds is what keeps a
- * long-held token on the list after its transfers age out of the window.
+ * Tokens this browser has confirmed the account holds. Event discovery only
+ * reaches ~1 day back per load (and RPC retention caps it at ~7 days), so
+ * persisting confirmed finds is what keeps a long-held token on the list
+ * after its transfers age out of the window.
  */
 export function loadKnownAssets(account: string): AssetCandidate[] {
   try {
@@ -25,14 +26,18 @@ export function loadKnownAssets(account: string): AssetCandidate[] {
   }
 }
 
-/** Merge `assets` into the persisted set (deduped by contract id). */
-export function saveKnownAssets(account: string, assets: AssetCandidate[]): void {
-  if (assets.length === 0) return;
+/**
+ * Overwrite the persisted set with `assets` (the caller passes exactly the
+ * currently-confirmed holdings, so sold or junk tokens prune themselves on
+ * the next successful load).
+ */
+export function replaceKnownAssets(account: string, assets: AssetCandidate[]): void {
   try {
-    const merged = new Map(loadKnownAssets(account).map((a) => [a.contractId, a]));
-    for (const a of assets) if (!merged.has(a.contractId)) merged.set(a.contractId, a);
-    const trimmed = [...merged.values()].slice(-MAX_STORED);
-    localStorage.setItem(storageKey(account), JSON.stringify(trimmed));
+    const byId = new Map(assets.map((a) => [a.contractId, a]));
+    localStorage.setItem(
+      storageKey(account),
+      JSON.stringify([...byId.values()].slice(0, MAX_STORED)),
+    );
   } catch {
     /* storage full/blocked — discovery just won't persist */
   }

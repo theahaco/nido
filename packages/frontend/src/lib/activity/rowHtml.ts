@@ -1,11 +1,5 @@
+import { esc } from "../html.js";
 import type { ActivityItem } from "./types.js";
-
-/** HTML-escape a value for safe interpolation into an innerHTML string. */
-function esc(value: unknown): string {
-  return String(value ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
-  );
-}
 
 /**
  * Render one ActivityItem as a Nido `.row` anchor (an HTML string for

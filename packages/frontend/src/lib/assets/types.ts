@@ -23,5 +23,6 @@ export interface AssetHolding {
   decimals: number;
   raw: bigint;        // smallest-unit balance
   formatted: string;  // grouped display amount
+  verified: boolean;  // native or curated-list asset — codes/domains trustworthy
   explorerUrl: string;
 }

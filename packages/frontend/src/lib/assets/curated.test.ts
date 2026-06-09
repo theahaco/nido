@@ -30,6 +30,17 @@ describe("parseAssetList", () => {
   it("returns [] for junk documents", () => {
     for (const junk of [null, {}, { assets: "x" }, 42]) expect(parseAssetList(junk)).toEqual([]);
   });
+
+  it("normalizes empty strings and implausible decimals to absent", () => {
+    const [parsed] = parseAssetList({
+      assets: [{ code: "", issuer: "", domain: "", decimals: 4294967295, contract: USDC_SAC }],
+    });
+    expect(parsed.code).toBeUndefined();
+    expect(parsed.issuer).toBeUndefined();
+    expect(parsed.domain).toBeUndefined();
+    expect(parsed.decimals).toBeUndefined();
+    expect(parsed.sac).toBe(false); // no issuer -> not a SAC
+  });
 });
 
 describe("fetchCuratedAssets", () => {

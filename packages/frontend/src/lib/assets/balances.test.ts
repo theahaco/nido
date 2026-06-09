@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { Address, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
-import { sacBalanceLedgerKey, fetchSacBalances, probeSep41Token } from "./balances.js";
+import { Address, StrKey, nativeToScVal, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { sacBalanceLedgerKey, fetchSacBalances, probeSep41Token, sanitizeDecimals } from "./balances.js";
 
 const HOLDER = "CCA2KXEUA4EQW3NL4QRCIZ2VRMA7V6A54DHXPA4RBTAGH72PCCYT5MSA";
 const USDC_SAC = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
@@ -57,6 +57,40 @@ describe("fetchSacBalances", () => {
     expect((await fetchSacBalances([], HOLDER)).size).toBe(0);
     expect(spy).not.toHaveBeenCalled();
   });
+
+  it("splits >200 tokens into multiple calls and reads balances from later batches", async () => {
+    // 201 distinct (synthetic but checksum-valid) token contract ids.
+    const tokens = Array.from({ length: 201 }, (_, i) => {
+      const buf = Buffer.alloc(32);
+      buf.writeUInt32BE(i, 0);
+      return StrKey.encodeContract(buf);
+    });
+    const spy = vi
+      .spyOn(rpc.Server.prototype, "getLedgerEntries")
+      .mockResolvedValueOnce({ latestLedger: 1, entries: [] } as never)
+      .mockResolvedValueOnce({ latestLedger: 1, entries: [entryFor(tokens[200], 7n)] } as never);
+
+    const balances = await fetchSacBalances(tokens, HOLDER);
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy.mock.calls[0]).toHaveLength(200);
+    expect(spy.mock.calls[1]).toHaveLength(1);
+    expect(balances.get(tokens[200])).toBe(7n); // keyed in the second batch
+  });
+});
+
+describe("sanitizeDecimals", () => {
+  it("accepts plausible token decimals and rejects everything else", () => {
+    expect(sanitizeDecimals(0)).toBe(0);
+    expect(sanitizeDecimals(7)).toBe(7);
+    expect(sanitizeDecimals(18)).toBe(18);
+    // u32 max from a hostile decimals() would make 10n ** BigInt(d) explode.
+    expect(sanitizeDecimals(4294967295)).toBeNull();
+    expect(sanitizeDecimals(7.5)).toBeNull();
+    expect(sanitizeDecimals(-1)).toBeNull();
+    expect(sanitizeDecimals("7")).toBeNull();
+    expect(sanitizeDecimals(undefined)).toBeNull();
+  });
 });
 
 describe("probeSep41Token", () => {
@@ -87,6 +121,40 @@ describe("probeSep41Token", () => {
       symbol: "SOBA",
     });
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns early on a zero balance: no metadata simulations, no cache write", async () => {
+    const spy = vi
+      .spyOn(rpc.Server.prototype, "simulateTransaction")
+      .mockResolvedValueOnce(simResult(nativeToScVal(0n, { type: "i128" })));
+
+    const probe = await probeSep41Token(SEP41_TOKEN, HOLDER);
+
+    expect(probe?.balance).toBe(0n);
+    expect(spy).toHaveBeenCalledTimes(1); // balance only
+    expect(localStorage.getItem(`g2c:assets:meta:${SEP41_TOKEN}`)).toBeNull();
+  });
+
+  it("rejects a token reporting implausible decimals (would brick amount math)", async () => {
+    vi.spyOn(rpc.Server.prototype, "simulateTransaction")
+      .mockResolvedValueOnce(simResult(nativeToScVal(42n, { type: "i128" })))
+      .mockResolvedValueOnce(simResult(nativeToScVal(4294967295, { type: "u32" })))
+      .mockResolvedValueOnce(simResult(nativeToScVal("EVIL", { type: "string" })));
+    expect(await probeSep41Token(SEP41_TOKEN, HOLDER)).toBeNull();
+    expect(localStorage.getItem(`g2c:assets:meta:${SEP41_TOKEN}`)).toBeNull();
+  });
+
+  it("ignores a poisoned metadata cache and refetches", async () => {
+    localStorage.setItem(`g2c:assets:meta:${SEP41_TOKEN}`, JSON.stringify({ decimals: 4294967295 }));
+    vi.spyOn(rpc.Server.prototype, "simulateTransaction")
+      .mockResolvedValueOnce(simResult(nativeToScVal(42n, { type: "i128" })))
+      .mockResolvedValueOnce(simResult(nativeToScVal(6, { type: "u32" })))
+      .mockResolvedValueOnce(simResult(nativeToScVal("SOBA", { type: "string" })));
+    expect(await probeSep41Token(SEP41_TOKEN, HOLDER)).toEqual({
+      balance: 42n,
+      decimals: 6,
+      symbol: "SOBA",
+    });
   });
 
   it("returns null when the contract isn't a token (simulation errors)", async () => {

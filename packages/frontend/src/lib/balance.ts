@@ -1,13 +1,5 @@
-import {
-  Account,
-  Address,
-  Asset,
-  Contract,
-  Networks,
-  TransactionBuilder,
-  rpc,
-  scValToNative,
-} from "@stellar/stellar-sdk";
+import { Address, Asset, Networks, rpc } from "@stellar/stellar-sdk";
+import { simulateRead } from "./simulateRead.js";
 
 const DEFAULT_RPC_URL = "https://soroban-testnet.stellar.org";
 
@@ -24,30 +16,10 @@ export async function fetchXlmBalance(
 ): Promise<string> {
   const server = new rpc.Server(rpcUrl);
   const xlmSacId = Asset.native().contractId(Networks.TESTNET);
-  const xlmContract = new Contract(xlmSacId);
-
-  const dummySource = new Account(
-    "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
-    "0",
-  );
-
-  const tx = new TransactionBuilder(dummySource, {
-    fee: "100",
-    networkPassphrase: Networks.TESTNET,
-  })
-    .addOperation(
-      xlmContract.call("balance", Address.fromString(contractAddress).toScVal()),
-    )
-    .setTimeout(0)
-    .build();
-
-  const sim = await server.simulateTransaction(tx);
-  if (rpc.Api.isSimulationError(sim)) return "0";
-
-  const successSim = sim as rpc.Api.SimulateTransactionSuccessResponse;
-  if (!successSim.result) return "0";
-
-  const rawBalance = scValToNative(successSim.result.retval) as bigint;
-  const xlm = Number(rawBalance) / 10_000_000;
+  const raw = await simulateRead(server, xlmSacId, "balance", [
+    Address.fromString(contractAddress).toScVal(),
+  ]);
+  if (typeof raw !== "bigint") return "0";
+  const xlm = Number(raw) / 10_000_000;
   return xlm.toFixed(7);
 }

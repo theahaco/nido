@@ -1,5 +1,28 @@
 import { describe, it, expect } from "vitest";
-import { xlmToStroops, stroopsToXlm, rawToDecimal } from "./money";
+import { xlmToStroops, stroopsToXlm, rawToDecimal, formatDecimal } from "./money";
+
+describe("formatDecimal", () => {
+  it("groups exactly, without Number precision loss", () => {
+    expect(formatDecimal("12345678901234.5678901")).toBe("12,345,678,901,234.5678901");
+    expect(formatDecimal(rawToDecimal(9007199254740993n, 0))).toBe("9,007,199,254,740,993");
+  });
+
+  it("truncates the fraction to the display cap", () => {
+    expect(formatDecimal("1.123456789")).toBe("1.1234567");
+    expect(formatDecimal("1.123456789", { maxFractionDigits: 2 })).toBe("1.12");
+  });
+
+  it("renders nonzero dust as a < bound instead of 0", () => {
+    expect(formatDecimal(rawToDecimal(1000n, 18))).toBe("<0.0000001");
+    expect(formatDecimal("0")).toBe("0");
+    expect(formatDecimal("0.0000001")).toBe("0.0000001");
+  });
+
+  it("handles negatives and malformed input", () => {
+    expect(formatDecimal("-1234.5")).toBe("-1,234.5");
+    expect(formatDecimal("abc")).toBe("0");
+  });
+});
 
 describe("rawToDecimal", () => {
   it("handles arbitrary decimals", () => {

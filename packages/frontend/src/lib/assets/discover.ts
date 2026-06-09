@@ -56,8 +56,10 @@ export function extractTokenCandidates(raw: RawEvent[], self: string): AssetCand
     const sep11 = typeof t3 === "string" && t3.includes(":") ? t3.split(":") : null;
     byId.set(cid, {
       contractId: cid,
-      code: sep11?.[0],
-      issuer: sep11?.[1],
+      // || not ?? : a malformed ":ISSUER" topic yields "" which must not win
+      // downstream code fallbacks.
+      code: sep11?.[0] || undefined,
+      issuer: sep11?.[1] || undefined,
       sac: sep11 !== null || t3 === "native",
       source: "events",
     });
@@ -65,17 +67,23 @@ export function extractTokenCandidates(raw: RawEvent[], self: string): AssetCand
   return [...byId.values()];
 }
 
+// An event spray (anyone can emit transfer events naming the account) must
+// not balloon the balance probe; the curated list + store stay the durable
+// sources, so capping fresh finds per load only delays the long tail.
+const MAX_DISCOVERED = 100;
+
 /**
- * Best-effort discovery: scan recent ledgers (the home card's shallow window)
- * for token contracts that moved value to/from the account. Bounded by RPC's
- * ~7-day retention — that's why finds are persisted (store.ts) and merged
- * with the curated list. Errors yield [] : discovery is additive and must
- * never blank the assets card.
+ * Best-effort discovery: scan the last ~day of ledgers (2 chunks of the
+ * shallow home-card walk; RPC retention caps any walk at ~7 days) for token
+ * contracts that moved value to/from the account. The short window is why
+ * confirmed finds are persisted (store.ts) and merged with the curated list.
+ * Errors yield [] : discovery is additive and must never blank the assets
+ * card.
  */
 export async function discoverFromEvents(address: string, maxChunks = 2): Promise<AssetCandidate[]> {
   try {
     const raw = await walkEventChunks(discoveryFilters(address), maxChunks);
-    return extractTokenCandidates(raw, address);
+    return extractTokenCandidates(raw, address).slice(0, MAX_DISCOVERED);
   } catch {
     return [];
   }

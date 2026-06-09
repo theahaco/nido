@@ -1,17 +1,22 @@
-import {
-  Account,
-  Address,
-  Contract,
-  TransactionBuilder,
-  rpc,
-  scValToNative,
-  xdr,
-} from "@stellar/stellar-sdk";
-import { NETWORK_PASSPHRASE, RPC_URL } from "../network.js";
+import { Address, rpc, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { RPC_URL } from "../network.js";
+import { simulateRead } from "../simulateRead.js";
 
-// Same all-zeros dummy source the XLM balance fetch uses (lib/balance.ts) —
-// read-only simulations need a source account but never touch it.
-const DUMMY_SOURCE = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+/**
+ * Largest decimals value the UI accepts from a token contract or asset list.
+ * decimals() is an on-chain u32, so a hostile token can return 4 billion —
+ * which 10n ** BigInt(decimals) turns into a RangeError that would take the
+ * whole assets card down. Real tokens top out around 18; 38 keeps the bigint
+ * math trivially safe.
+ */
+export const MAX_DECIMALS = 38;
+
+/** Validate an untrusted decimals value; null when implausible. */
+export function sanitizeDecimals(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_DECIMALS
+    ? value
+    : null;
+}
 
 /**
  * Ledger key of a SAC's Balance entry for a CONTRACT holder. SACs store
@@ -49,9 +54,8 @@ function balanceEntryAmount(val: xdr.LedgerEntryData): bigint | null {
 
 /**
  * Current SAC balances for `holder` across `tokenContracts`, batched into
- * getLedgerEntries calls (RPC caps a call at 200 keys; the curated list plus
- * discoveries stays well under one batch). Tokens with no Balance entry —
- * never held, or archived — read as 0n.
+ * getLedgerEntries calls (RPC caps a call at 200 keys). Tokens with no
+ * Balance entry — never held, or archived — read as 0n.
  */
 export async function fetchSacBalances(
   tokenContracts: string[],
@@ -77,31 +81,6 @@ export async function fetchSacBalances(
   return out;
 }
 
-/** Read-only simulate `fn(...args)` on `contract`, scValToNative'd; null on any failure. */
-async function simulateRead(
-  server: rpc.Server,
-  contract: string,
-  fn: string,
-  args: xdr.ScVal[],
-): Promise<unknown> {
-  const tx = new TransactionBuilder(new Account(DUMMY_SOURCE, "0"), {
-    fee: "100",
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(new Contract(contract).call(fn, ...args))
-    .setTimeout(0)
-    .build();
-  const sim = await server.simulateTransaction(tx);
-  if (rpc.Api.isSimulationError(sim)) return null;
-  const success = sim as rpc.Api.SimulateTransactionSuccessResponse;
-  if (!success.result) return null;
-  try {
-    return scValToNative(success.result.retval);
-  } catch {
-    return null;
-  }
-}
-
 export interface TokenProbe {
   balance: bigint;
   decimals: number;
@@ -113,10 +92,12 @@ type TokenMeta = { decimals: number; symbol?: string };
 /**
  * SEP-41 fallback for tokens that aren't SACs: their storage layout is
  * contract-defined, so there is no deterministic Balance ledger key —
- * simulate balance() instead, plus decimals()/symbol() for display. Metadata
- * is immutable, so it's cached in localStorage to keep repeat page loads at
- * one simulation per token. Returns null when the contract isn't a token (or
- * the read fails) so callers can drop the candidate.
+ * simulate balance() instead, plus decimals()/symbol() for display. A zero
+ * balance returns early without the metadata reads (callers hide those
+ * tokens anyway). Metadata is immutable, so it's cached in localStorage to
+ * keep repeat page loads at one simulation per held token. Returns null when
+ * the contract isn't a token, the read fails, or it reports implausible
+ * decimals — callers drop the candidate either way.
  */
 export async function probeSep41Token(
   tokenContract: string,
@@ -128,21 +109,26 @@ export async function probeSep41Token(
     Address.fromString(holder).toScVal(),
   ]);
   if (typeof balance !== "bigint") return null;
+  if (balance <= 0n) return { balance, decimals: 0 };
 
   const metaKey = `g2c:assets:meta:${tokenContract}`;
   let meta: TokenMeta | null = null;
   try {
-    meta = JSON.parse(localStorage.getItem(metaKey) ?? "null") as TokenMeta | null;
+    const cached = JSON.parse(localStorage.getItem(metaKey) ?? "null") as TokenMeta | null;
+    if (cached && sanitizeDecimals(cached.decimals) !== null) {
+      meta = { decimals: cached.decimals, symbol: typeof cached.symbol === "string" ? cached.symbol : undefined };
+    }
   } catch {
     /* corrupt cache — refetch below */
   }
-  if (!meta || typeof meta.decimals !== "number") {
-    const decimals = await simulateRead(server, tokenContract, "decimals", []);
-    const symbol = await simulateRead(server, tokenContract, "symbol", []);
-    meta = {
-      decimals: typeof decimals === "number" ? decimals : 7,
-      symbol: typeof symbol === "string" ? symbol : undefined,
-    };
+  if (!meta) {
+    const [decimals, symbol] = await Promise.all([
+      simulateRead(server, tokenContract, "decimals", []),
+      simulateRead(server, tokenContract, "symbol", []),
+    ]);
+    const sane = sanitizeDecimals(decimals);
+    if (sane === null) return null;
+    meta = { decimals: sane, symbol: typeof symbol === "string" ? symbol : undefined };
     try {
       localStorage.setItem(metaKey, JSON.stringify(meta));
     } catch {

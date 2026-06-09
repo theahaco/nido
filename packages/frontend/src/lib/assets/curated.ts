@@ -1,16 +1,17 @@
-import { NATIVE_SAC_ID } from "../network.js";
+import { NATIVE_SAC_ID, NETWORK_NAME } from "../network.js";
+import { sanitizeDecimals } from "./balances.js";
 import type { AssetCandidate } from "./types.js";
 
 /**
- * SEP-42 curated asset list for testnet — Stellar Expert's top-50, the same
- * default list Freighter ships for testnet. Unlike Stellar Expert's balance
- * and `/tx` APIs (origin-gated: 403 to third-party browser Origins), the
- * asset-list route is served with `access-control-allow-origin: *`, so this
- * static frontend can fetch it directly. Each entry carries the asset's SAC
+ * SEP-42 curated asset list — Stellar Expert's top-50, the same default list
+ * Freighter ships for testnet. Unlike Stellar Expert's balance and `/tx`
+ * APIs (origin-gated: 403 to third-party browser Origins), the asset-list
+ * route is served with `access-control-allow-origin: *`, so this static
+ * frontend can fetch it directly. Each entry carries the asset's SAC
  * contract id, which is what the balance probe needs (issue #71).
  */
 export const CURATED_LIST_URL =
-  "https://api.stellar.expert/explorer/testnet/asset-list/top50";
+  `https://api.stellar.expert/explorer/${NETWORK_NAME}/asset-list/top50`;
 
 const CACHE_KEY = "g2c:assets:curated";
 
@@ -29,13 +30,15 @@ export function parseAssetList(doc: unknown): AssetCandidate[] {
   for (const entry of assets) {
     const e = entry as Record<string, unknown>;
     if (!isContractId(e.contract) || e.contract === NATIVE_SAC_ID) continue;
-    const issuer = typeof e.issuer === "string" ? e.issuer : undefined;
+    // Normalize empty strings to absent — "" would win ?? / || fallback
+    // chains downstream and render a blank row title.
+    const issuer = typeof e.issuer === "string" && e.issuer ? e.issuer : undefined;
     out.push({
       contractId: e.contract,
-      code: typeof e.code === "string" ? e.code : undefined,
+      code: typeof e.code === "string" && e.code ? e.code : undefined,
       issuer,
-      domain: typeof e.domain === "string" ? e.domain : undefined,
-      decimals: typeof e.decimals === "number" ? e.decimals : undefined,
+      domain: typeof e.domain === "string" && e.domain ? e.domain : undefined,
+      decimals: sanitizeDecimals(e.decimals) ?? undefined,
       // A classic issuer means the contract is that asset's SAC; entries
       // without one are standalone Soroban tokens (custom storage layout).
       sac: issuer !== undefined,

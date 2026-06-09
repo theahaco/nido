@@ -10,6 +10,7 @@ const base: AssetHolding = {
   decimals: 7,
   raw: 1_5000000n,
   formatted: "1.5",
+  verified: true,
   explorerUrl: "https://stellar.expert/explorer/testnet/contract/CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
 };
 
@@ -26,6 +27,12 @@ describe("assetRowHtml", () => {
   it("falls back to a shortened issuer, then contract id, for the subtitle", () => {
     expect(assetRowHtml({ ...base, domain: undefined })).toContain("GCQZ…FGBS");
     expect(assetRowHtml({ ...base, domain: undefined, issuer: undefined })).toContain("CBIE…DAMA");
+  });
+
+  it("tags unverified tokens and never shows their self-reported domain/issuer", () => {
+    const html = assetRowHtml({ ...base, verified: false, domain: "centre.io" });
+    expect(html).toContain("CBIE…DAMA · unverified");
+    expect(html).not.toContain("centre.io");
   });
 
   it("escapes attacker-influenced fields (codes/domains come from lists and events)", () => {
