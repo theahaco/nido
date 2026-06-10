@@ -41,7 +41,7 @@ fly secrets set -a nido \
   KEYSTORE_CHANNEL_002_B64="$(base64 -w0 /tmp/relayer-keys/channel-002.json)"
 
 # 6. Deploy (--ha=false is mandatory — see Scaling warning below)
-fly deploy --config infra/relayer/fly.toml --remote-only --ha=false
+fly deploy infra/relayer --remote-only --ha=false   # positional dir = Docker build context; --config from repo root breaks the COPYs
 ```
 
 After deploy, confirm every generated secret value plus the three keystore JSON files are in 1Password vault `theahaco`, then clean up:
@@ -136,4 +136,4 @@ Expected: a JSON error body (not a 404 or connection refused). Any structured JS
 - **Max fee**: the relayer's default `max_fee` is 1,000,000 stroops per transaction. It is a per-relayer policy; override it in `infra/relayer/config/config.json` if needed.
 - **Memos**: memos are not supported on Soroban operations; do not set memo fields in relay requests.
 - **Secret rotation**: before mainnet, replace the user-level Fly token with a scoped deploy token and migrate signers from local keystores to a KMS (e.g., AWS KMS or HashiCorp Vault).
-- **CI deploys**: deploys also run via GitHub Actions (`.github/workflows/deploy-relayer.yml`, added in the next task) using the 1Password → Fly token chain. That workflow also passes `--ha=false`.
+- **CI deploys**: deploys also run via GitHub Actions (`.github/workflows/deploy-relayer.yml`) using the 1Password → Fly token chain. That workflow also passes `--ha=false`.

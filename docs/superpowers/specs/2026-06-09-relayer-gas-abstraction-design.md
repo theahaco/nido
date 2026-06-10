@@ -50,16 +50,16 @@ Soroban RPC → testnet
 
 `.github/workflows/deploy-relayer.yml`, triggered on push to `main` touching `infra/relayer/**` (plus manual dispatch):
 1. `1password/load-secrets-action` with `OP_SERVICE_ACCOUNT_TOKEN` (Actions secret) reads the Fly token from `theahaco/nido_fly_io`.
-2. `flyctl deploy --config infra/relayer/fly.toml` with the pinned image.
+2. `flyctl deploy infra/relayer --remote-only --ha=false` with the pinned image (positional dir sets the Docker build context; `--ha=false` because two relayers sharing Redis + signer keys race on sequence numbers).
 
 Open item: confirm what the vault's "connected to the repo" integration already provides; if the service-account token isn't present as an Actions secret yet, add it once.
 
 ### Component 3: frontend submission path
 
-- New `packages/frontend/src/lib/relayerSubmit.ts`: wraps `@openzeppelin/relayer-plugin-channels`' `ChannelsClient`; input = host-function XDR + signed auth-entry XDRs; output = tx hash/status (poll until final).
-- `primaryPasskeySigner.ts` `signAndSubmit(...)` gains a relayer branch: simulate against RPC (unchanged) → passkey-sign auth entry → if `PUBLIC_RELAYER_URL` is configured, submit via relayer; otherwise fall back to the current ephemeral-G self-submission. Feature flag keeps `main` deployable while the Fly app stabilizes.
-- Config: `PUBLIC_RELAYER_URL`, `PUBLIC_RELAYER_API_KEY`. The API key is browser-visible — accepted for the testnet milestone; production hardening (policy proxy / per-origin keys / rate limits) is tracked in #72 as a follow-up.
-- Auth-entry expiration: wallet signs `signature_expiration_ledger = current + margin`; margin must outlive relayer queueing/re-simulation. Start at ~120 ledgers (~10 min) and validate empirically; document the chosen value in code.
+- New `packages/frontend/src/lib/relayerClient.ts` (as built — research showed the npm `ChannelsClient` is CommonJS/Node-only, so this is a small fetch client speaking the plugin protocol, handling both documented response nestings); input = host-function XDR + signed auth-entry XDRs; output = tx hash/status (poll until confirmed).
+- `primaryPasskeySigner.ts` `signAndSubmit(...)` gains a relayer branch: simulate against RPC → passkey-sign auth entry → if `PUBLIC_RELAYER_URL` is configured, submit via relayer; otherwise fall back to the current ephemeral-G self-submission. Feature flag keeps `main` deployable while the Fly app stabilizes. In relayer mode no ephemeral G is created; recording simulation sources from the relayer's public fund address (`PUBLIC_RELAYER_SIM_SOURCE`).
+- Config: `PUBLIC_RELAYER_URL`, `PUBLIC_RELAYER_SIM_SOURCE` only. As built there is **no browser-visible API key**: the relayer has no CORS support, so a Caddy sidecar fronts it and injects the key server-side — strictly better than this spec's original accepted-risk posture.
+- Auth-entry expiration: as built the wallet keeps its existing `signature_expiration_ledger = lastLedger + 10000` (~14 h) default; the Channels plugin's minimum buffer is 2 ledgers, so margin is ample.
 
 ### Error handling
 
@@ -77,4 +77,5 @@ Open item: confirm what the vault's "connected to the repo" integration already 
 
 - **PR 2 — session-key scope UI:** delegate approval screen gains spending-limit + time-window controls (→ `add_context_rule` with `spending_limit` policy + `valid_until`); Security page lists per-app scopes with revoke (`remove_context_rule`); proof = status-message dApp executes a scoped tx with a session key and an out-of-scope call is rejected. Contracts already support all of this (`scoped_session_key.rs`).
 - Routing onboarding (factory deploy) through the relayer — would eliminate the friendbot G-address entirely; separate issue.
+- Recovery rotation submission (`recoveryActions.ts`) — multi-party nested auth assembled into a custom envelope still self-submits via a friendbot-funded G; unaffected by relayer mode and out of scope for PR 1.
 - Mainnet KMS signer, relayer API hardening proxy.

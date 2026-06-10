@@ -240,7 +240,7 @@ USER root
 RUN apk add --no-cache caddy
 
 COPY plugins/channels /app/plugins/channels
-RUN cd /app/plugins/channels && pnpm install --prod --no-frozen-lockfile \
+RUN cd /app/plugins/channels && pnpm install --prod --frozen-lockfile \  # as built: lockfile committed, exact pins
     && mkdir -p /app/config/keys \
     && chown -R nonroot /app/plugins/channels /app/config
 
@@ -376,7 +376,7 @@ Note: this script talks to the relayer's authenticated port directly (path `/api
        KEYSTORE_FUND_B64="$(base64 -w0 /tmp/relayer-keys/fund.json)" \
        KEYSTORE_CHANNEL_001_B64="$(base64 -w0 /tmp/relayer-keys/channel-001.json)" \
        KEYSTORE_CHANNEL_002_B64="$(base64 -w0 /tmp/relayer-keys/channel-002.json)"
-     fly deploy --config infra/relayer/fly.toml --remote-only
+     fly deploy infra/relayer --remote-only --ha=false
      ```
      Save `API_KEY`, `STORAGE_ENCRYPTION_KEY`, `KEYSTORE_PASSPHRASE`, `PLUGIN_ADMIN_SECRET`, and the three keystore JSONs to 1Password vault `theahaco` (item per secret or one `nido-relayer` item), then delete `/tmp/relayer-keys`.
   3. **Fund + activate**: read the three G-addresses from `fly logs -a nido-relayer` ("Syncing sequence for relayer: ... (G...)"), `curl "https://friendbot.stellar.org?addr=G..."` each, `fly apps restart nido-relayer`, then run `activate-channels.sh` via `fly proxy 8090:8090 -a nido-relayer`. Record the **fund account G-address** — the frontend needs it as `PUBLIC_RELAYER_SIM_SOURCE`.
@@ -435,7 +435,7 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy
-        run: flyctl deploy --config infra/relayer/fly.toml --remote-only
+        run: flyctl deploy infra/relayer --remote-only --ha=false
 ```
 
 (The `op://theahaco/nido_fly_io/credential` reference and `OP_SERVICE_ACCOUNT_TOKEN` wiring were verified working in CI on 2026-06-09 by `relayer-secrets-check.yml`.)
@@ -475,7 +475,7 @@ git commit -m "ci(relayer): deploy workflow via 1Password->Fly; scope frontend p
 
 - [ ] **Step 4.1:** Install flyctl locally if absent: `curl -L https://fly.io/install.sh | sh` (installs to `~/.fly/bin`). Get the Fly token: `export FLY_API_TOKEN=$(op read "op://theahaco/nido_fly_io/credential")` — requires the user to authenticate `op` (ask them to run `! op signin` or enable the desktop-app CLI integration).
 - [ ] **Step 4.2:** Run the runbook bootstrap (README §2): app create, redis create, create-keys, secrets set.
-- [ ] **Step 4.3:** First deploy: `fly deploy --config infra/relayer/fly.toml --remote-only`. Expected: machine starts, `GET https://nido-relayer.fly.dev/api/v1/health` → `OK`.
+- [ ] **Step 4.3:** First deploy: `fly deploy infra/relayer --remote-only --ha=false`. Expected: machine starts, `GET https://nido-relayer.fly.dev/api/v1/health` → `OK`.
 - [ ] **Step 4.4:** Fund the three accounts via friendbot (addresses from `fly logs`), restart, run `activate-channels.sh`. Record the fund G-address for `PUBLIC_RELAYER_SIM_SOURCE`.
 - [ ] **Step 4.5:** Save all generated secrets + keystores to 1Password vault `theahaco`. Verify `fly secrets list -a nido-relayer` shows all 8 names.
 
@@ -821,7 +821,7 @@ git commit -m "feat(frontend): submit via OZ Relayer when PUBLIC_RELAYER_URL is 
 - Create: `scripts/relayer-proof.mjs`
 - Modify: `.github/workflows/deploy-relayer.yml` (drop the temporary branch trigger)
 
-- [ ] **Step 7.1: Write `scripts/relayer-proof.mjs`** — automated, browser-free gas-abstraction proof: a fresh G-account *authorizes* a status-message write but pays **nothing**; the relayer's channel/fund accounts source and fee the transaction. (The passkey/smart-account variant of the same flow is exercised manually through the wallet UI — same `{func, auth}` shape, different signer.)
+- [ ] **Step 7.1: Write `scripts/relayer-proof.mjs`** — *(as-built note: the snippet below simulates with the user as source, which records unsignable `sorobanCredentialsSourceAccount` credentials — the committed script uses a never-funded ghost sim source instead and asserts address credentials)* — automated, browser-free gas-abstraction proof: a fresh G-account *authorizes* a status-message write but pays **nothing**; the relayer's channel/fund accounts source and fee the transaction. (The passkey/smart-account variant of the same flow is exercised manually through the wallet UI — same `{func, auth}` shape, different signer.)
 
 ```js
 #!/usr/bin/env node
@@ -925,7 +925,7 @@ npx astro dev
 ```
 Send XLM from a passkey smart account; confirm in devtools that no friendbot call happens, the only outbound submission is `POST /relay`, and record the tx hash. Add hash + screenshot to the PR description.
 
-- [ ] **Step 7.4: Drop the temporary branch trigger** in `deploy-relayer.yml` (`branches: [main, feat/72-relayer-gas-abstraction]` → `branches: [main]`).
+- [ ] **Step 7.4: Pre-merge CI cleanup** — in `deploy-relayer.yml` drop the temporary branch entry AND the self-path `paths` entry (`branches: [main]`, `paths: ['infra/relayer/**']`); delete `.github/workflows/relayer-secrets-check.yml` and `.github/workflows/bootstrap-relayer.yml` (one-off wiring/bootstrap tools, subsumed).
 
 - [ ] **Step 7.5: Full verification + commit**
 
