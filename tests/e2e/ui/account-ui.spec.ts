@@ -67,9 +67,11 @@ test.describe('account page — UI only (no chain) @fast', () => {
   });
 
   test('send panel exposes a recipient resolve-status element @fast', () => {
-    const html = readFileSync(join(DIST_DIR, 'account/index.html'), 'utf-8');
-    expect(html).toContain('id="send-to"');
-    expect(html).toContain('id="send-resolve"');
+    // The send / recipient UI now lives on the /transfer/ page (multi-asset
+    // transfer, #78): the input is #to-input and its resolve-status is #to-resolve.
+    const html = readFileSync(join(DIST_DIR, 'transfer/index.html'), 'utf-8');
+    expect(html).toContain('id="to-input"');
+    expect(html).toContain('id="to-resolve"');
     expect(html).toContain('placeholder="name, C…, or G…"');
   });
 });

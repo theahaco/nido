@@ -26,17 +26,22 @@ import Logo from "../../components/Logo.astro";
 import Nest from "../../components/Nest.astro";
 import RecentActivityCard from "../../components/RecentActivityCard.astro";
 import AssetsCard from "../../components/AssetsCard.astro";
+import MyNidoMenu from "../../components/MyNidoMenu.astro";
 ---
 
 <NidoLayout title="Your Nido">
   <div class="col-scroll scroll-hide">
     <!-- top bar -->
     <div class="topbar">
-      <a id="home-link" href="/" class="topbar-mark" aria-label="Nido home"><Nest size={30} /></a>
-      <a href="/account/" class="topbar-account">
-        <span id="account-nickname" style="font-weight:800; font-size:14.5px; white-space:nowrap;">Your Nido</span>
-        <Avatar seed="nido" size={32} class="js-avatar" />
-      </a>
+      <a id="home-link" href="/" class="topbar-mark" data-home-apex aria-label="Nido home"><Nest size={30} /></a>
+      <MyNidoMenu>
+        <button slot="trigger" type="button" class="topbar-account" data-mynido-trigger aria-haspopup="true" aria-expanded="false">
+          <span id="account-nickname" style="font-weight:800; font-size:14.5px; white-space:nowrap;">Your Nido</span>
+          <span class="mn-sr"> — switch account</span>
+          <Avatar seed="nido" size={32} class="js-avatar" />
+          <span class="mynido-caret" aria-hidden="true">▾</span>
+        </button>
+      </MyNidoMenu>
     </div>
 
     <div id="error-box" class="alert danger" style="display:none; margin:8px 22px;"></div>
@@ -314,6 +319,7 @@ import AssetsCard from "../../components/AssetsCard.astro";
     loadAccountName,
     fetchRegistryAddress,
   } from "@g2c/passkey-sdk";
+  import { accountShareUrl, accountShareLabel } from "../../lib/accountLinks";
   import { fetchVerifierAddress } from "../../lib/policyChainFetch";
   import { fetchSecuritySummary } from "../../lib/securitySummary";
   import { toast } from "../../lib/toast";
@@ -352,16 +358,17 @@ import AssetsCard from "../../components/AssetsCard.astro";
   let contractId = contractIdFromHostname(hostname);
   const rpId = hostname;
 
-  // Point the home link at the apex as early as possible, before any code
-  // that could throw. The static fallback is href="/", but on a contract
-  // subdomain the root page redirects straight back here — so if a later
-  // runtime error skipped this, the home button would loop. Setting it here
-  // (independent of contractId resolution) keeps it safe.
+  // Point every home link (tagged data-home-apex — here the topbar mark; the
+  // sidebar brand is handled by the Sidebar module) at the apex as early as
+  // possible, before any code that could throw. The static fallback is href="/",
+  // but on a contract subdomain the root page redirects straight back here — so
+  // if a later runtime error skipped this, the home button would loop. Doing it
+  // here (independent of contractId resolution) keeps it safe.
   {
-    const $homeLinkEarly = document.getElementById("home-link") as HTMLAnchorElement | null;
-    if ($homeLinkEarly) {
-      $homeLinkEarly.href = `//${stripSubdomain(window.location.host)}/`;
-    }
+    const apexHome = `//${stripSubdomain(window.location.host)}/`;
+    document
+      .querySelectorAll<HTMLAnchorElement>("[data-home-apex]")
+      .forEach((a) => (a.href = apexHome));
   }
 
   // --- Name resolution ---
@@ -802,9 +809,8 @@ import AssetsCard from "../../components/AssetsCard.astro";
         .forEach((el) => (el.textContent = existingName));
       const rootHost = stripSubdomain(window.location.host);
       const nameLink = document.getElementById("name-url") as HTMLAnchorElement;
-      const nameHref = accountUrl(rootHost, existingName, "/account/");
-      nameLink.textContent = nameHref.replace(/^\/\//, "");
-      nameLink.href = nameHref;
+      nameLink.href = accountShareUrl(rootHost, existingName);
+      nameLink.textContent = accountShareLabel(rootHost, existingName);
     } else {
       $nameClaim.classList.remove("hidden");
     }
@@ -1034,7 +1040,7 @@ import AssetsCard from "../../components/AssetsCard.astro";
               // Redirect to the claimed name's subdomain
               const rootHost = stripSubdomain(window.location.host);
               $nameResult.textContent = `Your Nido is now "${pendingName}" — taking you there…`;
-              const nameUrl = accountUrl(rootHost, pendingName, "/account/");
+              const nameUrl = accountShareUrl(rootHost, pendingName);
               setTimeout(() => {
                 window.location.href = `${window.location.protocol}${nameUrl}`;
               }, 1500);

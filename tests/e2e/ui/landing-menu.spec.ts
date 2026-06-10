@@ -12,11 +12,11 @@ test.describe('landing My Nido menu (shim) @fast', () => {
     await page.goto('/');
 
     // Closed to begin with.
-    await expect(page.locator('#mynido')).not.toHaveClass(/mynido-open/);
+    await expect(page.locator('[data-mynido]')).not.toHaveClass(/mynido-open/);
 
     // Clicking the hero CTA opens the menu popover and it stays open.
     await page.locator('#get-started-hero').click();
-    await expect(page.locator('#mynido')).toHaveClass(/mynido-open/);
-    await expect(page.locator('#mynido-panel')).toBeVisible();
+    await expect(page.locator('[data-mynido]')).toHaveClass(/mynido-open/);
+    await expect(page.locator('[data-mynido-panel]')).toBeVisible();
   });
 });

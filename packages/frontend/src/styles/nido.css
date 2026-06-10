@@ -573,11 +573,13 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 }
 .nido-navitem:hover { background: var(--chip); color: var(--ink); }
 .nido-navitem.is-active { background: var(--acc-soft); color: var(--acc); }
+/* the .mynido switcher wrapper is the flex child now, so it carries the bottom push */
+.nido-sidebar > .mynido { margin-top: auto; }
 .nido-sidebar-account {
-  margin-top: auto;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 10px; width: 100%;
   padding: 10px 12px; border-radius: var(--r-md);
-  text-decoration: none; color: var(--ink);
+  text-decoration: none; color: var(--ink); text-align: left;
+  background: none; border: none; cursor: pointer; font-family: var(--body); font-size: 14px;
 }
 .nido-sidebar-account:hover { background: var(--chip); }
 .nido-account-name { font-weight: 700; font-size: 14px; }
@@ -608,7 +610,7 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
    topbar there (it's the only topbar with a .topbar-mark; the security/status
    topbars hold a page title and stay visible). */
 .topbar-mark { display: inline-flex; text-decoration: none; }
-.topbar-account { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink); }
+.topbar-account { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink); background: none; border: none; padding: 0; cursor: pointer; font-family: var(--body); }
 @media (min-width: 1024px) { .col-app .topbar:has(.topbar-mark) { display: none; } }
 /* Developer disclosure */
 .dev-card > summary { list-style: none; cursor: pointer; font-weight: 700; font-size: 14px; }
