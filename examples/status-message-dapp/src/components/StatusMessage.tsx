@@ -1,4 +1,4 @@
-import { isContractId } from "@g2c/passkey-sdk"
+import { isContractId, RelayerError } from "@g2c/passkey-sdk"
 import { accountOrigin } from "@g2c/stellar-wallets-kit-module"
 import { Button, Card, Icon, Input, Text } from "@stellar/design-system"
 import { useEffect, useState } from "react"
@@ -29,6 +29,36 @@ const CONTRACT_ID = statusMessage.options.contractId
 /** Explorer link for a submitted transaction (demo runs on testnet). */
 const explorerTxUrl = (hash: string) =>
 	`https://stellar.expert/explorer/${stellarNetwork === "PUBLIC" ? "public" : "testnet"}/tx/${hash}`
+
+/** Compact single-line rendering of a relayer error's `details` payload. */
+const compactDetails = (details: unknown): string | null => {
+	let s: string | null = null
+	if (typeof details === "string") s = details
+	else if (details != null) {
+		try {
+			s = JSON.stringify(details)
+		} catch {
+			s = null
+		}
+	}
+	if (!s || s === "{}" || s === "[]") return null
+	return s.length > 200 ? `${s.slice(0, 200)}…` : s
+}
+
+/**
+ * "Tip rejected" copy: the error message, plus the relayer's error code and a
+ * compact details string when present — so even a generic relayer message
+ * (e.g. an unparsed simulation failure) leaves the user something actionable.
+ */
+const describeTipError = (e: unknown): string => {
+	let msg = e instanceof Error ? e.message : String(e)
+	if (e instanceof RelayerError) {
+		if (e.code) msg += ` [${e.code}]`
+		const details = compactDetails(e.details)
+		if (details) msg += ` — ${details}`
+	}
+	return msg
+}
 
 /**
  * Read and write an account's on-chain status message via the scaffold-generated
@@ -61,8 +91,8 @@ export const StatusMessage = () => {
 	const [lookupAddr, setLookupAddr] = useState("")
 	const [lookupResult, setLookupResult] = useState<string | null>()
 	const [lookupBusy, setLookupBusy] = useState(false)
-	// The author whose status is currently displayed (set on each read) — the
-	// tip affordance attaches to THIS address, not the still-editable input.
+	// The author whose status is currently displayed (set on read SUCCESS) —
+	// the tip affordance attaches to THIS address, not the still-editable input.
 	const [lookupAuthor, setLookupAuthor] = useState<string | null>(null)
 
 	const [tipState, setTipState] = useState<SaveState>("idle")
@@ -136,7 +166,6 @@ export const StatusMessage = () => {
 	// Read an account's on-chain status (read-only simulation) into the lookup card.
 	const readStatus = async (author: string) => {
 		setLookupBusy(true)
-		setLookupAuthor(author)
 		setTipState("idle")
 		setTipError(undefined)
 		setTipHash(undefined)
@@ -144,9 +173,14 @@ export const StatusMessage = () => {
 			const tx = await statusMessage.get_message({ author })
 			// `result` is the simulated Option<string> (undefined when unset).
 			setLookupResult(tx.result ?? null)
+			// Pair the tip affordance only with a COMPLETED read: set on success
+			// (batched with the result above) so the row never shows the new
+			// author against a stale result, and never survives a failed read.
+			setLookupAuthor(author)
 		} catch (e) {
 			console.error(e)
 			setLookupResult(null)
+			setLookupAuthor(null)
 		} finally {
 			setLookupBusy(false)
 		}
@@ -203,7 +237,9 @@ export const StatusMessage = () => {
 	const enableTipping = async () => {
 		if (!nidoAccount) return
 		setTipError(undefined)
-		setTipState("idle")
+		// Busy until the redirect unloads the page — a double-click would create
+		// a second passkey whose material orphans the first's.
+		setTipState("loading")
 		try {
 			await startDelegation({
 				walletOrigin: accountOrigin(g2cBase(), nidoAccount),
@@ -241,9 +277,10 @@ export const StatusMessage = () => {
 			console.error(e)
 			setTipState("failure")
 			// Relayer / policy rejections (e.g. over the 5 XLM/day limit) arrive as
-			// error messages — surface them readably. The session material is KEPT:
-			// the rule may still allow smaller amounts, or the window may roll over.
-			setTipError(`Tip rejected: ${e instanceof Error ? e.message : String(e)}`)
+			// error messages — surface them readably, with the relayer's code and
+			// details appended when present. The session material is KEPT: the rule
+			// may still allow smaller amounts, or the window may roll over.
+			setTipError(`Tip rejected: ${describeTipError(e)}`)
 		} finally {
 			setTipProgress(undefined)
 		}
@@ -367,6 +404,8 @@ export const StatusMessage = () => {
 									<Button
 										variant="tertiary"
 										size="md"
+										disabled={tipState === "loading"}
+										isLoading={tipState === "loading"}
 										onClick={() => void enableTipping()}
 									>
 										Enable tipping
