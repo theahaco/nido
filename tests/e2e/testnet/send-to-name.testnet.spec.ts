@@ -5,7 +5,9 @@ const PORT = Number(process.env.E2E_PORT || 4399);
 
 // Real-chain: slow + retried. Quarantined via the testnet-* projects.
 test.describe('@testnet send to a named nido', () => {
-  test.describe.configure({ timeout: 240_000 });
+  // 360s: two account creations + claim + send; relayer-mode submission adds
+  // ~20-30s per signAndSubmit (queue + fee-bump + confirmation polling).
+  test.describe.configure({ timeout: 360_000 });
 
   // Helper: create an account via the home page, register its passkey (shim),
   // and return its C-address. The page host must be the C-address subdomain so
@@ -48,8 +50,9 @@ test.describe('@testnet send to a named nido', () => {
     await page.goto(`http://${sender.host}/account/`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#home-mode')).toBeVisible({ timeout: 30_000 });
 
-    // 3) Open Send, type the recipient's NAME, confirm it resolves.
+    // 3) Open Send (the panel is toggle-hidden), type the recipient's NAME, confirm it resolves.
     await page.locator('#send-section').waitFor({ state: 'attached' });
+    await page.locator('#send-action').click();
     await page.locator('#send-to').fill(name);
     await expect(page.locator('#send-resolve')).toContainText(`${name} →`, { timeout: 30_000 });
 
