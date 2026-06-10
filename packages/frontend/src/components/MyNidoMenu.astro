@@ -107,11 +107,15 @@
     loadAccounts,
     loadPendingAccounts,
     loadAccountName,
+    saveAccountName,
     accountUrl,
     activateAccount,
+    lookupName,
+    fetchRegistryAddress,
   } from "@g2c/passkey-sdk";
   import { rpc, xdr } from "@stellar/stellar-sdk";
   import { buildMyNidoModel, type MyNidoRow } from "../lib/myNidoModel";
+  import { resolveMissingNames } from "../lib/resolveMyNidoNames";
   import { fetchXlmBalance } from "../lib/balance";
   import { avatarBackground } from "../lib/avatarStyle";
   import { shortAddr } from "../lib/address";
@@ -119,6 +123,14 @@
   import { createNido } from "../lib/createNido";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
+  const NAME_NETWORK = "Test SDF Network ; September 2015";
+
+  // Resolve the name-registry contract id once per page load (memoized promise),
+  // mirroring the account page. Only fetched if some row needs an on-chain name.
+  let nameRegistryIdPromise: Promise<string> | null = null;
+  function nameRegistryId(): Promise<string> {
+    return (nameRegistryIdPromise ??= fetchRegistryAddress("name-registry"));
+  }
 
   const root = document.getElementById("mynido")!;
   const btn = document.getElementById("mynido-btn") as HTMLButtonElement;
@@ -179,6 +191,7 @@
       <div id="mn-err" class="mn-err" style="display:none"></div>`;
     wireCreate();
     loadBalances();
+    void resolveNames(model.rows);
   }
 
   // Minimal inline Nest mark (matches Nest.astro: dashed coral + honey rings, teal dot).
@@ -222,6 +235,29 @@
       } catch {
         balEl.innerHTML = `<small>—</small>`;
       }
+    });
+  }
+
+  // For any account we have no local name for, look up its registry name and
+  // patch the row in place (then cache it). Without this a Nido whose name was
+  // claimed on another device — or whose local cache was cleared — would show
+  // as "Your Nido" + its raw address instead of the name it owns on-chain.
+  async function resolveNames(rows: MyNidoRow[]) {
+    const lookup = async (contractId: string) =>
+      lookupName(RPC_URL, await nameRegistryId(), contractId, NAME_NETWORK);
+    const resolved = await resolveMissingNames(rows, lookup, saveAccountName);
+    resolved.forEach((name, contractId) => {
+      // Active rows carry data-balance-for="<contractId>" from render() (see
+      // rowHtml); reuse it to locate the row. contractId is a strkey (base32),
+      // safe inside an attribute selector. A null result means the menu
+      // re-rendered meanwhile — harmless, the name is already cached for it.
+      const rowEl = panel.querySelector<HTMLAnchorElement>(
+        `.mn-row[data-balance-for="${contractId}"]`,
+      );
+      if (!rowEl) return;
+      const nameEl = rowEl.querySelector(".mn-name");
+      if (nameEl) nameEl.textContent = name;
+      rowEl.href = accountUrl(window.location.host, name, "/account/");
     });
   }
 
