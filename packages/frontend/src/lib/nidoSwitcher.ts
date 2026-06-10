@@ -6,11 +6,15 @@ import {
   loadAccounts,
   loadPendingAccounts,
   loadAccountName,
+  saveAccountName,
   activateAccount,
+  lookupName,
+  fetchRegistryAddress,
 } from "@g2c/passkey-sdk";
 import { rpc, xdr } from "@stellar/stellar-sdk";
 import { buildMyNidoModel, type MyNidoRow } from "./myNidoModel";
-import { nidoRowHref } from "./accountLinks";
+import { nidoRowHref, accountShareUrl } from "./accountLinks";
+import { resolveMissingNames } from "./resolveMyNidoNames";
 import { fetchXlmBalance } from "./balance";
 import { avatarBackground } from "./avatarStyle";
 import { shortAddr } from "./address";
@@ -18,6 +22,15 @@ import { formatXlm } from "./money";
 import { createNido } from "./createNido";
 
 const RPC_URL = "https://soroban-testnet.stellar.org";
+const NAME_NETWORK = "Test SDF Network ; September 2015";
+
+// Resolve the name-registry contract id once per page load (memoized promise),
+// shared across switcher instances. Only fetched if some row needs an on-chain
+// name.
+let nameRegistryIdPromise: Promise<string> | null = null;
+function nameRegistryId(): Promise<string> {
+  return (nameRegistryIdPromise ??= fetchRegistryAddress("name-registry"));
+}
 
 const esc = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
@@ -133,6 +146,25 @@ export function mountNidoSwitcher(root: HTMLElement, opts: MountOptions = {}): v
       <div class="mn-err" style="display:none"></div></div>`;
     wireCreate();
     loadBalances();
+    void resolveNames(model.rows);
+  }
+
+  // After the synchronous render, reverse-look-up each nameless active account
+  // via the name registry, patch the row's name + (bare) href in place, and
+  // persist the hit so later renders are instant. Mirrors loadBalances().
+  async function resolveNames(rows: MyNidoRow[]) {
+    const lookup = async (contractId: string) =>
+      lookupName(RPC_URL, await nameRegistryId(), contractId, NAME_NETWORK);
+    const resolved = await resolveMissingNames(rows, lookup, saveAccountName);
+    resolved.forEach((name, contractId) => {
+      const rowEl = panel!.querySelector<HTMLAnchorElement>(
+        `.mn-row[data-balance-for="${contractId}"]`,
+      );
+      if (!rowEl) return;
+      const nameEl = rowEl.querySelector(".mn-name");
+      if (nameEl) nameEl.textContent = name;
+      rowEl.href = accountShareUrl(window.location.host, name);
+    });
   }
 
   function wireCreate() {
