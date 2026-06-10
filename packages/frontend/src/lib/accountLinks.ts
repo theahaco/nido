@@ -16,7 +16,16 @@ export function accountShareLabel(host: string, nameOrId: string): string {
 }
 
 /** Href for a My Nido switcher row: active rows → bare account URL; pending rows
- *  → resume the setup flow at `/new-account/`. */
+ *  → resume the setup flow at `/new-account/`.
+ *
+ *  Note: this passes the RAW `host` (not `stripSubdomain(host)`, unlike the
+ *  share-link caller). That is correct — `accountUrl` self-normalizes the apex
+ *  (it drops the first label only when the host has >2 labels), so the row href
+ *  is right both on the apex landing switcher (`nido.fyi` → `//bob.nido.fyi/`)
+ *  and on account subdomains in production; stripping first would wrongly yield
+ *  `//bob.fyi/` on the apex. The only shape it cannot self-normalize is a
+ *  single-label-apex subdomain like `alice.localhost` in dev (mis-nests to
+ *  `//bob.alice.localhost/`); production hosts are unaffected. */
 export function nidoRowHref(host: string, row: MyNidoRow): string {
   if (row.status === "pending") {
     return accountUrl(host, row.contractId, `/new-account/?key=${row.resumeKey}`);

@@ -27,6 +27,9 @@ const { placement = "down", primary = false } = Astro.props;
      classes are uniquely prefixed (.mynido* / .mn-*), so global scope is safe. -->
 <style is:global>
   .mynido { position: relative; }
+  /* visually-hidden text for accessible names (kept off-screen, not display:none
+     so screen readers still announce it). */
+  .mn-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .mynido-btn {
     display: inline-flex; align-items: center; gap: 7px;
     background: var(--acc-btn); color: #fff; font-family: var(--body);
@@ -62,6 +65,15 @@ const { placement = "down", primary = false } = Astro.props;
     top: auto; bottom: -7px; right: auto; left: 24px;
     border-left: none; border-top: none;
     border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  /* The upward (sidebar) panel grows toward the top of the viewport with no
+     scroll container around it, so cap its inner scroll region — otherwise a
+     tall list on a short desktop window runs off the top with no way to reach
+     it. The scroll lives on .mn-scroll (inside the panel) so the panel's arrow
+     and rounded corners are preserved. The downward panel relies on .col-scroll. */
+  .mynido[data-placement="up"] .mn-scroll {
+    max-height: min(70vh, calc(100vh - 96px));
+    overflow-y: auto;
   }
 
   /* header */

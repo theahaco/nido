@@ -21,7 +21,7 @@ const NAV = [
 ---
 
 <aside class="nido-sidebar">
-  <a id="sidebar-home-link" class="nido-sidebar-brand" href="/" data-home-apex aria-label="Nido home">
+  <a class="nido-sidebar-brand" href="/" data-home-apex aria-label="Nido home">
     <Logo size={20} mark markSize={28} />
   </a>
   <nav class="nido-sidebar-nav">
@@ -37,22 +37,40 @@ const NAV = [
     ))}
   </nav>
   <MyNidoMenu placement="up">
-    <button slot="trigger" type="button" class="nido-sidebar-account" data-mynido-trigger aria-haspopup="true" aria-expanded="false" aria-label="Switch Nido">
+    <button slot="trigger" type="button" class="nido-sidebar-account" data-mynido-trigger aria-haspopup="true" aria-expanded="false">
       <Avatar seed="nido" size={32} class="js-avatar" />
       <span class="nido-account-name js-account-name">Your Nido</span>
+      <span class="mn-sr"> — switch account</span>
       <span class="mynido-caret" aria-hidden="true" style="margin-left:auto;">▾</span>
     </button>
   </MyNidoMenu>
 </aside>
 
 <script>
-  import { stripSubdomain } from "@g2c/passkey-sdk";
+  import {
+    stripSubdomain,
+    nameFromHostname,
+    contractIdFromHostname,
+    loadAccountName,
+  } from "@g2c/passkey-sdk";
+  const host = window.location.host;
   // The brand mark is the "exit to the Nido hub" affordance: on an account
-  // subdomain "/" redirects back to /account/, so point the brand at the apex
-  // home instead (mirrors the mobile #home-link fix). The "Home" nav item is the
+  // subdomain "/" redirects back to /account/, so point every home link
+  // (data-home-apex) at the apex home instead. The "Home" nav item is the
   // account dashboard (/account/) and stays account-relative.
-  const apexHome = `//${stripSubdomain(window.location.host)}/`;
+  const apexHome = `//${stripSubdomain(host)}/`;
   document
     .querySelectorAll<HTMLAnchorElement>("[data-home-apex]")
     .forEach((a) => (a.href = apexHome));
+
+  // Best-effort: show the current account's name in the collapsed chip on every
+  // app page. The account page resolves the name authoritatively; this keeps
+  // /transfer, /security and /account/activity from showing a generic "Your Nido".
+  const currentName =
+    nameFromHostname(host) || loadAccountName(contractIdFromHostname(host) || "");
+  if (currentName) {
+    document
+      .querySelectorAll(".js-account-name")
+      .forEach((el) => (el.textContent = currentName));
+  }
 </script>

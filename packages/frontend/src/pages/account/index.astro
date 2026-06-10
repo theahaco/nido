@@ -33,10 +33,11 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   <div class="col-scroll scroll-hide">
     <!-- top bar -->
     <div class="topbar">
-      <a id="home-link" href="/" class="topbar-mark" aria-label="Nido home"><Nest size={30} /></a>
+      <a id="home-link" href="/" class="topbar-mark" data-home-apex aria-label="Nido home"><Nest size={30} /></a>
       <MyNidoMenu>
-        <button slot="trigger" type="button" class="topbar-account" data-mynido-trigger aria-haspopup="true" aria-expanded="false" aria-label="Switch Nido">
+        <button slot="trigger" type="button" class="topbar-account" data-mynido-trigger aria-haspopup="true" aria-expanded="false">
           <span id="account-nickname" style="font-weight:800; font-size:14.5px; white-space:nowrap;">Your Nido</span>
+          <span class="mn-sr"> — switch account</span>
           <Avatar seed="nido" size={32} class="js-avatar" />
           <span class="mynido-caret" aria-hidden="true">▾</span>
         </button>
@@ -357,16 +358,17 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   let contractId = contractIdFromHostname(hostname);
   const rpId = hostname;
 
-  // Point the home link at the apex as early as possible, before any code
-  // that could throw. The static fallback is href="/", but on a contract
-  // subdomain the root page redirects straight back here — so if a later
-  // runtime error skipped this, the home button would loop. Setting it here
-  // (independent of contractId resolution) keeps it safe.
+  // Point every home link (tagged data-home-apex — here the topbar mark; the
+  // sidebar brand is handled by the Sidebar module) at the apex as early as
+  // possible, before any code that could throw. The static fallback is href="/",
+  // but on a contract subdomain the root page redirects straight back here — so
+  // if a later runtime error skipped this, the home button would loop. Doing it
+  // here (independent of contractId resolution) keeps it safe.
   {
-    const $homeLinkEarly = document.getElementById("home-link") as HTMLAnchorElement | null;
-    if ($homeLinkEarly) {
-      $homeLinkEarly.href = `//${stripSubdomain(window.location.host)}/`;
-    }
+    const apexHome = `//${stripSubdomain(window.location.host)}/`;
+    document
+      .querySelectorAll<HTMLAnchorElement>("[data-home-apex]")
+      .forEach((a) => (a.href = apexHome));
   }
 
   // --- Name resolution ---
