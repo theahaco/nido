@@ -3,6 +3,7 @@ import { accountOrigin } from "@g2c/stellar-wallets-kit-module"
 import { Button, Card, Icon, Input, Text } from "@stellar/design-system"
 import { useEffect, useState } from "react"
 import statusMessage from "../contracts/status_message"
+import { stellarNetwork } from "../contracts/util"
 import { useWallet } from "../hooks/useWallet"
 import {
 	startDelegation,
@@ -11,7 +12,12 @@ import {
 	consumeAutoStartDelegation,
 	shouldAutoStartDelegation,
 } from "../lib/delegationHandover"
-import { signUpdateMessageInPage, hasSessionKey } from "../lib/nidoSign"
+import {
+	signUpdateMessageInPage,
+	tipAuthorInPage,
+	hasSessionKey,
+	XLM_SAC_ID,
+} from "../lib/nidoSign"
 import { G2C_ID, g2cBase } from "../util/wallet"
 import styles from "./StatusMessage.module.css"
 
@@ -19,6 +25,10 @@ type SaveState = "idle" | "loading" | "success" | "failure"
 
 /** The deployed status-message contract id (baked into the generated client). */
 const CONTRACT_ID = statusMessage.options.contractId
+
+/** Explorer link for a submitted transaction (demo runs on testnet). */
+const explorerTxUrl = (hash: string) =>
+	`https://stellar.expert/explorer/${stellarNetwork === "PUBLIC" ? "public" : "testnet"}/tx/${hash}`
 
 /**
  * Read and write an account's on-chain status message via the scaffold-generated
@@ -32,6 +42,11 @@ const CONTRACT_ID = statusMessage.options.contractId
  *   back so the new status shows immediately.
  * - "Look up" reads any account's message with a read-only simulation. It's
  *   pre-filled with the connected account on connect / on return from the wallet.
+ * - "Tip 1 XLM" sends the displayed author native XLM from the connected Nido
+ *   account, signed in-page with a session key scoped to the XLM SAC and capped
+ *   by a wallet-installed spending limit (5 XLM/day), submitted gaslessly via
+ *   the Nido relayer. "Enable tipping" runs the same delegation round-trip as
+ *   the status flow, just with the SAC target + limit params.
  */
 export const StatusMessage = () => {
 	const { address, walletId, signTransaction } = useWallet()
@@ -46,6 +61,19 @@ export const StatusMessage = () => {
 	const [lookupAddr, setLookupAddr] = useState("")
 	const [lookupResult, setLookupResult] = useState<string | null>()
 	const [lookupBusy, setLookupBusy] = useState(false)
+	// The author whose status is currently displayed (set on each read) — the
+	// tip affordance attaches to THIS address, not the still-editable input.
+	const [lookupAuthor, setLookupAuthor] = useState<string | null>(null)
+
+	const [tipState, setTipState] = useState<SaveState>("idle")
+	const [tipError, setTipError] = useState<string>()
+	const [tipProgress, setTipProgress] = useState<string>()
+	const [tipHash, setTipHash] = useState<string>()
+
+	// Session material for the XLM SAC (the tipping scope). Checked at render
+	// time: enabling tipping is a full-page round-trip to the wallet, so a fresh
+	// render always re-reads localStorage.
+	const canTip = nidoAccount ? hasSessionKey(nidoAccount, XLM_SAC_ID) : false
 
 	// Pre-fill the lookup field with the connected account so you can read your
 	// own status immediately. Only fills when empty, so it never clobbers typing.
@@ -108,6 +136,10 @@ export const StatusMessage = () => {
 	// Read an account's on-chain status (read-only simulation) into the lookup card.
 	const readStatus = async (author: string) => {
 		setLookupBusy(true)
+		setLookupAuthor(author)
+		setTipState("idle")
+		setTipError(undefined)
+		setTipHash(undefined)
 		try {
 			const tx = await statusMessage.get_message({ author })
 			// `result` is the simulated Option<string> (undefined when unset).
@@ -162,6 +194,59 @@ export const StatusMessage = () => {
 	const lookup = () => {
 		const author = lookupAddr.trim() || address
 		if (author) void readStatus(author)
+	}
+
+	// Delegate a tipping session key scoped to the XLM SAC, capped at 5 XLM per
+	// rolling day. Same wallet round-trip as `delegate` above: the pending
+	// record persists locally because the wallet replaces the return URL's
+	// query string (see delegationHandover.ts).
+	const enableTipping = async () => {
+		if (!nidoAccount) return
+		setTipError(undefined)
+		setTipState("idle")
+		try {
+			await startDelegation({
+				walletOrigin: accountOrigin(g2cBase(), nidoAccount),
+				account: nidoAccount,
+				targetContract: XLM_SAC_ID,
+				duration: "7d",
+				limit: "5",
+				limitPeriod: "day",
+				returnUrl: window.location.href,
+				label: "Tipping",
+			})
+			// Redirect happens; code below won't run.
+		} catch (e) {
+			setTipState("failure")
+			setTipError(e instanceof Error ? e.message : String(e))
+		}
+	}
+
+	// Gasless 1 XLM tip through the relayer, signed with the tipping passkey.
+	const tip = async () => {
+		if (!nidoAccount || !lookupAuthor) return
+		setTipState("loading")
+		setTipError(undefined)
+		setTipHash(undefined)
+		try {
+			const { hash } = await tipAuthorInPage({
+				account: nidoAccount,
+				author: lookupAuthor,
+				xlm: 1,
+				onProgress: setTipProgress,
+			})
+			setTipHash(hash)
+			setTipState("success")
+		} catch (e) {
+			console.error(e)
+			setTipState("failure")
+			// Relayer / policy rejections (e.g. over the 5 XLM/day limit) arrive as
+			// error messages — surface them readably. The session material is KEPT:
+			// the rule may still allow smaller amounts, or the window may roll over.
+			setTipError(`Tip rejected: ${e instanceof Error ? e.message : String(e)}`)
+		} finally {
+			setTipProgress(undefined)
+		}
 	}
 
 	return (
@@ -258,6 +343,61 @@ export const StatusMessage = () => {
 						)}
 					</Text>
 				)}
+
+				{/* Tip the displayed author from the connected Nido account — signed
+				    in-page with a SPENDING-LIMITED session key, submitted gaslessly
+				    through the relayer. Hidden for your own account (no self-tips). */}
+				{nidoAccount &&
+					lookupAuthor &&
+					lookupResult !== undefined &&
+					lookupAuthor !== nidoAccount && (
+						<>
+							<div className={styles.tipRow}>
+								{canTip ? (
+									<Button
+										variant="tertiary"
+										size="md"
+										disabled={tipState === "loading"}
+										isLoading={tipState === "loading"}
+										onClick={() => void tip()}
+									>
+										Tip 1 XLM
+									</Button>
+								) : (
+									<Button
+										variant="tertiary"
+										size="md"
+										onClick={() => void enableTipping()}
+									>
+										Enable tipping
+									</Button>
+								)}
+								<Text as="span" size="sm" addlClassName={styles.tipHint}>
+									{canTip
+										? "Gasless — sent through the Nido relayer."
+										: "Adds a tipping passkey capped at 5 XLM per day."}
+								</Text>
+							</div>
+							{tipState === "loading" && tipProgress && (
+								<Text as="div" size="sm" addlClassName={styles.progress}>
+									{tipProgress}
+								</Text>
+							)}
+							{tipState === "success" && tipHash && (
+								<Text as="div" size="sm" addlClassName={styles.success}>
+									<Icon.CheckCircle size="sm" /> Tipped 1 XLM.{" "}
+									<a href={explorerTxUrl(tipHash)} target="_blank" rel="noreferrer">
+										View transaction
+									</a>
+								</Text>
+							)}
+							{tipState === "failure" && tipError && (
+								<Text as="div" size="sm" addlClassName={styles.error}>
+									{tipError}
+								</Text>
+							)}
+						</>
+					)}
 			</Card>
 		</div>
 	)

@@ -136,8 +136,10 @@ function bytesToHex(raw: unknown): string | null {
 		// Sometimes handed back as an object with numeric keys; rebuild as bytes.
 		const obj = raw as Record<string, number>
 		const ordered: number[] = []
-		for (let j = 0; obj[j as unknown as string] !== undefined; j++) {
-			ordered.push(obj[j as unknown as string])
+		for (let j = 0; ; j++) {
+			const b = obj[j as unknown as string]
+			if (b === undefined) break
+			ordered.push(b)
 		}
 		if (ordered.length > 0) {
 			return ordered.map((b) => b.toString(16).padStart(2, "0")).join("")

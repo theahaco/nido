@@ -95,6 +95,38 @@ export interface StartDelegationOptions {
 	returnUrl: string
 	/** Optional human-readable label stored locally with the session-key material. */
 	label?: string
+	/**
+	 * Optional spending limit (decimal XLM, e.g. "5") suggested to the wallet.
+	 * The wallet shows it pre-filled on the delegate page; the USER still
+	 * reviews/edits it there — this is a suggestion, not an enforcement.
+	 */
+	limit?: string
+	/** Rolling window the limit applies over. Wallet defaults to "day". */
+	limitPeriod?: "day" | "week" | "30d"
+}
+
+/**
+ * Build the wallet delegate-page URL for a delegation request. Pure — exported
+ * for tests; `startDelegation` supplies the live pubkey + dApp origin.
+ */
+export function buildDelegationUrl(
+	opts: StartDelegationOptions,
+	pubkeyHex: string,
+	dappOrigin: string,
+): string {
+	const url = new URL(`${opts.walletOrigin}/security/delegate/`)
+	url.searchParams.set("origin", dappOrigin)
+	url.searchParams.set("target", opts.targetContract)
+	url.searchParams.set("pubkey", pubkeyHex)
+	url.searchParams.set("duration", opts.duration)
+	// Spending limit is opt-in; a period without an amount is meaningless, so
+	// `limit_period` only travels alongside `limit`.
+	if (opts.limit) {
+		url.searchParams.set("limit", opts.limit)
+		url.searchParams.set("limit_period", opts.limitPeriod ?? "day")
+	}
+	url.searchParams.set("return", opts.returnUrl)
+	return url.toString()
 }
 
 /**
@@ -131,17 +163,10 @@ export async function startDelegation(opts: StartDelegationOptions): Promise<voi
 		label: opts.label,
 	})
 
-	const url = new URL(`${opts.walletOrigin}/security/delegate/`)
-	url.searchParams.set("origin", window.location.origin)
-	url.searchParams.set("target", opts.targetContract)
-	url.searchParams.set("pubkey", pubkeyHex)
-	url.searchParams.set("duration", opts.duration)
-	url.searchParams.set("return", opts.returnUrl)
-
 	// Full-page redirect: the user reviews the request at the wallet, signs with
 	// their primary passkey, and the wallet sends them back to `returnUrl` with
 	// ?delegation=ok or ?delegation=cancelled.
-	window.location.href = url.toString()
+	window.location.href = buildDelegationUrl(opts, pubkeyHex, window.location.origin)
 }
 
 // ---------------------------------------------------------------------------

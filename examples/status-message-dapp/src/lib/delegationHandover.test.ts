@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
+	buildDelegationUrl,
 	readDelegationReturn,
 	writePendingDelegation,
 	consumePendingDelegation,
@@ -7,6 +8,7 @@ import {
 	consumeAutoStartDelegation,
 	shouldAutoStartDelegation,
 	type DelegationStorage,
+	type StartDelegationOptions,
 } from "./delegationHandover"
 
 function fakeStore(): DelegationStorage {
@@ -17,6 +19,56 @@ function fakeStore(): DelegationStorage {
 		removeItem: (k) => void map.delete(k),
 	}
 }
+
+describe("buildDelegationUrl", () => {
+	const base: StartDelegationOptions = {
+		walletOrigin: "https://cabc.nido.fyi",
+		account: "CABC",
+		targetContract: "CDEF",
+		duration: "7d",
+		returnUrl: "https://dapp.example/page",
+	}
+
+	it("carries origin/target/pubkey/duration/return and omits limit params by default", () => {
+		const url = new URL(buildDelegationUrl(base, "aabb", "https://dapp.example"))
+		expect(url.origin + url.pathname).toBe("https://cabc.nido.fyi/security/delegate/")
+		expect(url.searchParams.get("origin")).toBe("https://dapp.example")
+		expect(url.searchParams.get("target")).toBe("CDEF")
+		expect(url.searchParams.get("pubkey")).toBe("aabb")
+		expect(url.searchParams.get("duration")).toBe("7d")
+		expect(url.searchParams.get("return")).toBe("https://dapp.example/page")
+		expect(url.searchParams.has("limit")).toBe(false)
+		expect(url.searchParams.has("limit_period")).toBe(false)
+	})
+
+	it("appends limit + limit_period when a limit is requested", () => {
+		const url = new URL(
+			buildDelegationUrl(
+				{ ...base, limit: "5", limitPeriod: "week" },
+				"aabb",
+				"https://dapp.example",
+			),
+		)
+		expect(url.searchParams.get("limit")).toBe("5")
+		expect(url.searchParams.get("limit_period")).toBe("week")
+	})
+
+	it("defaults the period to day when only a limit is given", () => {
+		const url = new URL(
+			buildDelegationUrl({ ...base, limit: "5" }, "aabb", "https://dapp.example"),
+		)
+		expect(url.searchParams.get("limit")).toBe("5")
+		expect(url.searchParams.get("limit_period")).toBe("day")
+	})
+
+	it("never sends a dangling limit_period without a limit", () => {
+		const url = new URL(
+			buildDelegationUrl({ ...base, limitPeriod: "week" }, "aabb", "https://dapp.example"),
+		)
+		expect(url.searchParams.has("limit")).toBe(false)
+		expect(url.searchParams.has("limit_period")).toBe(false)
+	})
+})
 
 describe("readDelegationReturn", () => {
 	it("recognises ok / cancelled and ignores everything else", () => {
