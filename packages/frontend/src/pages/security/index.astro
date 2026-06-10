@@ -154,13 +154,21 @@ import Nest from '../../components/Nest.astro';
         overlay,
       });
 
+      const delegationsEmpty =
+        '<p class="mut" style="font-size:13px;">No apps have been let in yet.</p>';
       recoveryList.innerHTML = '';
       delegationList.innerHTML = '';
       for (const block of blocks) {
         if (block.kind === 'multisig-recovery') {
           recoveryList.appendChild(renderRecoveryCard(block));
         } else if (block.kind === 'scoped-session-key') {
-          delegationList.appendChild(renderSessionKeyCard(block));
+          delegationList.appendChild(
+            renderSessionKeyCard(block, account, () => {
+              if (!delegationList.children.length) {
+                delegationList.innerHTML = delegationsEmpty;
+              }
+            }),
+          );
         }
       }
       if (!recoveryList.children.length) {
@@ -168,8 +176,7 @@ import Nest from '../../components/Nest.astro';
           '<p class="mut" style="font-size:13px;">No trusted friends yet.</p>';
       }
       if (!delegationList.children.length) {
-        delegationList.innerHTML =
-          '<p class="mut" style="font-size:13px;">No apps have been let in yet.</p>';
+        delegationList.innerHTML = delegationsEmpty;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -253,4 +260,12 @@ import Nest from '../../components/Nest.astro';
   :global(.rule-card .chips) { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
   :global(.rule-card .actions) { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   :global(.rule-card .small) { font-size: 12px; }
+
+  /* Session-key scope line (injected via innerHTML — must be :global). */
+  :global(.rule-card .scope-line) { margin: 8px 0 0; line-height: 1.5; }
+  :global(.rule-card .scope-line .contract-link) {
+    color: var(--acc); font-size: 11.5px; text-decoration: underline;
+    text-underline-offset: 2px; word-break: break-all;
+  }
+  :global(.rule-card .revoke[disabled]) { opacity: 0.55; cursor: default; }
 </style>

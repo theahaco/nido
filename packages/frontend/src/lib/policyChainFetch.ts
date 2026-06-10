@@ -11,6 +11,7 @@ import {
 } from '@stellar/stellar-sdk';
 import type { ChainRule, ChainSigner, PolicyState } from '@g2c/passkey-sdk';
 import { fetchRegistryAddress as sdkFetchRegistryAddress } from '@g2c/passkey-sdk';
+import { Client as SpendingLimitPolicyClient } from 'spending-limit-policy';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = Networks.TESTNET;
@@ -79,15 +80,22 @@ export async function fetchAllChainRules(account: string): Promise<ChainRule[]> 
 }
 
 /** For each policy address attached to a rule, fetch its per-(account,rule)
- *  state. Currently only the multisig policy is supported — we call its
- *  `get_threshold` view method directly via simulate. */
+ *  state. The multisig policy yields `{ threshold }` (via its `get_threshold`
+ *  view); the spending-limit policy yields `{ spendingLimit }` (via
+ *  `fetchSpendingLimit`). Unknown / unreadable policies yield `{}`. */
 export async function fetchPolicyState(
   account: string,
   rule: ChainRule,
 ): Promise<PolicyState> {
   const server = new rpc.Server(RPC_URL);
   const state: PolicyState = {};
+  const limitPolicyAddr = await spendingLimitPolicyId().catch(() => null);
   for (const policyAddr of rule.policies) {
+    if (policyAddr === limitPolicyAddr) {
+      const limit = await fetchSpendingLimit(account, rule);
+      state[policyAddr] = limit ? { spendingLimit: limit } : {};
+      continue;
+    }
     try {
       const rv = await simulateView(
         server,
@@ -103,6 +111,52 @@ export async function fetchPolicyState(
     }
   }
   return state;
+}
+
+// Registry-resolved spending-limit-policy address, cached as a promise (same
+// pattern as the account page's `nameRegistryId`): all rules on a page share
+// one lookup.
+let _spendingLimitPolicyIdPromise: Promise<string> | null = null;
+function spendingLimitPolicyId(): Promise<string> {
+  return (_spendingLimitPolicyIdPromise ??= fetchRegistryAddress('spending-limit-policy'));
+}
+
+/** Read the spending limit installed on `rule` for `account`, if the rule
+ *  carries the registry-resolved spending-limit policy. READ-ONLY: the
+ *  generated bindings client simulates `get_spending_limit({context_rule_id,
+ *  smart_account})` and we never sign or send. Returns `null` when the rule
+ *  has no spending-limit policy, the params aren't installed, or the read
+ *  fails (mirrors `fetchPolicyState`'s tolerant threshold read). */
+export async function fetchSpendingLimit(
+  account: string,
+  rule: ChainRule,
+): Promise<{ stroops: bigint; periodLedgers: number } | null> {
+  let policyAddr: string;
+  try {
+    policyAddr = await spendingLimitPolicyId();
+  } catch {
+    return null; // registry unreachable
+  }
+  if (!rule.policies.includes(policyAddr)) return null;
+  try {
+    const client = new SpendingLimitPolicyClient({
+      contractId: policyAddr,
+      networkPassphrase: NETWORK_PASSPHRASE,
+      rpcUrl: RPC_URL,
+    });
+    const tx = await client.get_spending_limit({
+      context_rule_id: rule.ruleId,
+      smart_account: account,
+    });
+    const params = tx.result; // Option<SpendingLimitAccountParams>
+    if (!params) return null;
+    return {
+      stroops: BigInt(params.spending_limit),
+      periodLedgers: Number(params.period_ledgers),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Resolve a canonical contract name via the on-chain registry. The factory
