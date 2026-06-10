@@ -130,8 +130,9 @@ import Icon from '../../../components/Icon.astro';
   const pubkeyHex = params.get('pubkey') ?? '';
   const duration = params.get('duration') ?? '24h';
   // Optional spending limit: `limit` (decimal XLM string) + `limit_period`
-  // (day|week|30d, default day). Absent `limit` = no cap (today's behavior).
-  const limitParam = params.get('limit');
+  // (day|week|30d, default day). Absent or EMPTY `limit` = no cap (today's
+  // behavior) — `?limit=` should not pre-block approval with a parse error.
+  const limitParam = params.get('limit') || null;
   const limitPeriodParam = params.get('limit_period') ?? 'day';
   const limitPeriodInitial: LimitPeriod =
     limitPeriodParam in PERIOD_LEDGERS ? (limitPeriodParam as LimitPeriod) : 'day';
@@ -180,9 +181,13 @@ import Icon from '../../../components/Icon.astro';
     }
     try {
       const stroops = stroopsFromXlm(limitAmount.value);
+      // The policy is deny-by-default: with a limit installed, ONLY token
+      // transfers are authorized — any other call in the scoped contract is
+      // blocked outright, not merely unmetered.
       limitSummary.textContent =
-        `Token transfers in this contract are capped at ${stroopsToXlm(stroops)} XLM ` +
-        `${PERIOD_LABEL[selectedPeriod()]} (rolling window).`;
+        `Only token transfers are allowed, capped at ${stroopsToXlm(stroops)} XLM ` +
+        `${PERIOD_LABEL[selectedPeriod()]} (rolling window) — other calls in this ` +
+        `contract will be blocked.`;
     } catch (e) {
       limitSummary.textContent = e instanceof Error ? e.message : String(e);
     }
