@@ -13,11 +13,11 @@ test.describe('@testnet send to a named nido', () => {
   async function createAccount(page: import('@playwright/test').Page) {
     await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
     // Account creation lives in the My Nido menu: "Get started" opens it, then
-    // #mn-create-btn runs createNido (friendbot + factory) and navigates to the
+    // .mn-create-btn runs createNido (friendbot + factory) and navigates to the
     // new account's C-address subdomain at /new-account/?key=<secret>.
     await page.locator('#get-started-hero').click();
-    await expect(page.locator('#mynido')).toHaveClass(/mynido-open/);
-    await page.locator('#mn-create-btn').click();
+    await expect(page.locator('[data-mynido]')).toHaveClass(/mynido-open/);
+    await page.locator('.mn-create-btn').click();
     await page.waitForURL(/\/new-account\/\?key=/, { timeout: 60_000 });
     // The C-address is the first label of the (now navigated) subdomain host.
     const host = new URL(page.url()).host;
