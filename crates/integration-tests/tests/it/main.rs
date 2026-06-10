@@ -5,3 +5,4 @@ mod name_registry_passkey_auth;
 mod scoped_session_key;
 mod smart_account_auth;
 mod smart_account_setup;
+mod spending_limit_policy;

@@ -4,6 +4,7 @@ use p256::ecdsa::signature::hazmat::PrehashSigner;
 use p256::ecdsa::{Signature, SigningKey};
 use sha2::{Digest, Sha256};
 use stellar_accounts::policies::simple_threshold::SimpleThresholdAccountParams;
+use stellar_accounts::policies::spending_limit::SpendingLimitAccountParams;
 use stellar_accounts::smart_account::{ContextRule, ContextRuleType, Signer};
 
 pub const SMART_ACCOUNT_WASM: &[u8] =
@@ -14,6 +15,9 @@ pub const WEBAUTHN_VERIFIER_WASM: &[u8] =
 
 pub const MULTISIG_POLICY_WASM: &[u8] =
     include_bytes!("../../../target/wasm32v1-none/contract/g2c_multisig_policy.wasm");
+
+pub const SPENDING_LIMIT_POLICY_WASM: &[u8] =
+    include_bytes!("../../../target/wasm32v1-none/contract/g2c_spending_limit_policy.wasm");
 
 #[allow(dead_code)]
 #[soroban_sdk::contractclient(name = "SmartAccountClient")]
@@ -169,6 +173,31 @@ pub fn multisig_install_map(
     let mut m: soroban_sdk::Map<soroban_sdk::Address, soroban_sdk::Val> =
         soroban_sdk::Map::new(env);
     m.set(multisig_policy_addr.clone(), params.into_val(env));
+    m
+}
+
+/// Deploy the spending-limit policy contract and return its address.
+pub fn deploy_spending_limit_policy(env: &soroban_sdk::Env) -> soroban_sdk::Address {
+    env.register(SPENDING_LIMIT_POLICY_WASM, ())
+}
+
+/// Build the `policies` map for `add_context_rule` containing a single
+/// spending-limit-policy install with the given limit (stroops) and rolling
+/// window (ledgers).
+pub fn spending_limit_install_map(
+    env: &soroban_sdk::Env,
+    policy_addr: &soroban_sdk::Address,
+    spending_limit: i128,
+    period_ledgers: u32,
+) -> soroban_sdk::Map<soroban_sdk::Address, soroban_sdk::Val> {
+    use soroban_sdk::IntoVal;
+    let params = SpendingLimitAccountParams {
+        spending_limit,
+        period_ledgers,
+    };
+    let mut m: soroban_sdk::Map<soroban_sdk::Address, soroban_sdk::Val> =
+        soroban_sdk::Map::new(env);
+    m.set(policy_addr.clone(), params.into_val(env));
     m
 }
 
