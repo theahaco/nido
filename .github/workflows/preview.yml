@@ -33,6 +33,11 @@ jobs:
         run: npm run build:packages
 
       - name: Build frontend
+        env:
+          # Gas abstraction via the self-hosted OZ Relayer (#72). SIM_SOURCE is
+          # the relayer's public fund address (simulation-only tx source).
+          PUBLIC_RELAYER_URL: https://nido.fly.dev
+          PUBLIC_RELAYER_SIM_SOURCE: GAL42RUBXKQSVSJWBXFTBB4GFKMPQXA3SOJVGP6UMRJT2SGEIR63JFK2
         run: npx astro build --root ./packages/frontend
 
       - name: Deploy to Cloudflare Pages

@@ -2,8 +2,8 @@ name: deploy-relayer
 
 on:
   push:
-    branches: [main, feat/72-relayer-gas-abstraction]  # branch entry is TEMPORARY for PR-phase deploys; drop before merge (plan Task 7)
-    paths: ['infra/relayer/**', '.github/workflows/deploy-relayer.yml']  # self-path is TEMPORARY too; drop with the branch entry (plan Task 7)
+    branches: [main]
+    paths: ['infra/relayer/**']
   workflow_dispatch:
 
 permissions:
