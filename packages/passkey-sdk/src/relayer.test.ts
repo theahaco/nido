@@ -4,7 +4,7 @@ import {
   extractFuncAndAuth,
   submitSorobanTransaction,
   waitForConfirmation,
-} from "./relayerClient";
+} from "./relayer.js";
 import { Account, Address, Networks, Operation, TransactionBuilder, nativeToScVal } from "@stellar/stellar-sdk";
 
 const BASE = "https://relayer.test";
