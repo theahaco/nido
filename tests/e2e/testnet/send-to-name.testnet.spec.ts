@@ -60,9 +60,10 @@ test.describe('@testnet send to a named nido', () => {
     await page.locator('#send-amount').fill('1');
     await page.locator('#send-submit').click();
     // The send flow signs in-page (primaryPasskeySigner) — shim get() auto-approves.
-    // .first(): on success BOTH the "Sent" toast and the #send-result line can
-    // be visible at once — a bare getByText is a strict-mode violation then.
-    await expect(page.getByText(/Sent/i).first()).toBeVisible({ timeout: 120_000 });
+    // Durable success signal: the success path closes the send panel (the
+    // "Sent" toast and #send-result line are transient and race the poll;
+    // the error path leaves the panel open).
+    await expect(page.locator('#send-section')).toBeHidden({ timeout: 120_000 });
 
     // 5) Assert the recipient received it: balance on its name subdomain is > 0.
     await page.goto(`http://${name}.localhost:${PORT}/account/`, { waitUntil: 'domcontentloaded' });
