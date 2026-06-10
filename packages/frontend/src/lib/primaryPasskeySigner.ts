@@ -57,8 +57,10 @@ export async function getSubmitter(): Promise<Keypair> {
  * Requirements:
  *  - The page origin matches the account's subdomain so WebAuthn's `rpId`
  *    matches the registered credential.
- *  - A `g2c:name-keypair` ephemeral G-address exists or can be minted via
- *    friendbot (handled internally).
+ *  - Classic mode only: a `g2c:name-keypair` ephemeral G-address exists or
+ *    can be minted via friendbot (handled internally). In relayer mode
+ *    (PUBLIC_RELAYER_URL set) no ephemeral keypair is created — the relayer
+ *    submits and the response is synthesized from its confirmation.
  *
  * Returns the send-transaction response. Throws if no passkey is found or
  * if WebAuthn is denied.
@@ -91,6 +93,9 @@ export async function signAndSubmit(args: {
   //    the relayer's (public) fund address. It never signs and never pays here.
   //    Classic mode: friendbot-funded ephemeral G as before.
   const submitter = relayerEnabled() ? null : await getSubmitter();
+  if (relayerEnabled() && !RELAYER_SIM_SOURCE) {
+    throw new Error('Relayer misconfigured: PUBLIC_RELAYER_URL is set but PUBLIC_RELAYER_SIM_SOURCE is not.');
+  }
   const sourceAccount = submitter
     ? await server.getAccount(submitter.publicKey())
     : await server.getAccount(RELAYER_SIM_SOURCE);
@@ -183,18 +188,24 @@ export async function signAndSubmit(args: {
     // signature + RPC submission below are all its job now. We ship only the
     // host function and the passkey-signed auth entry.
     const { func, auth } = extractFuncAndAuth(assembled_tx);
+    if (auth.length > 1) {
+      throw new Error(`Expected a single auth entry, got ${auth.length} — only the first is passkey-signed.`);
+    }
     const submitted = await submitSorobanTransaction({ func, auth });
     if (!submitted.transactionId) {
       throw new Error('Relayer accepted the transaction but returned no transaction id');
     }
     const confirmed = await waitForConfirmation(submitted.transactionId);
     if (!confirmed.hash) throw new Error('Relayer confirmed without a transaction hash');
+    // Only `hash` is real — latestLedger/latestLedgerCloseTime are placeholder
+    // zeros and the tx is already confirmed ('PENDING' kept for shape
+    // compatibility); callers currently discard this value.
     return {
       status: 'PENDING',
       hash: confirmed.hash,
       latestLedger: 0,
       latestLedgerCloseTime: 0,
-    } as unknown as rpc.Api.SendTransactionResponse;
+    };
   }
 
   // 7. Re-simulate the now-signed tx in ENFORCE mode — both to verify
