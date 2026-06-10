@@ -1,14 +1,14 @@
 import { rpc, scValToNative, nativeToScVal, Address, xdr } from "@stellar/stellar-sdk";
-import { RPC_URL, NATIVE_SAC_ID } from "../network.js";
+import { RPC_URL } from "../network.js";
 import { groupTxRows } from "./classify.js";
 import type { ActivityPage, DecodedEvent, DecodedTx } from "./types.js";
 
 // `getEvents` only scans a bounded span (~9k ledgers) per request and returns
 // events ASCENDING from `startLedger`, so a single wide query never reaches the
-// most-recent activity at the chain tip. And the native XLM SAC is so busy that
-// scanning it over a wide range trips the RPC's `[-32001] processing limit`. So
-// we walk fixed ledger chunks BACKWARD from the tip (newest first), each a single
-// bounded request, and stop as soon as the dense SAC trips the limit — keeping
+// most-recent activity at the chain tip. And a dense range (the busy testnet
+// SACs) can trip the RPC's `[-32001] processing limit`. So we walk fixed
+// ledger chunks BACKWARD from the tip (newest first), each a single bounded
+// request, and stop as soon as a dense range trips the limit — keeping
 // whatever contiguous recent span we could fetch. The explorer link covers older
 // history. (This is why the in-app view is "latest activity", not full history.)
 const CHUNK_LEDGERS = 9_000;      // ≈ 12.5 h at ~5s/ledger; the largest span that reliably scans
@@ -16,7 +16,7 @@ const MIN_CHUNK_LEDGERS = 1_000;  // shrink a chunk down to this on -32001 befor
 const MAX_CHUNKS = 6;             // upper bound on requests (~3 days of coverage when the SAC allows)
 const PAGE_LIMIT = 1000;
 
-type RawEvent = {
+export type RawEvent = {
   contractId?: { toString(): string } | string;
   topic: xdr.ScVal[];
   value: xdr.ScVal;
@@ -35,7 +35,7 @@ function toDecoded(e: RawEvent): DecodedEvent {
 }
 
 /** Group raw RPC events by tx hash and classify them. Exposed for unit testing. */
-export function mapRpcEvents(raw: RawEvent[], self: string): ActivityPage {
+export function mapRpcEvents(raw: RawEvent[], self: string, knownSacIds?: Set<string>): ActivityPage {
   const byTx = new Map<string, DecodedTx>();
   for (const e of raw) {
     const ts = Math.floor(new Date(e.ledgerClosedAt).getTime() / 1000);
@@ -43,44 +43,62 @@ export function mapRpcEvents(raw: RawEvent[], self: string): ActivityPage {
     tx.events.push(toDecoded(e));
     byTx.set(e.txHash, tx);
   }
-  const items = [...byTx.values()].flatMap((tx) => groupTxRows(tx, self));
+  const items = [...byTx.values()].flatMap((tx) => groupTxRows(tx, self, knownSacIds));
   items.sort((a, b) => b.timestamp - a.timestamp);
   return { items };
 }
 
+/** Filter for the account's own contract events (signer/policy/rule changes). */
+export function ownEventsFilter(address: string): rpc.Api.EventFilter[] {
+  return [{ type: "contract", contractIds: [address] }];
+}
+
 /**
- * The three event filters that constitute an account's activity: its own
- * contract events (signer/policy/rule changes) plus native-SAC `transfer` events
- * to and from it. EventFilter.topics is string[][] — each segment a base64 ScVal
- * or "*" (any one segment); protocol-23+ SAC `transfer` emits 4 topics
- * [transfer, from, to, asset].
+ * Unpinned filter matching `transfer` events involving the account from ANY
+ * token contract — not just the native SAC, so USDC and other token deposits
+ * show up. EventFilter.topics is string[][] — each segment a base64 ScVal or
+ * "*" (any one segment); a topic filter only matches events with the same
+ * segment count, so both the 4-topic SAC shape [transfer, from, to, asset]
+ * and the 3-topic bare SEP-41 shape are listed. Because the filter is
+ * unpinned, anything it returns is attacker-emittable — classify only
+ * renders rows whose emitting contract provably IS the named asset's SAC
+ * (see paymentRow), and asset discovery (lib/assets) verifies balances.
+ *
+ * IMPORTANT: this must stay in its OWN getEvents request. stellar-rpc
+ * narrows a request's scan to the union of every contractIds mentioned by
+ * ANY of its filters, so combining this unpinned filter with a pinned one
+ * (e.g. ownEventsFilter) silently drops all events from unmentioned
+ * contracts (verified live against soroban-testnet.stellar.org, 2026-06-10:
+ * pinned+unpinned returned only the pinned contract's events; the same
+ * unpinned filter alone returned everything).
  */
-function accountFilters(address: string): rpc.Api.EventFilter[] {
+export function transferFilters(address: string): rpc.Api.EventFilter[] {
   const transferTopic = nativeToScVal("transfer", { type: "symbol" }).toXDR("base64");
   const selfTopic = Address.fromString(address).toScVal().toXDR("base64");
   return [
-    { type: "contract", contractIds: [address] },
-    { type: "contract", contractIds: [NATIVE_SAC_ID], topics: [[transferTopic, "*", selfTopic, "*"]] }, // incoming
-    { type: "contract", contractIds: [NATIVE_SAC_ID], topics: [[transferTopic, selfTopic, "*", "*"]] }, // outgoing
+    {
+      type: "contract",
+      topics: [
+        [transferTopic, "*", selfTopic, "*"], // incoming, SAC shape
+        [transferTopic, selfTopic, "*", "*"], // outgoing, SAC shape
+        [transferTopic, "*", selfTopic],      // incoming, bare SEP-41 shape
+        [transferTopic, selfTopic, "*"],      // outgoing, bare SEP-41 shape
+      ],
+    },
   ];
 }
 
 /**
- * Fetch the wallet's latest activity from Soroban RPC by scanning fixed ledger
- * chunks backward from the chain tip (newest first). Each chunk is one bounded
- * request; if the dense native SAC trips the RPC's `[-32001]` processing limit we
- * shrink that chunk's span and retry, and if even the smallest span fails we stop
- * — returning whatever contiguous recent span we could fetch.
- *
- * This is the source of truth for the in-app history view. It is deliberately
- * NOT full history: Stellar Expert's `/tx` API is origin-gated (unusable from
- * this app) and the public RPC can neither retain (~1 week) nor cheaply scan the
- * busy SAC far back. Older history is reached via the explorer link in the UI.
+ * Scan fixed ledger chunks backward from the chain tip (newest first) for
+ * events matching `filters`. Each chunk is one bounded request; if a dense
+ * range trips the RPC's `[-32001]` processing limit we shrink that chunk's
+ * span and retry, and if even the smallest span fails we stop — returning
+ * whatever contiguous recent span we could fetch. Shared by the activity feed
+ * and asset discovery (lib/assets), which differ only in their filters.
  */
-export async function fetchRpcRecent(address: string, maxChunks = MAX_CHUNKS): Promise<ActivityPage> {
+export async function walkEventChunks(filters: rpc.Api.EventFilter[], maxChunks = MAX_CHUNKS): Promise<RawEvent[]> {
   const server = new rpc.Server(RPC_URL);
   const { sequence: latest } = await server.getLatestLedger();
-  const filters = accountFilters(address);
 
   const raw: RawEvent[] = [];
   let endLedger = latest;
@@ -93,12 +111,22 @@ export async function fetchRpcRecent(address: string, maxChunks = MAX_CHUNKS): P
       startLedger = Math.max(1, endLedger - span + 1);
       try {
         const res = await server.getEvents({ startLedger, endLedger, filters, limit: PAGE_LIMIT });
+        if (res.events.length >= PAGE_LIMIT) {
+          // A full page means the RPC truncated the chunk — and since events
+          // come ASCENDING, what's missing is the chunk's NEWEST span. With
+          // unpinned filters an event spray could fill the page budget to
+          // hide real payments, so never accept a truncated chunk: shrink it
+          // like a [-32001] until it fits (or the chunk fails honestly).
+          lastError = new Error("getEvents page overflow");
+          span = Math.floor(span / 3);
+          continue;
+        }
         raw.push(...(res.events as unknown as RawEvent[]));
         fetched = true;
         break;
       } catch (e) {
-        // Most likely [-32001] (dense SAC in this range): shrink and retry. Any
-        // other error (e.g. range older than retention) also ends this chunk.
+        // Most likely [-32001] (dense range): shrink and retry. Any other
+        // error (e.g. range older than retention) also ends this chunk.
         lastError = e;
         span = Math.floor(span / 3);
       }
@@ -113,5 +141,60 @@ export async function fetchRpcRecent(address: string, maxChunks = MAX_CHUNKS): P
     }
     endLedger = startLedger - 1; // chain to the next-older chunk with no gap
   }
-  return mapRpcEvents(raw, address);
+  return raw;
+}
+
+// One walk per (address, depth) per page load: the activity card and asset
+// discovery request the same span on the same page, and Astro full-reloads
+// between navigations, so module state lives exactly one page view.
+const eventsCache = new Map<string, Promise<RawEvent[]>>();
+
+/**
+ * The account's recent token-transfer events, memoized so the activity card
+ * and asset discovery share ONE chunk walk per page load. Exported for
+ * lib/assets/discover.
+ */
+export function fetchAccountEvents(address: string, maxChunks = MAX_CHUNKS): Promise<RawEvent[]> {
+  const key = `${address}:${maxChunks}`;
+  let pending = eventsCache.get(key);
+  if (!pending) {
+    pending = walkEventChunks(transferFilters(address), maxChunks);
+    // Cache successes only: a memoized rejection would make the activity
+    // page's Retry button replay the same failure for the whole page view.
+    // (The .catch is an eviction side-observer — callers still see the
+    // original rejection through the returned promise.)
+    pending.catch(() => {
+      if (eventsCache.get(key) === pending) eventsCache.delete(key);
+    });
+    eventsCache.set(key, pending);
+  }
+  return pending;
+}
+
+/** Reset the per-page event memo (tests only). */
+export function clearAccountEventsCache(): void {
+  eventsCache.clear();
+}
+
+/**
+ * Fetch the wallet's latest activity from Soroban RPC: the account's own
+ * events plus all token transfers involving it, merged from two parallel
+ * walks — they cannot share one request (see transferFilters), but the
+ * transfers walk is shared with asset discovery via fetchAccountEvents.
+ *
+ * This is the source of truth for the in-app history view. It is deliberately
+ * NOT full history: Stellar Expert's `/tx` API is origin-gated (unusable from
+ * this app) and the public RPC can neither retain (~1 week) nor cheaply scan
+ * that far back. Older history is reached via the explorer link in the UI.
+ */
+export async function fetchRpcRecent(
+  address: string,
+  maxChunks = MAX_CHUNKS,
+  knownSacIds?: Set<string>,
+): Promise<ActivityPage> {
+  const [own, transfers] = await Promise.all([
+    walkEventChunks(ownEventsFilter(address), maxChunks),
+    fetchAccountEvents(address, maxChunks),
+  ]);
+  return mapRpcEvents([...own, ...transfers], address, knownSacIds);
 }
