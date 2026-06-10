@@ -7,11 +7,13 @@ import Icon from "./Icon.astro";
 import MyNidoMenu from "./MyNidoMenu.astro";
 
 const path = Astro.url.pathname;
+// "Home" is the account dashboard (/account/) — match it exactly so it isn't
+// also highlighted on /account/activity/. Other items match by prefix.
 const isActive = (href: string) =>
-  href === "/" ? path === "/" : path.startsWith(href);
+  href === "/account/" ? path === "/account/" : path.startsWith(href);
 
 const NAV = [
-  { href: "/", label: "Home", icon: "home" },
+  { href: "/account/", label: "Home", icon: "home" },
   { href: "/transfer/", label: "Send", icon: "send" },
   { href: "/account/activity/", label: "Activity", icon: "activity" },
   { href: "/security/", label: "Security", icon: "shield" },
@@ -27,7 +29,6 @@ const NAV = [
       <a
         class:list={["nido-navitem", { "is-active": isActive(item.href) }]}
         href={item.href}
-        data-home-apex={item.href === "/" ? "" : undefined}
         aria-current={isActive(item.href) ? "page" : undefined}
       >
         <Icon name={item.icon} size={18} />
@@ -46,10 +47,10 @@ const NAV = [
 
 <script>
   import { stripSubdomain } from "@g2c/passkey-sdk";
-  // On an account subdomain, "/" redirects back to /account/, so any "home" link
-  // (the brand mark AND the "Home" nav item) would loop. Point them at the apex
-  // home instead, mirroring the mobile #home-link fix. Activity/Security stay
-  // account-relative.
+  // The brand mark is the "exit to the Nido hub" affordance: on an account
+  // subdomain "/" redirects back to /account/, so point the brand at the apex
+  // home instead (mirrors the mobile #home-link fix). The "Home" nav item is the
+  // account dashboard (/account/) and stays account-relative.
   const apexHome = `//${stripSubdomain(window.location.host)}/`;
   document
     .querySelectorAll<HTMLAnchorElement>("[data-home-apex]")
