@@ -27,7 +27,7 @@ concurrency:
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
@@ -138,6 +138,12 @@ jobs:
               fi
             done
           else
+            # Orphan guard: independently confirm absence via item list before
+            # generating anything — a misclassified transient 'op item get'
+            # error on a post-funding rerun must NOT regenerate keystores.
+            N=$(op item list --vault "$OP_VAULT" --format json | jq --arg t "$OP_ITEM" '[.[]|select(.title==$t)]|length') || \
+              { echo "::error::could not double-check item absence"; exit 1; }
+            [ "$N" = "0" ] || { echo "::error::item get said missing but item list found $N item(s) titled $OP_ITEM — refusing to regenerate keystores"; exit 1; }
             echo "1Password item '$OP_ITEM' not found — generating fresh secrets and keystores"
             API_KEY=$(openssl rand -hex 32)
             PLUGIN_ADMIN_SECRET=$(openssl rand -hex 32)

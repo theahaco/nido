@@ -12,7 +12,7 @@ git clone --depth 1 --branch v1.5.0 https://github.com/OpenZeppelin/openzeppelin
 cd "$WORK/relayer"
 echo "Note: building create_key compiles the relayer crate — the first run takes several minutes (requires cargo)."
 for name in fund channel-001 channel-002; do
-  cargo run --example create_key -- \
+  cargo run -q --example create_key -- \
     --password "$KEYSTORE_PASSPHRASE" \
     --output-dir "$OUT" \
     --filename "$name.json"
