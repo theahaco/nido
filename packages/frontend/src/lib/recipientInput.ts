@@ -26,6 +26,28 @@ export function normalizeRecipientInput(raw: string): string {
 }
 
 /**
+ * Pull the destination out of a scanned QR payload. Nido receive QRs encode the
+ * plain C-address, but this also accepts common payment URI query parameters.
+ */
+export function recipientFromQrPayload(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    const destination =
+      url.searchParams.get('destination') ??
+      url.searchParams.get('to') ??
+      url.searchParams.get('address');
+    if (destination) return normalizeRecipientInput(destination);
+  } catch {
+    // Not a URI. Treat as plain address/name text below.
+  }
+
+  return normalizeRecipientInput(trimmed);
+}
+
+/**
  * Resolve a typed Send recipient (nido name, `alice.nido`, C…, or G…) to a
  * concrete address. Thin wrapper: normalize then delegate to the SDK's
  * `resolveFriendInput`. Returns null when a name is unregistered or the input

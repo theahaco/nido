@@ -161,8 +161,20 @@ import RecentActivityCard from "../../components/RecentActivityCard.astro";
         </p>
         <div class="field">
           <label for="send-to">To</label>
-          <input id="send-to" class="input" placeholder="name, C…, or G…" autocomplete="off" spellcheck="false" />
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="send-to" class="input" placeholder="name, C…, or G…" autocomplete="off" spellcheck="false" style="flex:1; min-width:0;" />
+            <button id="send-scan-qr" type="button" class="btn soft" title="Scan QR code" aria-label="Scan QR code" style="width:48px; flex:0 0 48px; padding:0;">
+              <Icon name="qr" size={20} />
+            </button>
+          </div>
           <div id="send-resolve" class="mut mono" style="font-size:12px; margin-top:6px; min-height:16px;"></div>
+        </div>
+        <div id="send-qr-scanner" class="hidden" style="margin-top:12px; border:1px solid var(--line); border-radius:14px; background:var(--paper-2); padding:12px;">
+          <video id="send-qr-video" playsinline muted style="display:block; width:100%; aspect-ratio:1; object-fit:cover; border-radius:10px; background:#16140f;"></video>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px;">
+            <span id="send-qr-status" class="mut" style="font-size:12.5px;">Point your camera at a QR code</span>
+            <button id="send-qr-cancel" type="button" class="link" style="font-size:12.5px; background:none; border:none; cursor:pointer; padding:0;">Cancel</button>
+          </div>
         </div>
         <div class="field" style="margin-top:12px;">
           <label for="send-amount">Amount</label>
@@ -218,7 +230,7 @@ import RecentActivityCard from "../../components/RecentActivityCard.astro";
           Share your address or code so anyone can send to your Nido.
         </p>
         <div style="background:var(--paper-2); border:1px solid var(--line); border-radius:22px; padding:18px; display:inline-block; box-shadow:var(--sh-1);">
-          <Qr data="nido" size={188} />
+          <Qr id="receive-qr" size={188} />
         </div>
         <div class="card" style="padding:16px; margin-top:22px; text-align:left; display:flex; align-items:center; gap:12px;">
           <Avatar seed="nido" size={34} class="js-avatar" />
@@ -342,7 +354,7 @@ import RecentActivityCard from "../../components/RecentActivityCard.astro";
   import { formatXlm, xlmToStroops } from "../../lib/money";
   import { fetchXlmBalance } from "../../lib/balance";
   import { sendXlm } from "../../lib/sendXlm";
-  import { resolveSendRecipient } from "../../lib/recipientInput";
+  import { recipientFromQrPayload, resolveSendRecipient } from "../../lib/recipientInput";
   import { checkPasskeySupport } from "../../lib/passkeySupport";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
@@ -722,6 +734,7 @@ import RecentActivityCard from "../../components/RecentActivityCard.astro";
     document.querySelectorAll(".js-send").forEach((el) =>
       el.addEventListener("click", () => {
         const open = $sendSection.classList.toggle("hidden");
+        if (open) stopQrScanner();
         if (!open) {
           $sendSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
@@ -732,6 +745,98 @@ import RecentActivityCard from "../../components/RecentActivityCard.astro";
     const $sendAmount = document.getElementById("send-amount") as HTMLInputElement;
     const $sendResult = document.getElementById("send-result")!;
     const $sendSubmit = document.getElementById("send-submit") as HTMLButtonElement;
+    const $sendScanQr = document.getElementById("send-scan-qr") as HTMLButtonElement;
+    const $sendQrScanner = document.getElementById("send-qr-scanner")!;
+    const $sendQrVideo = document.getElementById("send-qr-video") as HTMLVideoElement;
+    const $sendQrStatus = document.getElementById("send-qr-status")!;
+    const $sendQrCancel = document.getElementById("send-qr-cancel") as HTMLButtonElement;
+
+    let qrStream: MediaStream | null = null;
+    let qrScanFrame = 0;
+    let qrScanning = false;
+
+    function stopQrScanner() {
+      qrScanning = false;
+      if (qrScanFrame) {
+        cancelAnimationFrame(qrScanFrame);
+        qrScanFrame = 0;
+      }
+      if (qrStream) {
+        qrStream.getTracks().forEach((track) => track.stop());
+        qrStream = null;
+      }
+      $sendQrVideo.srcObject = null;
+      $sendQrScanner.classList.add("hidden");
+      $sendScanQr.disabled = false;
+    }
+
+    function fillRecipientFromQr(payload: string) {
+      const recipient = recipientFromQrPayload(payload);
+      if (!recipient) {
+        $sendQrStatus.textContent = "That QR code did not contain an address";
+        return;
+      }
+      $sendTo.value = recipient;
+      $sendTo.dispatchEvent(new Event("input", { bubbles: true }));
+      toast({ msg: "Scanned recipient", icon: "check" });
+    }
+
+    async function startQrScanner() {
+      clearError();
+      const BarcodeDetectorCtor = window.BarcodeDetector;
+      if (!BarcodeDetectorCtor || !navigator.mediaDevices?.getUserMedia) {
+        showError("QR scanning is not supported in this browser. Copy or paste the address instead.");
+        return;
+      }
+
+      try {
+        const supported = BarcodeDetectorCtor.getSupportedFormats
+          ? await BarcodeDetectorCtor.getSupportedFormats()
+          : ["qr_code"];
+        if (!supported.includes("qr_code")) {
+          showError("QR scanning is not supported in this browser. Copy or paste the address instead.");
+          return;
+        }
+
+        stopQrScanner();
+        $sendScanQr.disabled = true;
+        $sendQrScanner.classList.remove("hidden");
+        $sendQrStatus.textContent = "Starting camera…";
+
+        const detector = new BarcodeDetectorCtor({ formats: ["qr_code"] });
+        qrStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: { ideal: "environment" } },
+        });
+        $sendQrVideo.srcObject = qrStream;
+        await $sendQrVideo.play();
+        $sendQrStatus.textContent = "Point your camera at a QR code";
+        qrScanning = true;
+
+        const scan = async () => {
+          if (!qrScanning) return;
+          try {
+            const codes = await detector.detect($sendQrVideo);
+            const value = codes.find((code) => code.format === "qr_code" && code.rawValue)?.rawValue;
+            if (value) {
+              stopQrScanner();
+              fillRecipientFromQr(value);
+              return;
+            }
+          } catch {
+            // Some browsers throw while video metadata settles; keep scanning.
+          }
+          qrScanFrame = requestAnimationFrame(scan);
+        };
+        qrScanFrame = requestAnimationFrame(scan);
+      } catch (err: any) {
+        stopQrScanner();
+        showError(`Couldn't start QR scanner: ${err.message}`);
+      }
+    }
+
+    $sendScanQr.addEventListener("click", startQrScanner);
+    $sendQrCancel.addEventListener("click", stopQrScanner);
 
     const NAME_NETWORK = "Test SDF Network ; September 2015";
     let _nameRegistryIdPromise: Promise<string> | null = null;
@@ -911,8 +1016,10 @@ import RecentActivityCard from "../../components/RecentActivityCard.astro";
     initHomeMode();
   }
 
-  // Show the real, full address in the Receive panel.
-  document.getElementById("receive-address")!.textContent = contractId || "(unknown)";
+  // Show and encode the real, full C-address in the Receive panel.
+  const receiveValue = contractId || "";
+  document.getElementById("receive-address")!.textContent = receiveValue || "(unknown)";
+  window.renderNidoQr?.("#receive-qr", receiveValue);
 
   // Fetch balance in background — REAL XLM, no fabricated fiat figure.
   const $balance = document.getElementById("xlm-balance")!;
