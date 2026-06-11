@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { StrKey } from '@stellar/stellar-sdk';
-import { normalizeRecipientInput, resolveSendRecipient } from './recipientInput.js';
+import { normalizeRecipientInput, recipientFromQrPayload, resolveSendRecipient } from './recipientInput.js';
 
 // A valid testnet contract + ed25519 strkey for passthrough assertions.
 const C = StrKey.encodeContract(Buffer.alloc(32, 0xbb));
@@ -62,5 +62,23 @@ describe('resolveSendRecipient', () => {
   it('returns null for garbage input', async () => {
     const resolveName = vi.fn();
     expect(await resolveSendRecipient('!!!', { resolveName })).toBeNull();
+  });
+});
+
+describe('recipientFromQrPayload', () => {
+  it('accepts a plain C-address QR payload', () => {
+    expect(recipientFromQrPayload(`  ${C}  `)).toBe(C);
+  });
+  it('accepts a plain G-address QR payload', () => {
+    expect(recipientFromQrPayload(G)).toBe(G);
+  });
+  it('extracts destination from a Stellar payment URI', () => {
+    expect(recipientFromQrPayload(`web+stellar:pay?destination=${encodeURIComponent(C)}`)).toBe(C);
+  });
+  it('extracts destination from a generic URL QR payload', () => {
+    expect(recipientFromQrPayload(`https://example.test/pay?destination=${encodeURIComponent(G)}`)).toBe(G);
+  });
+  it('normalizes a scanned nido name', () => {
+    expect(recipientFromQrPayload('ALICE.NIDO')).toBe('alice');
   });
 });
