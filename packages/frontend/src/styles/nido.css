@@ -158,6 +158,7 @@ button { font-family: inherit; }
 }
 .chip.acc { background: var(--acc-soft); color: var(--acc-ink); }
 .chip.good { background: var(--good-soft); color: var(--good-ink); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
 .chip.mono { font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 

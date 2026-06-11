@@ -15,20 +15,10 @@ export function renderRecoveryCard(block: MultisigRecoveryBlock): HTMLElement {
     <p class="muted small">${escape(multisigRecoveryModule.summarize(block))}</p>
     <div class="actions">
       <a class="recover-link" href="/security/recover/">Use to recover…</a>
-      <button class="edit">Edit (replace)</button>
-      <button class="remove">Remove</button>
+      <button class="btn edit" disabled>Coming soon</button>
+      <button class="btn remove" disabled>Coming soon</button>
     </div>
   `;
-  div.querySelector<HTMLButtonElement>('.remove')!.addEventListener('click', async () => {
-    if (!block.ruleId) return;
-    if (!confirm('Remove this recovery rule? Friends will no longer be able to recover this account.')) return;
-    // Phase 7 placeholder: real revoke wiring lands with Task 21.
-    alert('Recovery revoke wiring lands in Task 21.');
-  });
-  div.querySelector<HTMLButtonElement>('.edit')!.addEventListener('click', async () => {
-    // Phase 7 placeholder.
-    alert('Recovery edit (= revoke + re-add via the form) lands in Task 21.');
-  });
   return div;
 }
 
