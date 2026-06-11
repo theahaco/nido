@@ -142,6 +142,11 @@ export async function signSessionCallInPage<T extends InjectableTx>(opts: {
 	approvalSub?: string
 	/** Flow-specific error copy (defaults match the update_message flow). */
 	errors?: { noMaterial?: string; ruleMissing?: string }
+	/** Ledgers the signature stays valid (sdk default 10000 ≈ 14h). Callers
+	 *  that SHIP the signed entry to the relayer must set this tight (~120):
+	 *  whoever holds the body can submit at any moment until expiry. Applied
+	 *  identically to digest and injection — the two must never diverge. */
+	expirationOffset?: number
 	onProgress?: SignProgress
 }): Promise<{ tx: T }> {
 	const { account, targetContract, onProgress } = opts
@@ -158,7 +163,7 @@ export async function signSessionCallInPage<T extends InjectableTx>(opts: {
 	const { tx, sim, paramNames } = await opts.buildTx()
 	const authEntry = getAuthEntry(sim)
 	const lastLedger = sim.latestLedger
-	const authHash = buildAuthHash(authEntry, networkPassphrase, lastLedger)
+	const authHash = buildAuthHash(authEntry, networkPassphrase, lastLedger, opts.expirationOffset)
 
 	note("Finding session rule on chain…")
 	// The wallet's add_context_rule assigned some non-zero rule id; discover it
@@ -206,7 +211,7 @@ export async function signSessionCallInPage<T extends InjectableTx>(opts: {
 		verifierAddress,
 		hex2buf(material.publicKey),
 		lastLedger,
-		undefined,
+		opts.expirationOffset,
 		contextRuleIds,
 	)
 	return { tx }
@@ -336,6 +341,9 @@ export async function tipAuthorInPage(opts: {
 	const { tx: signedTx } = await signSessionCallInPage({
 		account,
 		targetContract: XLM_SAC_ID,
+		// This signed entry leaves the page (shipped to the relayer) — keep the
+		// validity window tight (~10 min), mirroring the wallet's relayer mode.
+		expirationOffset: 120,
 		approvalTitle: "Approve tip",
 		errors: {
 			noMaterial:

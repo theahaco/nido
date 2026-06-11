@@ -52,9 +52,9 @@ export async function delegateSessionKey(args: {
  *    or signing simulation): a prior attempt timed out client-side but its tx
  *    landed. Surfacing the raw `Error(Contract, #3000)` would dead-end the
  *    user on a revoke that already happened.
- *  - The submit timed out (`WAIT_TIMEOUT` / classic NOT_FOUND polling): the tx
- *    may still land. We re-check the chain and only report failure when the
- *    rule verifiably still exists.
+ *  - ANY other failure (confirmation timeout, a racing duplicate failing
+ *    on-chain, transient relayer errors) gets a chain re-check: failure is
+ *    only reported when the rule verifiably still exists.
  *
  *  Local material cleanup is ownership-checked: with two live rules on the
  *  same target (re-delegation), the single per-target material slot belongs to
@@ -82,21 +82,16 @@ export async function revokeSessionKey(
   } catch (err) {
     if (isRuleNotFound(err)) {
       // Already revoked — fall through to local cleanup.
-    } else if (isConfirmationTimeout(err) && !(await ruleStillExists(account, ruleId))) {
-      // Timed out waiting, but the rule is gone: the tx landed after all.
+    } else if (!(await ruleStillExists(account, ruleId))) {
+      // Whatever the error shape (confirmation timeout, a racing duplicate
+      // submit failing on-chain, a transient relayer error), the rule is
+      // verifiably gone — the revoke happened. Reporting failure here would
+      // dead-end the user on a success.
     } else {
       throw err;
     }
   }
   maybeForgetMaterial(account, target, sessionPubkey);
-}
-
-/** Submission-timeout shapes from both submit paths: the relayer client's
- *  WAIT_TIMEOUT and the classic path's `Tx <hash> NOT_FOUND` poll giving up. */
-function isConfirmationTimeout(err: unknown): boolean {
-  const e = err as { name?: string; code?: string; message?: string };
-  if (e?.name === 'RelayerError' && e?.code === 'WAIT_TIMEOUT') return true;
-  return typeof e?.message === 'string' && /^Tx [0-9a-f]{64} NOT_FOUND$/i.test(e.message);
 }
 
 async function ruleStillExists(account: string, ruleId: number): Promise<boolean> {
@@ -120,7 +115,9 @@ function maybeForgetMaterial(account: string, target: string, sessionPubkey?: Ui
   if (sessionPubkey) {
     const stored = loadSessionKeyMaterial(account, target);
     const revokedHex = Array.from(sessionPubkey, (b) => b.toString(16).padStart(2, '0')).join('');
-    if (stored && stored.publicKey.toLowerCase() !== revokedHex) return;
+    // Legacy material (pre-publicKey schema) has no owner to compare — treat
+    // it as unowned and wipe it; it predates the flow and is unusable anyway.
+    if (stored?.publicKey && stored.publicKey.toLowerCase() !== revokedHex) return;
   }
   forgetSessionKeyMaterial(account, target);
 }

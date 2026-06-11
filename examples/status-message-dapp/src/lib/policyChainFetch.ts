@@ -84,7 +84,8 @@ export async function findRuleForPubkey(
 	// Gap-tolerant id scan — revoking any non-newest rule leaves an id gap
 	// (see isRuleNotFound). The bound only stops a pathological account from
 	// looping forever.
-	for (let id = 0, found = 0; found < count && id < count + 100; id++) {
+	let found = 0
+	for (let id = 0; found < count && id < count + 100; id++) {
 		let ruleRv: xdr.ScVal
 		try {
 			ruleRv = await simulateView(
@@ -108,6 +109,14 @@ export async function findRuleForPubkey(
 				}
 			}
 		}
+	}
+	// A truncated scan must be LOUD: a silent null here makes the caller wipe
+	// the session material and re-delegate at an even higher id — once an
+	// account crosses the bound it could never scan back under it.
+	if (found < count) {
+		throw new Error(
+			`context-rule scan exhausted: found ${found} of ${count} live rules within ids 0..${count + 99}`,
+		)
 	}
 	return null
 }

@@ -124,7 +124,8 @@ export const StatusMessage = () => {
 	// author the user was about to tip so the (now enabled) Tip button
 	// reappears instead of silently vanishing until a manual re-read.
 	useEffect(() => {
-		if (!readDelegationReturn()) return
+		const status = readDelegationReturn()
+		if (!status) return
 		consumePendingDelegation()
 		const clean = new URL(window.location.href)
 		clean.searchParams.delete("delegation")
@@ -132,7 +133,10 @@ export const StatusMessage = () => {
 		try {
 			const raw = sessionStorage.getItem(TIP_CONTEXT_KEY)
 			sessionStorage.removeItem(TIP_CONTEXT_KEY)
-			const author = raw ? (JSON.parse(raw) as { author?: string }).author : undefined
+			// Only restore on an INSTALLED delegation — a cancelled return must
+			// not auto-surface a Tip row for a session key that never landed.
+			const author =
+				status === "ok" && raw ? (JSON.parse(raw) as { author?: string }).author : undefined
 			if (author) {
 				setLookupAddr(author)
 				void readStatus(author)
@@ -280,6 +284,9 @@ export const StatusMessage = () => {
 			})
 			// Redirect happens; code below won't run.
 		} catch (e) {
+			// No redirect happened (e.g. passkey creation cancelled) — drop the
+			// stored context so a LATER unrelated return can't consume it.
+			sessionStorage.removeItem(TIP_CONTEXT_KEY)
 			setTipState("failure")
 			setTipError(e instanceof Error ? e.message : String(e))
 		}

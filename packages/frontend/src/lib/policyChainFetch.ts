@@ -96,6 +96,14 @@ export async function fetchAllChainRules(account: string): Promise<ChainRule[]> 
     out.push(parseRule(scValToNative(ruleRv)));
     found++;
   }
+  // A truncated scan must be LOUD: returning a silently short list re-creates
+  // the original invisible-rule symptom (and callers may react destructively,
+  // e.g. wiping material and re-delegating at an even higher id).
+  if (out.length < count) {
+    throw new Error(
+      `context-rule scan exhausted: found ${out.length} of ${count} live rules within ids 0..${count + 99}`,
+    );
+  }
   return out;
 }
 
@@ -232,7 +240,8 @@ export async function findRuleForPubkey(
   const count = scValToNative(countRv) as number;
   const lowerHex = pubkeyHex.toLowerCase();
   // Gap-tolerant id scan — see isRuleNotFound for why ids aren't contiguous.
-  for (let id = 0, found = 0; found < count && id < count + 100; id++) {
+  let found = 0;
+  for (let id = 0; found < count && id < count + 100; id++) {
     let ruleRv;
     try {
       ruleRv = await simulateView(
@@ -275,6 +284,14 @@ export async function findRuleForPubkey(
         }
       }
     }
+  }
+  // A truncated scan must be LOUD: returning a silently short list re-creates
+  // the original invisible-rule symptom (and callers may react destructively,
+  // e.g. wiping material and re-delegating at an even higher id).
+  if (found < count) {
+    throw new Error(
+      `context-rule scan exhausted: found ${found} of ${count} live rules within ids 0..${count + 99}`,
+    );
   }
   return null;
 }

@@ -40,7 +40,7 @@ describe('scopedSessionKeyModule', () => {
     });
   });
 
-  it('returns null for rules with attached policies (those are multisig)', () => {
+  it('returns null for rules whose signer is delegated (multisig/recovery shapes)', () => {
     const policyAddr = StrKey.encodeContract(new Uint8Array(32).fill(0x70));
     const friend = StrKey.encodeContract(new Uint8Array(32).fill(0x58));
     const rule: ChainRule = {
@@ -117,7 +117,7 @@ describe('scopedSessionKeyModule', () => {
     ).toBeNull();
   });
 
-  it('returns null when the attached policy has no spending-limit state', () => {
+  it('returns null when the attached policy answers get_threshold (multisig-style)', () => {
     const policyAddr = StrKey.encodeContract(new Uint8Array(32).fill(0x70));
     const rule: ChainRule = {
       ruleId: 5,
@@ -132,6 +132,50 @@ describe('scopedSessionKeyModule', () => {
         friendNicknames: {}, sessionKeyMaterial: {}, blockLabels: {},
       }),
     ).toBeNull();
+  });
+
+  // The three unreadable-limit shapes must all CLAIM the rule with
+  // limitUnreadable — hiding it would hide the only Revoke path.
+  const unreadableRule = (id: number): ChainRule => ({
+    ruleId: id,
+    contextType: { kind: 'call-contract', contract: TARGET },
+    name: 'session-key',
+    signers: [{ kind: 'external', verifier: VERIFIER, publicKey: new Uint8Array(65) }],
+    policies: [StrKey.encodeContract(new Uint8Array(32).fill(0x70))],
+    validUntil: null,
+  });
+  const emptyOverlay = { friendNicknames: {}, sessionKeyMaterial: {}, blockLabels: {} };
+
+  it('claims a single-policy rule whose state is the unreadable sentinel', () => {
+    const rule = unreadableRule(11);
+    const block = scopedSessionKeyModule.fromChain(
+      rule, { [rule.policies[0]]: { spendingLimit: 'unreadable' } }, emptyOverlay,
+    );
+    expect(block).toMatchObject({ ruleId: 11, limitUnreadable: true });
+    expect(block?.limitStroops).toBeUndefined();
+    expect(block?.limitPeriodLedgers).toBeUndefined();
+  });
+
+  it('claims a single-policy rule whose state is empty (registry repoint orphan)', () => {
+    const rule = unreadableRule(12);
+    const block = scopedSessionKeyModule.fromChain(rule, { [rule.policies[0]]: {} }, emptyOverlay);
+    expect(block).toMatchObject({ ruleId: 12, limitUnreadable: true });
+  });
+
+  it('claims a single-policy rule with no state entry at all', () => {
+    const block = scopedSessionKeyModule.fromChain(unreadableRule(13), {}, emptyOverlay);
+    expect(block).toMatchObject({ ruleId: 13, limitUnreadable: true });
+  });
+
+  it('does not set limitUnreadable when the limit is readable', () => {
+    const rule = unreadableRule(14);
+    const block = scopedSessionKeyModule.fromChain(
+      rule,
+      { [rule.policies[0]]: { spendingLimit: { stroops: 50_000_000n, periodLedgers: 17280 } } },
+      emptyOverlay,
+    );
+    expect(block?.limitUnreadable).toBeUndefined();
+    expect(block?.limitStroops).toBe(50_000_000n);
   });
 
   it('summarize appends the limit text when limit fields are present', () => {
