@@ -98,6 +98,10 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
           </div>
           <div class="checkitem" id="check-2" style="display:flex; align-items:center; gap:12px; opacity:.4; transition:opacity .3s;">
             <span class="check-mark" style="width:24px; height:24px; flex:0 0 auto; display:grid; place-items:center;"></span>
+            <span class="check-text" style="font-size:14.5px; font-weight:600; white-space:nowrap;">Adding testnet funds</span>
+          </div>
+          <div class="checkitem" id="check-3" style="display:flex; align-items:center; gap:12px; opacity:.4; transition:opacity .3s;">
+            <span class="check-mark" style="width:24px; height:24px; flex:0 0 auto; display:grid; place-items:center;"></span>
             <span class="check-text" style="font-size:14.5px; font-weight:600; white-space:nowrap;">Your Nido is ready</span>
           </div>
         </div>
@@ -160,7 +164,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
 </style>
 
 <script>
-  import { Networks, TransactionBuilder, Operation, Address, Account, rpc, xdr, hash } from "@stellar/stellar-sdk";
+  import { Networks, TransactionBuilder, Operation, Address, Account, Keypair, nativeToScVal, rpc, xdr, hash } from "@stellar/stellar-sdk";
   import { Buffer } from "buffer";
   import {
     parseRegistration,
@@ -179,10 +183,12 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { shortAddr } from "../../lib/address";
   import { checkPasskeySupport } from "../../lib/passkeySupport";
-  import { RELAYER_SIM_SOURCE, RELAYER_URL } from "../../lib/network";
+  import { NATIVE_SAC_ID, RELAYER_SIM_SOURCE, RELAYER_URL } from "../../lib/network";
   import { extractFuncAndAuth, submitSorobanTransaction, waitForConfirmation } from "../../lib/relayerClient";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
+  const FRIENDBOT_URL = "https://friendbot.stellar.org";
+  const TESTNET_TOPUP_STROOPS = 99_900_000_000n;
 
   // --- State ---
 
@@ -207,6 +213,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
 
   let passkeyPublicKey: Uint8Array | null = null;
   let credentialIdBytes: Uint8Array | null = null;
+  let testnetFundingPromise: Promise<Keypair> | null = null;
 
   // --- UI refs ---
 
@@ -238,7 +245,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
 
   // Animated "Setting up your Nido" checklist. Each step is one of:
   //   "pending" (dim ring) · "active" (spinner) · "done" (teal check).
-  const CHECK_LABELS = ["check-0", "check-1", "check-2"];
+  const CHECK_LABELS = ["check-0", "check-1", "check-2", "check-3"];
 
   function renderCheck(i: number, state: "pending" | "active" | "done") {
     const item = document.getElementById(CHECK_LABELS[i]);
@@ -316,6 +323,70 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       : new Error("Funded setup account is not available yet.");
   }
 
+  async function startTestnetFunding(): Promise<Keypair> {
+    if (testnetFundingPromise) return testnetFundingPromise;
+    testnetFundingPromise = (async () => {
+      const keypair = Keypair.random();
+      const resp = await fetch(`${FRIENDBOT_URL}?addr=${keypair.publicKey()}`);
+      if (!resp.ok) {
+        const detail = await resp.text().catch(() => resp.statusText);
+        throw new Error(`Friendbot funding failed: ${detail || resp.statusText}`);
+      }
+      await waitForSourceAccount(new rpc.Server(RPC_URL), keypair.publicKey());
+      return keypair;
+    })().catch((err) => {
+      testnetFundingPromise = null;
+      throw err;
+    });
+    return testnetFundingPromise;
+  }
+
+  async function drainTestnetFunding(server: rpc.Server, destination: string): Promise<void> {
+    const keypair = await startTestnetFunding();
+    const sourceAccount = await waitForSourceAccount(server, keypair.publicKey());
+    const txn = new TransactionBuilder(sourceAccount, {
+      fee: "1000000",
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(
+        Operation.invokeContractFunction({
+          contract: NATIVE_SAC_ID,
+          function: "transfer",
+          args: [
+            Address.fromString(keypair.publicKey()).toScVal(),
+            Address.fromString(destination).toScVal(),
+            nativeToScVal(TESTNET_TOPUP_STROOPS, { type: "i128" }),
+          ],
+        })
+      )
+      .setTimeout(60)
+      .build();
+
+    const sim = await server.simulateTransaction(txn);
+    if (rpc.Api.isSimulationError(sim) || rpc.Api.isSimulationRestore(sim)) {
+      throw new Error(`Funding simulation failed: ${"error" in sim ? sim.error : "restore needed"}`);
+    }
+
+    const assembled = rpc.assembleTransaction(txn, sim).setTimeout(60).build();
+    assembled.sign(keypair);
+
+    const send = await server.sendTransaction(assembled);
+    if (send.status === "ERROR") {
+      throw new Error(`Funding transaction failed: ${send.errorResult?.toString() ?? "submission error"}`);
+    }
+
+    let got = await server.getTransaction(send.hash);
+    let attempts = 0;
+    while (got.status === "NOT_FOUND" && attempts < 20) {
+      await sleep(1000);
+      got = await server.getTransaction(send.hash);
+      attempts++;
+    }
+    if (got.status !== "SUCCESS") {
+      throw new Error(`Funding transaction did not complete: ${got.status}`);
+    }
+  }
+
   // --- Init: surface the contract id ---
 
   // Show a shortened address so the 56-char contract ID never overflows the
@@ -328,6 +399,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
   renderCheck(0, "pending");
   renderCheck(1, "pending");
   renderCheck(2, "pending");
+  renderCheck(3, "pending");
 
   if (!contractId && !isSetupReservation) {
     showError("That link looks off. Please start again from the home page.");
@@ -448,6 +520,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       credentialIdBytes = reg.credentialId;
 
       sdkSaveCredential(contractId!, credentialIdBytes, passkeyPublicKey);
+      void startTestnetFunding().catch((err) => console.warn("[g2c] testnet funding prep failed", err));
 
       void buf2base64url(credentialIdBytes);
       void buf2hex(passkeyPublicKey);
@@ -526,12 +599,26 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       activateAccount(contractId!);
       clearSetupSaltCookie(contractId!);
 
-      // 2 · published; 3 · ready.
+      // 2 · published; 3 · funded; 4 · ready.
       setCheckProgress(2, 2);
-      setCheckProgress(3, -1);
+      $deployFoot.textContent = "Adding testnet funds...";
+      let fundingComplete = true;
+      try {
+        await drainTestnetFunding(server, contractId!);
+        setCheckProgress(3, 3);
+      } catch (fundingErr) {
+        fundingComplete = false;
+        console.warn("[g2c] testnet funding failed", fundingErr);
+        renderCheck(2, "pending");
+        renderCheck(3, "active");
+      }
+      if (fundingComplete) setCheckProgress(4, -1);
+      else renderCheck(3, "done");
       $deployNestSpinning.style.display = "none";
       $deployNestStatic.style.display = "block";
-      $deployFoot.textContent = "All set. Welcome to your Nido.";
+      $deployFoot.textContent = fundingComplete
+        ? "All set. Welcome to your Nido."
+        : "Your Nido is ready. Testnet funding did not complete.";
 
       // Wire up the done screen.
       const protocol = window.location.protocol;
