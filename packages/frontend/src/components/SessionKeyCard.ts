@@ -35,7 +35,7 @@ export function renderSessionKeyCard(
          href="${EXPLORER_BASE}/contract/${encodeURIComponent(target)}">${escape(shortAddr(target, 8, 4))}</a>${escape(limitText)}
     </p>
     <div class="actions">
-      <button class="revoke">Revoke</button>
+      <button class="btn revoke">Revoke</button>
     </div>
   `;
   const btn = div.querySelector<HTMLButtonElement>('.revoke')!;

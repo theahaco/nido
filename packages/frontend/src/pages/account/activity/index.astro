@@ -1,11 +1,21 @@
 ---
 // packages/frontend/src/pages/account/activity/index.astro
 import NidoLayout from "../../../layouts/NidoLayout.astro";
+import Icon from "../../../components/Icon.astro";
 ---
 <NidoLayout title="Activity" shell="app">
   <div class="col-scroll scroll-hide screen-in">
-    <!-- desktop frame header (≥1024); mobile keeps the in-card section label -->
+    <!-- mobile topbar — hidden on desktop where the dash-head takes over -->
+    <div class="topbar dash-hide-desktop">
+      <a href="/account/" class="btn ghost sm" style="width:40px;height:40px;padding:0;border-radius:12px;" aria-label="Back to your Nido">
+        <Icon name="back" size={18} />
+      </a>
+      <div class="disp" style="font-weight:800;font-size:19px;">Activity</div>
+      <span style="width:40px;"></span>
+    </div>
+    <!-- desktop frame header (≥1024) -->
     <div class="dash-head"><h1 class="dash-head-title disp">Activity</h1></div>
+    <div class="pad">
     <section class="card" style="padding:6px 18px 16px;">
       <h1 class="section-label dash-hide-desktop">Activity</h1>
       <p class="mut activity-window">Your most recent wallet activity.</p>
@@ -15,7 +25,7 @@ import NidoLayout from "../../../layouts/NidoLayout.astro";
       </div>
       <div id="activity-list" hidden></div>
       <div class="empty" id="activity-empty" hidden>No recent activity</div>
-      <div class="alert danger" id="activity-error" hidden>
+      <div class="alert danger" id="activity-error" role="alert" hidden>
         Couldn’t load activity. <button class="btn ghost" id="activity-retry">Retry</button>
       </div>
       <a id="full-history" class="full-history" target="_blank" rel="noopener noreferrer" hidden>
@@ -23,6 +33,7 @@ import NidoLayout from "../../../layouts/NidoLayout.astro";
       </a>
       </div>
     </section>
+    </div>
   </div>
 </NidoLayout>
 

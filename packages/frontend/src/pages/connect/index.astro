@@ -10,7 +10,7 @@ import Logo from '../../components/Logo.astro';
 import Icon from '../../components/Icon.astro';
 import Toast from '../../components/Toast.astro';
 ---
-<NidoLayout title="Connect to dApp" shell="focused">
+<NidoLayout title="Connect to app" shell="focused">
   <div class="topbar">
     <Logo mark size={20} />
     <span class="chip good"><span class="dot"></span> Read-only</span>
@@ -28,7 +28,7 @@ import Toast from '../../components/Toast.astro';
         account's public address is shared — no signing happens here.
       </p>
 
-      <div id="error-box" class="alert danger" style="display:none"></div>
+      <div id="error-box" role="alert" class="alert danger" style="display:none"></div>
 
       <section id="accounts-section">
         <div id="accounts-list" class="picker"></div>
@@ -92,20 +92,15 @@ import Toast from '../../components/Toast.astro';
   import { loadAccounts, loadAccountName, isContractId } from '@g2c/passkey-sdk';
   import { postResultToOpener } from '@g2c/stellar-wallets-kit-module';
   import { shortAddr } from '../../lib/address';
+  import { avatarBackground } from '../../lib/avatarStyle';
 
-  // Deterministic identicon avatar — FNV-1a hash → hsl radial gradient.
-  // Mirrors src/components/Avatar.astro so picker rows built at runtime match
-  // the Nido avatar look without a server render.
+  // Deterministic identicon avatar using the shared avatarBackground formula
+  // so picker rows built at runtime match the Nido avatar look.
   function avatarEl(seed: string): HTMLElement {
-    let h = 2166136261;
-    for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-    h = h >>> 0;
-    const hue1 = h % 360;
-    const hue2 = (h >> 3) % 360;
     const el = document.createElement('div');
     el.style.cssText =
       `width:38px;height:38px;border-radius:50%;flex:0 0 auto;` +
-      `background:radial-gradient(circle at 32% 28%, hsl(${hue1} 70% 62%), hsl(${hue2} 65% 42%));` +
+      `background:${avatarBackground(seed)};` +
       `box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);`;
     return el;
   }
@@ -117,7 +112,6 @@ import Toast from '../../components/Toast.astro';
   const $err = document.getElementById('error-box')!;
   const $list = document.getElementById('accounts-list')!;
   const $none = document.getElementById('no-accounts')!;
-  document.getElementById('dapp-origin')!.textContent = dappOrigin || '(unknown)';
 
   function showError(msg: string) {
     $err.textContent = msg;
@@ -146,6 +140,8 @@ import Toast from '../../components/Toast.astro';
   }
 
   const ret = validatedReturn();
+  // Write only the validated origin to the DOM — never the raw ?dapp= value.
+  document.getElementById('dapp-origin')!.textContent = ret ? ret.origin : '(unknown)';
 
   function finish(search: string) {
     if (!ret) return;
@@ -153,6 +149,7 @@ import Toast from '../../components/Toast.astro';
   }
 
   document.getElementById('cancel')!.addEventListener('click', () => {
+    if (!ret) { window.location.href = '/account/'; return; }
     finish('?g2c_connect=cancelled');
   });
 

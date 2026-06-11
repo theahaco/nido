@@ -18,10 +18,10 @@ const DURATIONS: Record<string, number | null> = {
 export function mountDelegationForm(container: HTMLElement, account: string): void {
   container.hidden = false;
   container.innerHTML = `
-    <h3>Delegate session key</h3>
-    <p class="muted">Generate a fresh session key on this device and authorize it to sign for one target contract. The session key never leaves your browser.</p>
+    <h3>Let an app in</h3>
+    <p class="muted">Generate a fresh session key on this device and authorize it to sign for one app. The session key never leaves your browser.</p>
     <label style="display:block;margin-top:1rem">
-      Target contract (C…)
+      App address (C…)
       <input id="target" placeholder="C…" style="display:block;margin-top:0.25rem;width:100%"/>
     </label>
     <label style="display:block;margin-top:1rem">
@@ -49,14 +49,26 @@ export function mountDelegationForm(container: HTMLElement, account: string): vo
   });
 
   container.querySelector('#save')!.addEventListener('click', async () => {
+    const existingError = container.querySelector('.form-error');
+    if (existingError) existingError.textContent = '';
     const target = (container.querySelector('#target') as HTMLInputElement).value.trim();
     const duration = (container.querySelector('#duration') as HTMLSelectElement).value;
     const label =
       (container.querySelector('#label') as HTMLInputElement).value.trim() || undefined;
 
-    if (!target) { alert('Target contract required.'); return; }
+    const showError = (msg: string) => {
+      let errEl = container.querySelector<HTMLElement>('.form-error');
+      if (!errEl) {
+        errEl = document.createElement('p');
+        errEl.className = 'form-error muted';
+        errEl.style.cssText = 'color:var(--warn,#b45309);margin-top:0.5rem;font-size:13px;';
+        container.querySelector('.actions')!.before(errEl);
+      }
+      errEl.textContent = msg;
+    };
+    if (!target) { showError('App address is required.'); return; }
     if (!target.startsWith('C') || target.length !== 56) {
-      alert('Target must be a contract address starting with C (56 chars).');
+      showError('App address must start with C and be 56 characters.');
       return;
     }
 
@@ -93,7 +105,15 @@ export function mountDelegationForm(container: HTMLElement, account: string): vo
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       forgetSessionKeyMaterial(account, target);
-      alert('Failed to delegate: ' + msg);
+      console.error('Failed to delegate:', e);
+      let errEl = container.querySelector<HTMLElement>('.form-error');
+      if (!errEl) {
+        errEl = document.createElement('p');
+        errEl.className = 'form-error muted';
+        errEl.style.cssText = 'color:var(--warn,#b45309);margin-top:0.5rem;font-size:13px;';
+        container.querySelector('.actions')!.before(errEl);
+      }
+      errEl.textContent = 'Failed to let app in: ' + msg;
       saveBtn.disabled = false;
       saveBtn.textContent = 'Sign & delegate';
     }

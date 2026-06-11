@@ -44,7 +44,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       </MyNidoMenu>
     </div>
 
-    <div id="error-box" class="alert danger" style="display:none; margin:8px 22px;"></div>
+    <div id="error-box" role="alert" class="alert danger" style="display:none; margin:8px 22px;"></div>
 
     <!-- ============================================================= -->
     <!-- SIGNING MODE — reskinned signature request                    -->
@@ -57,7 +57,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         </div>
         <div id="sign-title" class="disp" style="font-weight:800; font-size:26px;">Approve this request</div>
         <p id="sign-sub" class="mut" style="font-size:14px; line-height:1.5; max-width:320px; margin:8px auto 0;">
-          A dApp is asking you to sign. Review it, then confirm with your passkey.
+          An app is asking you to sign. Review it, then confirm with your passkey.
         </p>
       </div>
 
@@ -116,6 +116,9 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         <div>
           <div class="mut home-greeting-eyebrow">Welcome back</div>
           <h1 class="disp home-hello js-account-name">Your Nido</h1>
+          <button id="claim-name-top-btn" class="btn acc sm hidden" style="margin-top:8px; font-size:13px;" type="button">
+            Claim a name
+          </button>
         </div>
         <span class="chip acc"><span class="dot"></span> Testnet</span>
       </div>
@@ -144,7 +147,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           <button type="button" class="btn acc js-send" style="width:auto; padding:0 24px;">
             <Icon name="send" size={17} color="#fff" /> Send
           </button>
-          <button type="button" class="btn soft js-receive" style="width:auto; padding:0 24px;">
+          <button type="button" class="btn soft js-receive" style="width:auto; padding:0 24px;" aria-expanded="false" aria-controls="receive-section">
             <Icon name="receive" size={17} /> Receive
           </button>
         </div>
@@ -154,23 +157,34 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
            (H-02); "Prove" is demoted to neutral + renamed the concrete job it
            does, "Approve" (→ the focused /sign/ surface); "Settings" → "Security"
            with the shield glyph so the entry points agree on one label (K-03). -->
+
       <div class="span-all home-actions-mobile" style="display:flex; gap:6px; padding:26px 30px 6px;">
         <button id="send-action" class="qa js-send" type="button">
           <div class="circ"><Icon name="send" size={24} color="#fff" /></div>
           <span>Send</span>
         </button>
-        <button id="receive-action" class="qa js-receive" type="button">
+        <button id="receive-action" class="qa js-receive" type="button" aria-expanded="false" aria-controls="receive-section">
           <div class="circ soft"><Icon name="receive" size={23} /></div>
           <span>Receive</span>
         </button>
-        <a class="qa" href="/sign/">
-          <div class="circ soft"><Icon name="shieldcheck" size={23} /></div>
-          <span>Approve</span>
-        </a>
         <a class="qa" href="/security/">
           <div class="circ soft"><Icon name="shield" size={23} /></div>
           <span>Security</span>
         </a>
+        <button id="claim-name-mobile-action" class="qa hidden" type="button">
+          <div class="circ soft"><Icon name="sparkle" size={22} /></div>
+          <span>Claim</span>
+        </button>
+      </div>
+
+      <!-- Inline name-claim form — shared by the desktop greeting button and the
+           mobile quick action. Hidden until JS reveals it (unclaimed accounts only). -->
+      <div class="span-all hidden" id="claim-name-inline" style="padding:0 22px 6px;">
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" style="font-size:13px; min-width:0; flex:1;" />
+          <button id="claim-name-btn" class="btn acc sm" type="button" style="font-size:13px;">Claim</button>
+        </div>
+        <div id="name-result" role="status" aria-live="polite" class="mut mono" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
       </div>
 
       <!-- The XLM-only inline Send panel was retired here: "Send" now opens the
@@ -186,32 +200,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       <div class="grid-cell home-col-activity">
         <RecentActivityCard />
       </div>
-
-      <!-- ============ SECURITY AT-A-GLANCE (desktop dashboard, ≥1024) ============
-           A summary card beside Recent activity on the desktop Home. The chips
-           are filled from live on-chain policy data (fetchSecuritySummary), the
-           same source the full Security page renders. -->
-      <section class="card home-sec-card" style="padding:6px 22px 18px;">
-        <header style="display:flex; align-items:center; justify-content:space-between; padding:16px 0 8px;">
-          <span class="section-label">Security</span>
-          <a class="link" href="/security/" style="font-size:13.5px; font-weight:700;">Manage →</a>
-        </header>
-        <div class="row" style="border-top:none;">
-          <div class="rmain"><div class="rtitle">Passkey on this device</div><div class="rsub" style="font-family:var(--body);">You're the only one who gets in</div></div>
-          <span id="sec-passkey-chip" class="chip" style="flex:0 0 auto;">…</span>
-        </div>
-        <div class="row">
-          <div class="rmain"><div class="rtitle">Trusted friends</div><div class="rsub" style="font-family:var(--body);">Recover with people you trust</div></div>
-          <span id="sec-friends-chip" class="chip" style="flex:0 0 auto;">…</span>
-        </div>
-        <div class="row">
-          <div class="rmain"><div class="rtitle">Apps you've let in</div><div class="rsub" style="font-family:var(--body);">Acting on your behalf</div></div>
-          <span id="sec-apps-chip" class="chip" style="flex:0 0 auto;">…</span>
-        </div>
-        <a class="btn ghost" href="/security/" style="margin-top:18px; height:46px; font-size:14px;">
-          <Icon name="shield" size={16} /> Review who has access
-        </a>
-      </section>
 
       <!-- ============ RECEIVE PANEL (display-only) ============ -->
       <div class="grid-cell home-panel">
@@ -254,17 +242,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           </div>
         </div>
 
-        <div id="name-claim" class="hidden">
-          <p class="mut" style="font-size:13.5px; line-height:1.5; margin:0 0 14px;">
-            Claim a friendly name for your Nido. 1–15 characters, lowercase letters and digits, starting with a letter.
-          </p>
-          <div class="field">
-            <label for="name-input">Name</label>
-            <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
-          </div>
-          <button id="claim-name-btn" class="btn acc" style="margin-top:12px;">Claim this name</button>
-          <div id="name-result" class="mut mono" style="display:none; font-size:12.5px; margin-top:12px; text-align:center; line-height:1.5;"></div>
-        </div>
       </section>
       </div>
 
@@ -336,7 +313,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   } from "@g2c/passkey-sdk";
   import { accountShareUrl, accountShareLabel } from "../../lib/accountLinks";
   import { fetchVerifierAddress } from "../../lib/policyChainFetch";
-  import { fetchSecuritySummary } from "../../lib/securitySummary";
   import { toast } from "../../lib/toast";
   import { describeSignRequest } from "../../lib/signRequestSummary";
   import { describeTransaction } from "../../lib/transfer/txSummary";
@@ -748,35 +724,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       document.getElementById("register-section")!.classList.remove("hidden");
     }
 
-    // Security at-a-glance card (desktop Home). Best-effort: filled from the same
-    // on-chain policy the Security page reads; on any failure the chips fall back
-    // to a neutral state rather than blocking the wallet.
-    void (async () => {
-      const passkeyChip = document.getElementById("sec-passkey-chip");
-      const friendsChip = document.getElementById("sec-friends-chip");
-      const appsChip = document.getElementById("sec-apps-chip");
-      if (!passkeyChip || !friendsChip || !appsChip || !contractId) return;
-      const setPasskey = (on: boolean) => {
-        passkeyChip.textContent = on ? "On" : "Off";
-        passkeyChip.classList.toggle("good", on);
-      };
-      try {
-        const summary = await fetchSecuritySummary(contractId);
-        setPasskey(summary.hasPasskey);
-        friendsChip.textContent = summary.recovery
-          ? `${summary.recovery.threshold} of ${summary.recovery.friends}`
-          : "Not set";
-        appsChip.textContent =
-          summary.delegations > 0 ? `${summary.delegations} active` : "None";
-      } catch {
-        // Passkey state is local, so it's still trustworthy on a fetch failure;
-        // the on-chain counts fall back to an em dash.
-        setPasskey(Boolean(cred));
-        friendsChip.textContent = "—";
-        appsChip.textContent = "—";
-      }
-    })();
-
     // Receive panel toggle (display-only)
     const $receiveSection = document.getElementById("receive-section")!;
     // Both the mobile circular action and the desktop hero pill carry .js-receive.
@@ -786,6 +733,10 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         if (!open) {
           $receiveSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
+        // Update aria-expanded on all receive toggle buttons
+        document.querySelectorAll('[aria-controls="receive-section"]').forEach(btn => {
+          btn.setAttribute('aria-expanded', String(!open));
+        });
       }),
     );
     // Receive copy button
@@ -886,12 +837,9 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   if (SHOW_NAME_SECTION && contractId && !isSigningMode) {
     const $nameSection = document.getElementById("name-section")!;
     const $nameDisplay = document.getElementById("name-display")!;
-    const $nameClaim = document.getElementById("name-claim")!;
     const $claimBtn = document.getElementById("claim-name-btn") as HTMLButtonElement;
     const $nameInput = document.getElementById("name-input") as HTMLInputElement;
     const $nameResult = document.getElementById("name-result")!;
-
-    $nameSection.classList.remove("hidden");
 
     // The name is known authoritatively when we arrived via a name subdomain
     // (detectedName already resolved to THIS account); otherwise fall back to a
@@ -901,6 +849,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     const existingName = detectedName ?? loadAccountName(contractId);
     if (existingName) {
       if (detectedName) saveAccountName(contractId, detectedName);
+      $nameSection.classList.remove("hidden");
       $nameDisplay.classList.remove("hidden");
       document.getElementById("account-name")!.textContent = existingName;
       // Reflect the claimed name in the top bar nickname + desktop greeting.
@@ -913,7 +862,23 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       nameLink.href = accountShareUrl(rootHost, existingName);
       nameLink.textContent = accountShareLabel(rootHost, existingName);
     } else {
-      $nameClaim.classList.remove("hidden");
+      // Show claim-a-name entry points (desktop greeting button + mobile quick action)
+      const topBtn = document.getElementById("claim-name-top-btn") as HTMLButtonElement | null;
+      const mobileAction = document.getElementById("claim-name-mobile-action") as HTMLButtonElement | null;
+      const inlineForm = document.getElementById("claim-name-inline") as HTMLElement | null;
+      if (topBtn) topBtn.classList.remove("hidden");
+      if (mobileAction) mobileAction.classList.remove("hidden");
+      // Auto-open inline form when returning from signing
+      if (params.get("nameresult") === "1" && inlineForm) {
+        inlineForm.classList.remove("hidden");
+      }
+      const openClaimForm = () => {
+        inlineForm?.classList.remove("hidden");
+        inlineForm?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        $nameInput.focus();
+      };
+      topBtn?.addEventListener("click", openClaimForm);
+      mobileAction?.addEventListener("click", openClaimForm);
     }
 
 
