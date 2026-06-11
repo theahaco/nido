@@ -65,3 +65,4 @@ test-results/
 # testnet bank secret (never commit)
 tests/.env.testnet
 .env.testnet
+infra/relayer/config/keys/

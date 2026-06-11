@@ -5,7 +5,9 @@ const PORT = Number(process.env.E2E_PORT || 4399);
 
 // Real-chain: slow + retried. Quarantined via the testnet-* projects.
 test.describe('@testnet send to a named nido', () => {
-  test.describe.configure({ timeout: 240_000 });
+  // 360s: two account creations + claim + send; relayer-mode submission adds
+  // ~20-30s per signAndSubmit (queue + fee-bump + confirmation polling).
+  test.describe.configure({ timeout: 360_000 });
 
   // Helper: create an account via the home page, register its passkey (shim),
   // and return its C-address. The page host must be the C-address subdomain so
@@ -48,19 +50,33 @@ test.describe('@testnet send to a named nido', () => {
     await page.goto(`http://${sender.host}/account/`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#home-mode')).toBeVisible({ timeout: 30_000 });
 
-    // 3) Open Send, type the recipient's NAME, confirm it resolves.
-    await page.locator('#send-section').waitFor({ state: 'attached' });
-    await page.locator('#send-to').fill(name);
-    await expect(page.locator('#send-resolve')).toContainText(`${name} →`, { timeout: 30_000 });
+    // 3) "Send" navigates to the /transfer/ view (#78 retired the inline
+    //    panel). #send-action lives in .home-actions-mobile, which is
+    //    display:none at the desktop viewport these projects run — click
+    //    whichever .js-send control is visible in the current layout.
+    await page.locator('.js-send:visible').first().click();
+    await page.waitForURL('**/transfer/**', { timeout: 30_000 });
+    await page.locator('#to-input').fill(name);
+    await expect(page.locator('#to-resolve')).toContainText(`${name} →`, { timeout: 30_000 });
 
-    // 4) Send a small amount and approve with the passkey.
-    await page.locator('#send-amount').fill('1');
-    await page.locator('#send-submit').click();
-    // The send flow signs in-page (primaryPasskeySigner) — shim get() auto-approves.
-    await expect(page.getByText(/Sent/i)).toBeVisible({ timeout: 120_000 });
+    // 4) Review, then confirm with the passkey (shim get() auto-approves).
+    //    Review silently no-ops until the asset picker has loaded holdings
+    //    (curated-list fetches + ledger probes) — wait for it to enable.
+    await expect(page.locator('#asset-select')).toBeEnabled({ timeout: 60_000 });
+    await page.locator('#amount-input').fill('1');
+    await page.locator('#review-btn').click();
+    await expect(page.locator('#confirm-btn')).toBeVisible({ timeout: 60_000 });
+    await page.locator('#confirm-btn').click();
+    // Positive success signal: the result step only appears after
+    // signAndSubmit resolves, and its explorer link carries the tx hash
+    // (real in both relayer and classic mode).
+    await expect(page.locator('#result-step')).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator('#result-explorer')).toHaveAttribute('href', /\/tx\/[0-9a-f]{64}$/i);
 
     // 5) Assert the recipient received it: balance on its name subdomain is > 0.
+    //    (#xlm-balance is the hero balance element; it renders "…" until the
+    //    on-chain read completes, so a digit is the durable signal.)
     await page.goto(`http://${name}.localhost:${PORT}/account/`, { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('#balance')).toContainText(/\d/, { timeout: 60_000 });
+    await expect(page.locator('#xlm-balance')).toContainText(/\d/, { timeout: 60_000 });
   });
 });
