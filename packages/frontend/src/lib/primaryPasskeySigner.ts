@@ -26,6 +26,15 @@ import { RELAYER_SIM_SOURCE } from './network';
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
 
+/** Signature validity in relayer mode: ~10 minutes. The sdk default (10000
+ *  ledgers ≈ 14h) is fine when the signed entry never leaves the browser, but
+ *  in relayer mode we hand it to an external service — whoever holds the body
+ *  can submit at any moment until expiry. The relayer only needs it valid for
+ *  well under a minute (channel tx lifetime is 60s; the plugin's minimum
+ *  buffer is 2 ledgers), so keep the window tight. MUST be passed identically
+ *  to buildAuthHash and injectPasskeySignature or the digest won't verify. */
+const RELAYER_EXPIRATION_OFFSET = 120;
+
 /** localStorage key shared with `account/index.astro` so we don't
  *  proliferate ephemeral submitter accounts. */
 const SUBMITTER_KEY = 'g2c:name-keypair';
@@ -142,7 +151,8 @@ export async function signAndSubmit(args: {
   //    and the digest the contract recomputes both refer to the same rule.
   const authEntry = getAuthEntry(successSim);
   const lastLedger = successSim.latestLedger;
-  const signaturePayload = buildAuthHash(authEntry, Networks.TESTNET, lastLedger);
+  const expirationOffset = relayerEnabled() ? RELAYER_EXPIRATION_OFFSET : undefined;
+  const signaturePayload = buildAuthHash(authEntry, Networks.TESTNET, lastLedger, expirationOffset);
   const contextRuleIds = [0];
   const challengeBytes = computeAuthDigest(signaturePayload, contextRuleIds);
 
@@ -177,7 +187,7 @@ export async function signAndSubmit(args: {
     finalVerifierAddress,
     hex2buf(cred.publicKey),
     lastLedger,
-    undefined,
+    expirationOffset,
     contextRuleIds,
   );
 
@@ -197,9 +207,9 @@ export async function signAndSubmit(args: {
     }
     const confirmed = await waitForConfirmation(submitted.transactionId);
     if (!confirmed.hash) throw new Error('Relayer confirmed without a transaction hash');
-    // Only `hash` is real — latestLedger/latestLedgerCloseTime are placeholder
-    // zeros and the tx is already confirmed ('PENDING' kept for shape
-    // compatibility); callers currently discard this value.
+    // Only `hash` is real (the transfer page links it to the explorer) —
+    // latestLedger/latestLedgerCloseTime are placeholder zeros and the tx is
+    // already confirmed ('PENDING' kept for shape compatibility).
     return {
       status: 'PENDING',
       hash: confirmed.hash,

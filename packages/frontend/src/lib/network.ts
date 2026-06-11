@@ -13,7 +13,7 @@ export const NATIVE_SAC_ID = Asset.native().contractId(NETWORK_PASSPHRASE);
 
 /** OZ Relayer (Channels) endpoint. Empty string = relayer disabled; the wallet
  *  falls back to ephemeral-G self-submission. Set PUBLIC_RELAYER_URL at build
- *  time once the Fly app is live (e.g. https://nido-relayer.fly.dev).
+ *  time once the Fly app is live (e.g. https://nido.fly.dev).
  *  Trailing slashes are stripped so `${RELAYER_URL}/relay` never yields
  *  "//relay" (which Caddy's path matcher won't route). */
 export const RELAYER_URL: string = (import.meta.env.PUBLIC_RELAYER_URL ?? "").replace(/\/+$/, "");

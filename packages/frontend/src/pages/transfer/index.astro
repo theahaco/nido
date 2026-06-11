@@ -636,9 +636,19 @@ import Icon from "../../components/Icon.astro";
       explorer.href = `${EXPLORER_BASE}/tx/${sent.hash}`;
       showStep("result");
     } catch (err) {
-      const e = err as { name?: string; message?: string };
+      const e = err as { name?: string; message?: string; code?: string; details?: { hash?: string | null } };
       if (e?.name === "NotAllowedError") {
         showError(passkeyBlockedHint());
+      } else if (e?.name === "RelayerError" && e?.code === "WAIT_TIMEOUT") {
+        // The relayer stopped answering (or we out-polled it) but the tx may
+        // STILL land — re-enabling Confirm here is a double-send invitation.
+        // Keep it disabled and point at the explorer instead.
+        showError("Still waiting for the network — this transfer may yet go through. Check the result before sending again.");
+        const hash = e.details?.hash;
+        $reviewStatus.innerHTML = hash && /^[0-9a-f]{64}$/i.test(hash)
+          ? `<a href="${EXPLORER_BASE}/tx/${hash}" target="_blank" rel="noopener">Check status on Stellar Expert →</a>`
+          : "";
+        return;
       } else {
         showError(`Couldn't send: ${e?.message ?? String(err)}`);
       }

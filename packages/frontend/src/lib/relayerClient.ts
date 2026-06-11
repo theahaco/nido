@@ -80,14 +80,30 @@ export async function waitForConfirmation(
   opts?: { intervalMs?: number; maxAttempts?: number },
 ): Promise<RelayerTxResponse> {
   const interval = opts?.intervalMs ?? 1500;
-  const maxAttempts = opts?.maxAttempts ?? 40;
+  // The channel tx's own validity window is build-time + 60s (the plugin's
+  // MAX_TIME_BOUND_OFFSET_SECONDS default). Poll PAST it (~82s) so we almost
+  // always land on a terminal status (confirmed/failed/expired) instead of
+  // giving up while the tx can still land — WAIT_TIMEOUT invites a retry,
+  // and a retry racing a still-valid tx is a double-send.
+  const maxAttempts = opts?.maxAttempts ?? 55;
   let last: RelayerTxResponse | undefined;
+  let pollFailures = 0;
   for (let i = 0; i < maxAttempts; i++) {
-    const res = await getRelayerTransaction(transactionId, baseUrl);
-    last = res;
-    if (res.status === "confirmed") return res;
-    if (res.status === "failed" || res.status === "expired") {
-      throw new RelayerError(`Relayer transaction ${res.status}`, "ONCHAIN_FAILED", res);
+    try {
+      const res = await getRelayerTransaction(transactionId, baseUrl);
+      last = res;
+      pollFailures = 0;
+      if (res.status === "confirmed") return res;
+      if (res.status === "failed" || res.status === "expired") {
+        throw new RelayerError(`Relayer transaction ${res.status}`, "ONCHAIN_FAILED", res);
+      }
+    } catch (err) {
+      if (err instanceof RelayerError && err.code === "ONCHAIN_FAILED") throw err;
+      // A transient poll failure (network blip, 5xx) must not abort the wait —
+      // the tx is already in flight. Only give up after several in a row.
+      if (++pollFailures >= 5) {
+        throw new RelayerError("Lost contact with the relayer while waiting", "WAIT_TIMEOUT", last);
+      }
     }
     if (i < maxAttempts - 1) await new Promise((r) => setTimeout(r, interval));
   }
