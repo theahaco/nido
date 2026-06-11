@@ -5,6 +5,9 @@ function setupHost(host: string): string {
   if (hostname === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) {
     return host;
   }
+  if (/^pr-\d+$/.test(hostname.split(".")[0]) || hostname.split(".").length <= 2) {
+    return host;
+  }
   return stripSubdomain(host);
 }
 

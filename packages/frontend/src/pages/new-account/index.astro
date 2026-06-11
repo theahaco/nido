@@ -160,7 +160,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
 </style>
 
 <script>
-  import { Networks, TransactionBuilder, Operation, Address, Account, rpc, xdr } from "@stellar/stellar-sdk";
+  import { Networks, TransactionBuilder, Operation, Address, Account, rpc, xdr, hash } from "@stellar/stellar-sdk";
   import { Buffer } from "buffer";
   import {
     parseRegistration,
@@ -174,6 +174,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
     activateAccount,
     fetchRegistryAddress,
     accountUrl,
+    stripSubdomain,
   } from "@g2c/passkey-sdk";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { shortAddr } from "../../lib/address";
@@ -193,8 +194,15 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
   let saltHex = params.get("salt");
   const isSetupReservation = params.get("setup") === "1";
 
+  if (!saltHex && params.get("key")) {
+    saltHex = buf2hex(hash(Buffer.from(params.get("key")!)));
+  }
+
   if (!saltHex && contractId) {
-    saltHex = loadPendingAccounts().find((p) => p.contractId === contractId)?.setupKey ?? null;
+    saltHex =
+      paramsFromHash().get("salt") ??
+      loadPendingAccounts().find((p) => p.contractId === contractId)?.setupKey ??
+      readSetupSaltCookie(contractId);
   }
 
   let passkeyPublicKey: Uint8Array | null = null;
@@ -258,6 +266,39 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
   }
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  function paramsFromHash(): URLSearchParams {
+    return new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  }
+
+  function setupCookieName(account: string): string {
+    return `nido_setup_${account.toLowerCase()}`;
+  }
+
+  function setupCookieDomain(): string {
+    const host = window.location.hostname;
+    if (host === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return "";
+    const first = host.split(".")[0];
+    const base = /^pr-\d+$/.test(first) ? stripSubdomain(host) : host.split(".").slice(-2).join(".");
+    return base.includes(".") ? `; Domain=.${base}` : "";
+  }
+
+  function saveSetupSaltCookie(account: string, salt: string): void {
+    document.cookie = `${setupCookieName(account)}=${salt}; Max-Age=1800; Path=/; SameSite=Lax${setupCookieDomain()}`;
+  }
+
+  function readSetupSaltCookie(account: string): string | null {
+    const name = `${setupCookieName(account)}=`;
+    return document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(name))
+      ?.slice(name.length) ?? null;
+  }
+
+  function clearSetupSaltCookie(account: string): void {
+    document.cookie = `${setupCookieName(account)}=; Max-Age=0; Path=/; SameSite=Lax${setupCookieDomain()}`;
+  }
 
   async function waitForSourceAccount(server: rpc.Server, publicKey: string): Promise<Account> {
     let lastError: unknown;
@@ -345,8 +386,9 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       if (!sim.result) throw new Error("Address reservation returned no result.");
       const cAddress = Address.fromScVal(sim.result.retval).toString();
       savePendingAccount(cAddress, saltHex!);
+      saveSetupSaltCookie(cAddress, saltHex!);
 
-      window.location.replace(accountUrl(window.location.host, cAddress, `/new-account/?salt=${encodeURIComponent(saltHex!)}`));
+      window.location.replace(accountUrl(window.location.host, cAddress, `/new-account/?salt=${encodeURIComponent(saltHex!)}#salt=${encodeURIComponent(saltHex!)}`));
     } catch (err: any) {
       $passkeySection.classList.remove("setup-reserving");
       $registerBtn.disabled = true;
@@ -482,6 +524,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       if (!confirmed.hash) throw new Error("Relayer confirmed account setup without a transaction hash");
 
       activateAccount(contractId!);
+      clearSetupSaltCookie(contractId!);
 
       // 2 · published; 3 · ready.
       setCheckProgress(2, 2);
