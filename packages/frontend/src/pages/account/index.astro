@@ -80,9 +80,11 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           <code id="sign-hash" class="mono" style="font-size:11.5px; margin-left:auto; text-align:right; word-break:break-all;"></code>
         </div>
       </div>
-      <!-- For a recognized name claim the raw hash is collapsed behind this
-           toggle (mirrors the /sign/ page's "Show raw transaction"). -->
+      <!-- For a recognized name claim the verifiable details (the decoded
+           transaction + the raw hash) are collapsed behind this toggle (mirrors
+           the /sign/ page's "Show raw transaction"). Populated by JS. -->
       <button id="sign-toggle-tech" type="button" class="hidden" style="background:none; border:none; color:var(--acc-ink); font-weight:700; cursor:pointer; font-size:12.5px; padding:0; margin:10px 0 0;">Show technical details</button>
+      <div id="sign-tech" class="hidden" style="margin-top:12px;"></div>
 
       <div id="sign-needs-register" style="margin-top:18px;">
         <p class="mut" style="font-size:13.5px; line-height:1.5; text-align:center; margin:0 0 14px;">
@@ -337,6 +339,9 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   import { fetchSecuritySummary } from "../../lib/securitySummary";
   import { toast } from "../../lib/toast";
   import { describeSignRequest } from "../../lib/signRequestSummary";
+  import { describeTransaction } from "../../lib/transfer/txSummary";
+  import { renderNameRegister } from "../../lib/transfer/review";
+  import { esc } from "../../lib/html";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { detectPasskeyLabel } from "../../lib/passkeyLabel";
   import { shortAddr } from "../../lib/address";
@@ -537,6 +542,44 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   // SIGNING MODE
   // =====================
 
+  // The raw auth digest, as a labelled card — the irreducible "what you're
+  // signing" detail, shown inside the collapsible technical section.
+  function renderSignHashCard(hash: string): string {
+    return `<div class="card" style="padding:13px 16px;margin-top:10px;">
+      <div class="mut" style="font-size:12px;font-weight:600;margin-bottom:6px;">Signature hash</div>
+      <code class="mono" style="font-size:11.5px;word-break:break-all;line-height:1.5;">${esc(hash)}</code>
+    </div>`;
+  }
+
+  // Decode the transaction the claim flow stashed (same origin) and render it as
+  // human-readable detail, so "technical details" shows the actual register
+  // operation, not just the digest. Best-effort: any failure leaves the
+  // already-rendered hash card in place.
+  async function renderClaimTxDetails($tech: HTMLElement, signHash: string) {
+    const txXdr = localStorage.getItem("g2c:name-txXdr");
+    if (!txXdr) return;
+    try {
+      // stellar-sdk's XDR parsing needs the Buffer global (same lazy polyfill
+      // the claim/finalize paths use before any SDK call).
+      const { Buffer: B } = await import("buffer");
+      if (typeof globalThis.Buffer === "undefined") (globalThis as any).Buffer = B;
+
+      const summary = describeTransaction(txXdr, Networks.TESTNET);
+      const reg = summary.ops.find((o) => o.kind === "name-register");
+      if (!reg || reg.kind !== "name-register") return;
+
+      let fee: bigint | undefined;
+      try {
+        fee = BigInt(summary.fee);
+      } catch {
+        fee = undefined;
+      }
+      $tech.innerHTML = renderNameRegister(reg, fee) + renderSignHashCard(signHash);
+    } catch {
+      /* keep the hash-only card already shown */
+    }
+  }
+
   function initSigningMode() {
     document.getElementById("signing-mode")!.classList.remove("hidden");
 
@@ -577,18 +620,23 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
 
       document.getElementById("sign-name")!.textContent = summary.name;
       document.getElementById("sign-name-row")!.style.display = "flex";
-      // The "From" origin here is just this wallet redirecting to itself — noise
-      // for a self-initiated claim, so hide it. Demote the raw hash behind a
-      // toggle for anyone who wants to verify it.
+      // The "From" origin and the in-card raw-hash row are noise for a
+      // self-initiated claim — hide both. The verifiable details (the decoded
+      // transaction + the hash) move into the collapsible block below.
       document.getElementById("sign-from-row")!.style.display = "none";
-      const $hashRow = document.getElementById("sign-hash-row")!;
+      document.getElementById("sign-hash-row")!.style.display = "none";
+
+      const $tech = document.getElementById("sign-tech")!;
+      // Show the hash immediately so the toggle works even before the async
+      // decode finishes; enrich with the full decoded transaction when ready.
+      $tech.innerHTML = renderSignHashCard(signHashParam!);
+      void renderClaimTxDetails($tech, signHashParam!);
+
       const $toggle = document.getElementById("sign-toggle-tech")!;
-      $hashRow.style.display = "none";
       $toggle.classList.remove("hidden");
       $toggle.addEventListener("click", () => {
-        const hidden = $hashRow.style.display === "none";
-        $hashRow.style.display = hidden ? "flex" : "none";
-        $toggle.textContent = hidden ? "Hide technical details" : "Show technical details";
+        const shown = $tech.classList.toggle("hidden") === false;
+        $toggle.textContent = shown ? "Hide technical details" : "Show technical details";
       });
     }
 
