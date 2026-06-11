@@ -30,6 +30,24 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
         <span id="kind-label">request</span>.
       </p>
 
+      <!-- #89: prominent identity — WHICH account is bound to this ceremony,
+           plus a way out for users who meant to use a different one. The page
+           is structurally bound to one account (WebAuthn rpId = subdomain), so
+           "switch" hands a typed result back to the dApp to reconnect. -->
+      <div class="card identity">
+        <div class="id-row">
+          <div class="id-avatar" id="id-avatar" aria-hidden="true"></div>
+          <div class="id-info">
+            <div class="id-label mut">Signing as</div>
+            <div class="id-name" id="id-name"></div>
+            <code class="id-addr mono" id="id-addr"></code>
+          </div>
+        </div>
+        <p class="id-note mut">Not this one? Switch accounts in the app you came
+        from, or pick another here and the app will reconnect.</p>
+        <button id="switch-account" type="button" class="btn ghost block">Use a different account</button>
+      </div>
+
       <div class="card review">
         <div class="rev-row">
           <span class="rev-key mut">Account</span>
@@ -85,6 +103,18 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
     word-break: break-all;
   }
 
+  .identity { display: flex; flex-direction: column; gap: 12px; padding: 15px 16px; margin-bottom: 14px; }
+  .id-row { display: flex; align-items: center; gap: 13px; }
+  .id-avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex: 0 0 auto;
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.35);
+  }
+  .id-info { flex: 1; min-width: 0; }
+  .id-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .id-name { font-size: 16px; font-weight: 800; color: var(--ink); word-break: break-all; }
+  .id-addr { font-family: var(--mono); font-size: 12px; color: var(--mut); word-break: break-all; }
+  .id-note { font-size: 12.5px; line-height: 1.5; margin: 0; }
+
   .review { padding: 4px 16px; margin-bottom: 16px; }
   .rev-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0; }
   .rev-row.col { flex-direction: column; align-items: flex-start; gap: 7px; }
@@ -102,7 +132,8 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
 
 <script>
   import { contractIdFromHostname } from '@g2c/passkey-sdk';
-  import { loadCredential } from '@g2c/passkey-sdk';
+  import { loadCredential, loadAccountName } from '@g2c/passkey-sdk';
+  import { avatarBackground } from '../../lib/avatarStyle';
   import { postResultToOpener } from '@g2c/stellar-wallets-kit-module';
   import { signTransactionXdr, signMessageRaw, signAuthEntryXdr } from '../../lib/walletSign.js';
   import { withPasskeySheet } from '../../lib/passkeySheet';
@@ -131,6 +162,23 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
   const passkey = detectPasskeyLabel();
 
   document.getElementById('account-text')!.textContent = account ? shortAddr(account, 6, 6) : '(missing)';
+
+  // #89: identity block — make WHICH account is bound to this ceremony
+  // unmissable. The friendly name lives in this origin's localStorage
+  // (`g2c:names:…` is per-origin, and the sign page runs at the account's own
+  // subdomain — same origin the account page saves the name at), but it can
+  // be absent (e.g. the account was only ever used here via a dApp), so fall
+  // back to the short address alone.
+  {
+    const short = account ? shortAddr(account, 6, 6) : '(missing)';
+    const name = account ? loadAccountName(account) : null;
+    document.getElementById('id-name')!.textContent = name ?? short;
+    const $idAddr = document.getElementById('id-addr')!;
+    if (name) $idAddr.textContent = short;
+    else $idAddr.remove();
+    (document.getElementById('id-avatar') as HTMLElement).style.background =
+      avatarBackground(account ?? 'g2c');
+  }
 
   if (network) {
     const chip = document.getElementById('net-chip')!;
@@ -281,6 +329,17 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
   cancel.addEventListener('click', () => {
     if (!origin) { window.location.href = '/account/'; return; }
     finish('?g2c_sign=cancelled');
+  });
+
+  // #89: "Use a different account" — this page can't switch in place (the
+  // ceremony is bound to this subdomain's rpId), so hand a typed result back;
+  // the wallets-kit module clears its cached address and rejects with
+  // ACCOUNT_SWITCH_REQUESTED so the dApp can re-run connect. Deliberately
+  // works even when signing is impossible here (e.g. no passkey registered on
+  // this device for this account) — that's exactly when escaping matters.
+  document.getElementById('switch-account')!.addEventListener('click', () => {
+    if (!origin) { window.location.href = '/account/'; return; }
+    finish('?g2c_sign=switch-account');
   });
 
   approve.addEventListener('click', async () => {
