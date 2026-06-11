@@ -116,9 +116,16 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         <div>
           <div class="mut home-greeting-eyebrow">Welcome back</div>
           <h1 class="disp home-hello js-account-name">Your Nido</h1>
-          <button id="claim-name-top-btn" class="btn soft sm hidden" style="margin-top:8px; font-size:13px;" type="button">
+          <button id="claim-name-top-btn" class="btn acc sm hidden" style="margin-top:8px; font-size:13px;" type="button">
             Claim a name
           </button>
+          <div id="claim-name-inline" class="hidden" style="margin-top:8px;">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" style="font-size:13px; min-width:0; flex:1;" />
+              <button id="claim-name-btn" class="btn acc sm" type="button" style="font-size:13px;">Claim</button>
+            </div>
+            <div id="name-result" role="status" aria-live="polite" class="mut mono" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
+          </div>
         </div>
         <span class="chip acc"><span class="dot"></span> Testnet</span>
       </div>
@@ -157,11 +164,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
            (H-02); "Prove" is demoted to neutral + renamed the concrete job it
            does, "Approve" (→ the focused /sign/ surface); "Settings" → "Security"
            with the shield glyph so the entry points agree on one label (K-03). -->
-      <div class="span-all" id="claim-name-mobile-banner" style="display:none; padding:0 22px 0; margin-top:-10px;">
-        <button id="claim-name-mobile-btn" class="btn soft" style="width:100%; font-size:13.5px;" type="button">
-          Claim a name for your Nido
-        </button>
-      </div>
 
       <div class="span-all home-actions-mobile" style="display:flex; gap:6px; padding:26px 30px 6px;">
         <button id="send-action" class="qa js-send" type="button">
@@ -233,17 +235,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           </div>
         </div>
 
-        <div id="name-claim" class="hidden">
-          <p class="mut" style="font-size:13.5px; line-height:1.5; margin:0 0 14px;">
-            Claim a friendly name for your Nido. 1–15 characters, lowercase letters and digits, starting with a letter.
-          </p>
-          <div class="field">
-            <label for="name-input">Name</label>
-            <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
-          </div>
-          <button id="claim-name-btn" class="btn acc" style="margin-top:12px;">Claim this name</button>
-          <div id="name-result" role="status" aria-live="polite" class="mut mono" style="display:none; font-size:12.5px; margin-top:12px; text-align:center; line-height:1.5;"></div>
-        </div>
       </section>
       </div>
 
@@ -839,12 +830,9 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   if (SHOW_NAME_SECTION && contractId && !isSigningMode) {
     const $nameSection = document.getElementById("name-section")!;
     const $nameDisplay = document.getElementById("name-display")!;
-    const $nameClaim = document.getElementById("name-claim")!;
     const $claimBtn = document.getElementById("claim-name-btn") as HTMLButtonElement;
     const $nameInput = document.getElementById("name-input") as HTMLInputElement;
     const $nameResult = document.getElementById("name-result")!;
-
-    $nameSection.classList.remove("hidden");
 
     // The name is known authoritatively when we arrived via a name subdomain
     // (detectedName already resolved to THIS account); otherwise fall back to a
@@ -854,6 +842,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     const existingName = detectedName ?? loadAccountName(contractId);
     if (existingName) {
       if (detectedName) saveAccountName(contractId, detectedName);
+      $nameSection.classList.remove("hidden");
       $nameDisplay.classList.remove("hidden");
       document.getElementById("account-name")!.textContent = existingName;
       // Reflect the claimed name in the top bar nickname + desktop greeting.
@@ -866,19 +855,18 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       nameLink.href = accountShareUrl(rootHost, existingName);
       nameLink.textContent = accountShareLabel(rootHost, existingName);
     } else {
-      $nameClaim.classList.remove("hidden");
-      // Show the claim-a-name shortcut buttons at the top of the dashboard
+      // Show the claim-a-name button in the desktop greeting
       const topBtn = document.getElementById("claim-name-top-btn") as HTMLButtonElement | null;
-      const mobileBanner = document.getElementById("claim-name-mobile-banner") as HTMLElement | null;
+      const inlineForm = document.getElementById("claim-name-inline") as HTMLElement | null;
       if (topBtn) topBtn.classList.remove("hidden");
-      if (mobileBanner) mobileBanner.style.display = "";
-      // Both shortcut buttons open the name panel and scroll to it
-      const openNamePanel = () => {
-        $nameSection.classList.remove("hidden");
-        $nameSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      };
-      topBtn?.addEventListener("click", openNamePanel);
-      document.getElementById("claim-name-mobile-btn")?.addEventListener("click", openNamePanel);
+      // Auto-open inline form when returning from signing
+      if (params.get("nameresult") === "1" && inlineForm) {
+        inlineForm.classList.remove("hidden");
+      }
+      topBtn?.addEventListener("click", () => {
+        inlineForm?.classList.remove("hidden");
+        $nameInput.focus();
+      });
     }
 
 
