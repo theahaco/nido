@@ -42,8 +42,14 @@ trait SmartAccountInterface {
         valid_until: Option<u32>,
     ) -> ContextRule;
     fn remove_context_rule(env: soroban_sdk::Env, context_rule_id: u32);
-    fn add_signer(env: soroban_sdk::Env, context_rule_id: u32, signer: Signer);
-    fn remove_signer(env: soroban_sdk::Env, context_rule_id: u32, signer: Signer);
+    fn add_signer(env: soroban_sdk::Env, context_rule_id: u32, signer: Signer) -> u32;
+    fn remove_signer(env: soroban_sdk::Env, context_rule_id: u32, signer_id: u32);
+    fn add_policy(
+        env: soroban_sdk::Env,
+        context_rule_id: u32,
+        policy: soroban_sdk::Address,
+        install_param: soroban_sdk::Val,
+    ) -> u32;
 }
 
 /// Create a deterministic P-256 signing key from a `u64` seed.
