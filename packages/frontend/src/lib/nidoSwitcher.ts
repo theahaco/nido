@@ -248,6 +248,38 @@ export function mountNidoSwitcher(root: HTMLElement, opts: MountOptions = {}): v
     toggle();
   });
 
+  // Arrow-key navigation inside the open menu (ARIA menu pattern).
+  panel.addEventListener("keydown", (e) => {
+    const menuEl = panel;
+    switch (e.key) {
+      case "ArrowDown": {
+        e.preventDefault();
+        const items = [...menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+        const idx = items.indexOf(document.activeElement as HTMLElement);
+        items[(idx + 1) % items.length]?.focus();
+        break;
+      }
+      case "ArrowUp": {
+        e.preventDefault();
+        const items = [...menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+        const idx = items.indexOf(document.activeElement as HTMLElement);
+        items[(idx - 1 + items.length) % items.length]?.focus();
+        break;
+      }
+      case "Home": {
+        e.preventDefault();
+        menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')[0]?.focus();
+        break;
+      }
+      case "End": {
+        e.preventDefault();
+        const items = [...menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+        items[items.length - 1]?.focus();
+        break;
+      }
+    }
+  });
+
   instances.push({ root, btn, close, refreshIfOpen });
   attachGlobalListeners();
 

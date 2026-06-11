@@ -10,7 +10,7 @@ import Icon from "./Icon.astro";
 const icons = ["check", "copy", "info", "shieldcheck"] as const;
 ---
 
-<div class="toastwrap" id="nido-toast-host">
+<div class="toastwrap" id="nido-toast-host" role="status" aria-live="polite" aria-atomic="true">
   <div class="toast">
     <span id="nido-toast-icon" hidden>
       {icons.map((name) => (

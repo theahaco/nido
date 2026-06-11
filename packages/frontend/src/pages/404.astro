@@ -1,0 +1,17 @@
+---
+import NidoLayout from '../layouts/NidoLayout.astro';
+---
+<NidoLayout title="Page not found" shell="focused">
+  <div class="pad" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;gap:12px;padding-top:48px;padding-bottom:48px;">
+    <span style="font-size:56px;line-height:1;" aria-hidden="true">🪹</span>
+    <h1 class="disp" style="font-size:clamp(28px,6vw,40px);margin:0;">Nothing here</h1>
+    <p class="mut" style="margin:0;max-width:280px;">This page doesn't exist or may have moved.</p>
+    <div class="btn-row" style="width:100%;max-width:280px;margin-top:8px;">
+      <a href="/" class="btn acc sm">Go home</a>
+      <button type="button" class="btn soft sm"
+        onclick="window.dispatchEvent(new CustomEvent('nido:open-menu'))">
+        My Nido
+      </button>
+    </div>
+  </div>
+</NidoLayout>

@@ -13,9 +13,11 @@ interface Props {
   color?: string;
   /** Optional class on the <svg>. */
   class?: string;
+  /** Accessible label. When set, aria-hidden is omitted so the icon is announced. */
+  label?: string;
 }
 
-const { name, size = 22, stroke = 2, color = "currentColor", class: className } =
+const { name, size = 22, stroke = 2, color = "currentColor", class: className, label } =
   Astro.props;
 
 // inner SVG markup keyed by name (verbatim from app/icons.jsx).
@@ -69,5 +71,8 @@ const inner = paths[name] ?? "";
   stroke-linecap="round"
   stroke-linejoin="round"
   class={className}
+  aria-hidden={label ? undefined : "true"}
+  focusable="false"
+  aria-label={label}
   set:html={inner}
 />

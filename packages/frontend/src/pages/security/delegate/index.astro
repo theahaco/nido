@@ -18,7 +18,7 @@ import Icon from '../../../components/Icon.astro';
       <a href="/security/" class="btn ghost sm" style="width:40px;height:40px;padding:0;border-radius:12px;" aria-label="Back">
         <Icon name="back" size={18} />
       </a>
-      <div class="disp" style="font-weight:800;font-size:19px;">Let an app in?</div>
+      <h1 class="disp" style="font-weight:800;font-size:19px;">Let an app in?</h1>
       <span style="width:40px;"></span>
     </div>
 
@@ -45,7 +45,7 @@ import Icon from '../../../components/Icon.astro';
         <div class="navrow" style="cursor:default;">
           <div style="flex:1;">
             <div style="font-weight:700;font-size:13.5px;">Allowed to use</div>
-            <div class="mut mono" style="font-size:12px;"><code id="target-text"></code></div>
+            <div class="mut mono" style="font-size:12px;"><code id="target-text" style="word-break:break-all; display:block;"></code></div>
           </div>
         </div>
         <div class="navrow" style="cursor:default;">
@@ -93,7 +93,7 @@ import Icon from '../../../components/Icon.astro';
         <button id="approve" class="btn acc" type="button" style="flex:1;">Approve &amp; sign</button>
         <button id="deny" class="btn ghost" type="button" style="flex:0 0 auto;width:auto;">Cancel</button>
       </div>
-      <p id="status" class="mut" style="font-size:12.5px;margin-top:12px;"></p>
+      <p id="status" role="status" aria-live="polite" class="mut" style="font-size:12.5px;margin-top:12px;"></p>
     </div>
   </div>
 
@@ -304,7 +304,7 @@ import Icon from '../../../components/Icon.astro';
         verifierAddress: verifierAddr,
       });
 
-      status.textContent = 'Done — redirecting back to dApp…';
+      status.textContent = 'Done — redirecting back to app…';
       setTimeout(() => backToDapp('?delegation=ok'), 500);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

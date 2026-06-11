@@ -27,14 +27,14 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       <code id="contract-id"></code>
     </div>
 
-    <div id="error-box" class="alert danger" style="display:none; margin-bottom:18px;"></div>
+    <div id="error-box" role="alert" class="alert danger" style="display:none; margin-bottom:18px;"></div>
 
     <!-- ===================== STEP 1 · LOCK IT TO YOU ===================== -->
     <section id="passkey-section">
       <div style="display:grid; place-items:center; margin:10px 0 22px;">
         <span id="passkey-nest"><Nest size={104} /></span>
       </div>
-      <div class="disp" style="font-weight:800; font-size:28px; line-height:1.06; text-align:center;">
+      <h1 class="disp" style="font-weight:800; font-size:28px; line-height:1.06; text-align:center;">
         Lock it to you
       </div>
       <p id="passkey-intro" class="mut" style="font-size:14.5px; line-height:1.55; margin-top:10px; text-align:center; max-width:330px; margin-inline:auto;">
@@ -85,7 +85,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
           <span id="deploy-nest-spinning"><Nest size={104} spin dur={1.1} /></span>
           <span id="deploy-nest-static" style="display:none;"><Nest size={104} /></span>
         </div>
-        <div class="disp" style="font-weight:800; font-size:26px; margin-top:28px;">Setting up your Nido</div>
+        <h1 class="disp" style="font-weight:800; font-size:26px; margin-top:28px;">Setting up your Nido</h1>
 
         <div style="display:flex; flex-direction:column; gap:13px; margin-top:24px; width:100%; max-width:300px;">
           <div class="checkitem" id="check-0" style="display:flex; align-items:center; gap:12px; opacity:.4; transition:opacity .3s;">
@@ -116,7 +116,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
           <Icon name="check" size={36} color="var(--good)" stroke={2.6} />
         </div>
       </div>
-      <div class="disp" style="font-weight:800; font-size:28px; line-height:1.06; text-align:center;">Your Nido is ready</div>
+      <h1 class="disp" style="font-weight:800; font-size:28px; line-height:1.06; text-align:center;">Your Nido is ready</h1>
       <p class="mut" style="font-size:14.5px; line-height:1.55; margin-top:10px; text-align:center; max-width:330px; margin-inline:auto;">
         It's live on Stellar and locked to you. Taking you to your wallet…
       </p>
@@ -459,8 +459,6 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       const host = window.location.host;
       const accountUrl = `${protocol}//${host}/account/`;
       $explorerLink.href = `https://stellar.expert/explorer/testnet/contract/${contractId}`;
-
-      toast({ msg: "Your Nido is ready", icon: "check" });
 
       // Brief beat so the final check lands before the reveal.
       await new Promise((r) => setTimeout(r, 700));
