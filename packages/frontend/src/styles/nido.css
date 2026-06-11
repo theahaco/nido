@@ -18,22 +18,22 @@
   --ink:      #2A1A12;
   --ink-soft: #6b5446;
   --mut:      #7a6655;  /* C-02: darkened from #9a8676 (3.2:1) to ~5.0:1 on cream — clears WCAG AA for the body/sub text that uses it, kept a step below --ink-soft */
-  --mut-faint:#9a8676;  /* the old light tone, reserved for ≥16px or purely decorative labels */
   /* lines */
   --line:      #efe2d2;
   --line-soft: #f4ebde;
   /* accent — coral */
   --acc:      #F25C2A;
-  --acc-ink:  #d8491c;
+  --acc-ink:  #b83e14;
   --acc-btn:  #cf4a1e;  /* AA-safe coral for primary buttons: white label clears WCAG AA (4.51:1 vs 3.31:1 for --acc) */
   --acc-soft: #FCE3D6;
   --acc-glow: rgba(242,92,42,.28);
   /* semantic — teal carries "confirmed / received / you" */
   --good:     #0E9AA8;
+  --good-ink: #0a6b75; /* 5.26:1 on --good-soft, 6.23:1 on white */
   --good-soft:#DBF0F1;
-  --warn:     #b07a1c;
+  --warn:     #815a14;
   --warn-soft:#F8ECD4;
-  --danger:   #c2452f;
+  --danger:   #aa3a26;
   /* radii */
   --r-xl: 26px; --r-lg: 20px; --r-md: 14px; --r-sm: 10px; --r-pill: 999px;
   /* shadow */
@@ -45,6 +45,7 @@
   --disp: "Fraunces", serif;
   --body: "Hanken Grotesk", sans-serif;
   --mono: "JetBrains Mono", monospace;
+  color-scheme: only light; /* Nido is light-only; dark mode is not designed or supported */
 }
 
 * { box-sizing: border-box; }
@@ -127,13 +128,17 @@ button { font-family: inherit; }
 .btn.soft:hover { background: #e4ddcd; }
 .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .btn.ghost:hover { background: var(--paper-3); }
-.btn:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; }
 .btn.sm { height: 42px; font-size: 14px; padding: 0 16px; border-radius: var(--r-sm); width: auto; }
 .btn.block { width: 100%; }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn, a.btn { text-decoration: none; }
 
 /* circular quick action */
-.qa { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; flex: 1; }
+.qa {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; flex: 1;
+  background: none; border: 0; padding: 0; text-decoration: none;
+  color: inherit; font: inherit;
+}
 .qa .circ {
   width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
   background: var(--acc-btn); color: #fff; box-shadow: var(--sh-acc);  /* C-03: AA coral so the white glyph clears 4.5:1 */
@@ -152,7 +157,7 @@ button { font-family: inherit; }
   background: var(--chip); font-size: 12px; font-weight: 700; color: var(--ink-soft); white-space: nowrap;
 }
 .chip.acc { background: var(--acc-soft); color: var(--acc-ink); }
-.chip.good { background: var(--good-soft); color: var(--good); }
+.chip.good { background: var(--good-soft); color: var(--good-ink); }
 .chip.mono { font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
@@ -172,7 +177,7 @@ button { font-family: inherit; }
 }
 .input.mono { font-family: var(--mono); font-size: 13.5px; }
 .input:focus { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-soft); }
-.input::placeholder { color: #aaa291; }
+.input::placeholder { color: var(--mut); }
 textarea.input { height: auto; padding: 13px 15px; resize: none; line-height: 1.5; }
 
 /* amount input */
@@ -193,12 +198,14 @@ a.row { text-decoration: none; color: inherit; }
   width: 42px; height: 42px; border-radius: 13px; flex: 0 0 auto; display: grid; place-items: center;
   background: var(--chip); color: var(--ink-soft);
 }
-.row .ricon.in { background: var(--good-soft); color: var(--good); }
+.row .ricon.in { background: var(--good-soft); color: var(--good-ink); }
 .row .ricon.acc { background: var(--acc-soft); color: var(--acc); }
 .row .rmain { flex: 1; min-width: 0; }
 .row .rtitle { font-weight: 700; font-size: 14.5px; }
 .row .rsub { font-size: 12px; color: var(--mut); font-family: var(--mono); }
 .row .ramt { font-weight: 700; font-size: 14.5px; text-align: right; white-space: nowrap; }
+.row .rtitle,
+.row .rsub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* settings / nav rows */
 .navrow {
@@ -304,10 +311,7 @@ body:has(.tabbar) .toastwrap { bottom: calc(86px + env(safe-area-inset-bottom));
 .pad { padding: 6px 22px 28px; }
 .section-label { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--mut); }
 .divider { height: 1px; background: var(--line-soft); margin: 0; border: none; }
-a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; }  /* C-01: darker coral so link text clears WCAG AA on cream */
-
-/* placeholder hatch */
-.ph { background-image: repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 10px); }
+a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; }  /* C-01: #b83e14 clears WCAG AA (4.57:1) on --acc-soft */
 
 /* ===================================================================
    K-01 · One alert component, semantic variants (was: 3 ad-hoc treatments)
@@ -323,7 +327,7 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 .alert.danger { background: #FBE7E2; color: var(--danger); border-color: #f1c9c0; }
 .alert.warn   { background: var(--warn-soft); color: var(--warn); border-color: #ecdcb8; }
 .alert.info   { background: var(--acc-soft); color: var(--acc-ink); border-color: #f6d3c2; }
-.alert.good   { background: var(--good-soft); color: var(--good); border-color: #bfe6e9; }
+.alert.good   { background: var(--good-soft); color: var(--good-ink); border-color: #bfe6e9; }
 
 /* S-02 · Shared loading skeleton + empty state (was: "Loading…" / "…" / dashed card, inconsistently) */
 .skeleton {
@@ -371,11 +375,15 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 }
 .lp-float {
   position: absolute; background: var(--paper-2); border: 1px solid var(--line); border-radius: 16px;
-  box-shadow: var(--sh-2); display: grid; place-items: center; animation: floaty 5s ease-in-out infinite;
+  box-shadow: var(--sh-2); display: grid; place-items: center;
 }
 .lp-float-1 { width: 58px; height: 58px; top: -18px; left: 8px; }
-.lp-float-2 { padding: 10px 14px; bottom: 6px; right: -6px; animation-delay: 1.2s; color: var(--good); }
-@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+.lp-float-2 { padding: 10px 14px; bottom: 6px; right: -6px; color: var(--good-ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .lp-float { animation: floaty 5s ease-in-out infinite; }
+  .lp-float-2 { animation-delay: 1.2s; }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+}
 @media (max-width: 860px) {
   .lp-hero { grid-template-columns: 1fr; gap: 8px; padding-bottom: 40px; }
   .lp-preview { justify-content: flex-start; margin-top: 38px; }
@@ -460,7 +468,7 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 }
 .td-badge--bad { background: #fbe7e2; color: var(--danger); }
 .td-badge--mid { background: var(--warn-soft); color: var(--warn); }
-.td-badge--good { background: var(--good-soft); color: var(--good); }
+.td-badge--good { background: var(--good-soft); color: var(--good-ink); }
 /* recovery diagram (row 4) */
 .td-recovery { display: flex; align-items: center; flex-direction: column; }
 .td-recovery-group { text-align: center; }
@@ -508,6 +516,16 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 /* ---------- visibility helpers (existing scripts toggle these; the prototype CSS omits them) ---------- */
 .hidden { display: none; }
 [hidden] { display: none; }
+
+/* ---------- focus, hover, disabled ---------- */
+:is(.btn, .qa, .addr, .tab, .navrow, .nido-navitem, .mynido-btn, .mn-row, .mn-foot):focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+.btn:not(:disabled):not(.acc):not(.soft):not(.ghost):hover { filter: brightness(0.93); }
+
+.btn:disabled { background: var(--chip); color: var(--mut); opacity: 1; cursor: not-allowed; box-shadow: none; }
 
 /* ---------- responsive shells (desktop redesign) ---------- */
 /* 800–1024: app pages widen to a centered ~820px column, no sidebar yet. */
@@ -572,7 +590,7 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
   text-decoration: none;
 }
 .nido-navitem:hover { background: var(--chip); color: var(--ink); }
-.nido-navitem.is-active { background: var(--acc-soft); color: var(--acc); }
+.nido-navitem.is-active { background: var(--acc-soft); color: var(--acc-ink); }
 /* the .mynido switcher wrapper is the flex child now, so it carries the bottom push */
 .nido-sidebar > .mynido { margin-top: auto; }
 .nido-sidebar-account {
