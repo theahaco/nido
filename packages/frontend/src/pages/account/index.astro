@@ -119,13 +119,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           <button id="claim-name-top-btn" class="btn acc sm hidden" style="margin-top:8px; font-size:13px;" type="button">
             Claim a name
           </button>
-          <div id="claim-name-inline" class="hidden" style="margin-top:8px;">
-            <div style="display:flex; gap:6px; align-items:center;">
-              <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" style="font-size:13px; min-width:0; flex:1;" />
-              <button id="claim-name-btn" class="btn acc sm" type="button" style="font-size:13px;">Claim</button>
-            </div>
-            <div id="name-result" role="status" aria-live="polite" class="mut mono" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
-          </div>
         </div>
         <span class="chip acc"><span class="dot"></span> Testnet</span>
       </div>
@@ -178,6 +171,20 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           <div class="circ soft"><Icon name="shield" size={23} /></div>
           <span>Security</span>
         </a>
+        <button id="claim-name-mobile-action" class="qa hidden" type="button">
+          <div class="circ soft"><Icon name="sparkle" size={22} /></div>
+          <span>Claim</span>
+        </button>
+      </div>
+
+      <!-- Inline name-claim form — shared by the desktop greeting button and the
+           mobile quick action. Hidden until JS reveals it (unclaimed accounts only). -->
+      <div class="span-all hidden" id="claim-name-inline" style="padding:0 22px 6px;">
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" style="font-size:13px; min-width:0; flex:1;" />
+          <button id="claim-name-btn" class="btn acc sm" type="button" style="font-size:13px;">Claim</button>
+        </div>
+        <div id="name-result" role="status" aria-live="polite" class="mut mono" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
       </div>
 
       <!-- The XLM-only inline Send panel was retired here: "Send" now opens the
@@ -855,18 +862,23 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       nameLink.href = accountShareUrl(rootHost, existingName);
       nameLink.textContent = accountShareLabel(rootHost, existingName);
     } else {
-      // Show the claim-a-name button in the desktop greeting
+      // Show claim-a-name entry points (desktop greeting button + mobile quick action)
       const topBtn = document.getElementById("claim-name-top-btn") as HTMLButtonElement | null;
+      const mobileAction = document.getElementById("claim-name-mobile-action") as HTMLButtonElement | null;
       const inlineForm = document.getElementById("claim-name-inline") as HTMLElement | null;
       if (topBtn) topBtn.classList.remove("hidden");
+      if (mobileAction) mobileAction.classList.remove("hidden");
       // Auto-open inline form when returning from signing
       if (params.get("nameresult") === "1" && inlineForm) {
         inlineForm.classList.remove("hidden");
       }
-      topBtn?.addEventListener("click", () => {
+      const openClaimForm = () => {
         inlineForm?.classList.remove("hidden");
+        inlineForm?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         $nameInput.focus();
-      });
+      };
+      topBtn?.addEventListener("click", openClaimForm);
+      mobileAction?.addEventListener("click", openClaimForm);
     }
 
 
