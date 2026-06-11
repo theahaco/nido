@@ -251,6 +251,24 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
     }
   }
 
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  async function waitForSourceAccount(server: rpc.Server, publicKey: string): Promise<Account> {
+    let lastError: unknown;
+    for (let i = 0; i < 20; i++) {
+      try {
+        const res = await server.getAccount(publicKey);
+        return new Account(res.accountId(), res.sequenceNumber());
+      } catch (err) {
+        lastError = err;
+        await sleep(1000);
+      }
+    }
+    throw lastError instanceof Error
+      ? new Error(`Funded setup account is not available yet: ${lastError.message}`)
+      : new Error("Funded setup account is not available yet.");
+  }
+
   // --- Init: surface the contract id ---
 
   // Show a shortened address so the 56-char contract ID never overflows the
@@ -288,6 +306,8 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
 
       const res = await fetch(`https://friendbot.stellar.org?addr=${publicKey}`);
       if (!res.ok) throw new Error(`Funding failed: ${res.status}`);
+
+      await waitForSourceAccount(new rpc.Server(RPC_URL), publicKey);
 
       const client = new Client({
         contractId: await fetchRegistryAddress("factory"),
@@ -399,9 +419,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       const keypair = Keypair.fromSecret(secretKey);
       const server = new rpc.Server(RPC_URL);
 
-      const sourceAccount = await server
-        .getAccount(keypair.publicKey())
-        .then((res: Account) => new Account(res.accountId(), res.sequenceNumber()));
+      const sourceAccount = await waitForSourceAccount(server, keypair.publicKey());
 
       const simTxn = new TransactionBuilder(sourceAccount, {
         fee: "100",
