@@ -77,6 +77,13 @@ export interface ConnectUrlParams {
   dappOrigin: string;
   /** Same-origin URL the picker should send the user back to. */
   returnUrl: string;
+  /**
+   * The C-address this dApp was previously connected to, if any. The picker
+   * highlights it (and may auto-confirm it when it's the device's only
+   * account) while still offering the full list — every reconnect is a
+   * switch opportunity.
+   */
+  previous?: string;
 }
 
 /**
@@ -87,6 +94,9 @@ export function connectUrl(p: ConnectUrlParams): string {
   const u = new URL('/connect/', apexOrigin(p.base));
   u.searchParams.set('dapp', p.dappOrigin);
   u.searchParams.set('return', p.returnUrl);
+  // The picker treats `previous` as untrusted input (validates + matches it
+  // against the device's own account list), so pass it through as-is.
+  if (p.previous) u.searchParams.set('previous', p.previous);
   return u.toString();
 }
 

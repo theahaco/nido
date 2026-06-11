@@ -52,12 +52,16 @@ export type SignKind = 'tx' | 'message' | 'authEntry';
 export type SignReturn =
   | { status: 'ok'; kind: SignKind; result: string }
   | { status: 'cancelled' }
+  | { status: 'switch-account' }
   | { status: 'error'; error: string };
 
 /**
  * Read the result of a `/sign/` ceremony off a query string. `result` is the
- * signed XDR / message / auth-entry depending on `kind`. Returns `null` if the
- * query carries none of the sign params.
+ * signed XDR / message / auth-entry depending on `kind`. `switch-account`
+ * means the user asked to sign with a different account — the sign page is
+ * structurally bound to one account (WebAuthn rpId = its subdomain), so the
+ * only way out is back through connect. Returns `null` if the query carries
+ * none of the sign params.
  */
 export function parseSignReturn(search: string): SignReturn | null {
   const p = new URLSearchParams(search);
@@ -68,6 +72,7 @@ export function parseSignReturn(search: string): SignReturn | null {
     return { status: 'ok', kind, result: signed };
   }
   if (sign === 'cancelled') return { status: 'cancelled' };
+  if (sign === 'switch-account') return { status: 'switch-account' };
   if (sign === 'error') {
     return { status: 'error', error: p.get('g2c_error') ?? 'Unknown signing error' };
   }

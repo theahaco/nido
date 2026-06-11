@@ -86,6 +86,13 @@ import Toast from '../../components/Toast.astro';
   .picker .account-name { font-size: 14.5px; font-weight: 700; color: var(--ink); }
   .picker .account-address { font-family: var(--mono); font-size: 12px; color: var(--mut); word-break: break-all; }
   .picker .account-row .chev { color: var(--mut); flex: 0 0 auto; }
+  /* #89: the account this dApp is currently connected to. */
+  .picker .account-row.current { border-color: var(--acc); box-shadow: var(--sh-1); }
+  .picker .account-current {
+    flex: 0 0 auto; font-size: 11px; font-weight: 700;
+    color: var(--acc-ink); background: var(--acc-soft);
+    border-radius: var(--r-sm); padding: 2px 8px;
+  }
 </style>
 
 <script>
@@ -108,6 +115,12 @@ import Toast from '../../components/Toast.astro';
   const params = new URLSearchParams(window.location.search);
   const dappOrigin = params.get('dapp') ?? '';
   const returnUrl = params.get('return') ?? '';
+  // #89: the address this dApp was previously connected to. Untrusted URL
+  // input — validated here and only honored if it's actually one of this
+  // device's accounts (checked below). Used to highlight the row, and to
+  // auto-confirm when it's the only account on the device.
+  const previousRaw = (params.get('previous') ?? '').toUpperCase();
+  const previous = isContractId(previousRaw) ? previousRaw : null;
 
   const $err = document.getElementById('error-box')!;
   const $list = document.getElementById('accounts-list')!;
@@ -158,6 +171,20 @@ import Toast from '../../components/Toast.astro';
   if (accounts.length === 0) {
     $none.classList.remove('hidden');
   }
+
+  // Only treat `previous` as current if it's genuinely one of this device's
+  // accounts (a dApp could send any address).
+  const current = previous && accounts.includes(previous) ? previous : null;
+
+  // Single-account fast path: exactly one account on the device AND it's the
+  // one this dApp already uses → nothing to choose, finish immediately. The
+  // popup closes itself via postResultToOpener; the rendered list below is
+  // only ever visible if that handover fails. Multi-account devices always
+  // see the full picker — that's the #89 switch opportunity.
+  if (ret && current && accounts.length === 1) {
+    finish(`?g2c_address=${current}`);
+  }
+
   for (const cAddress of accounts) {
     const name = loadAccountName(cAddress);
     const btn = document.createElement('button');
@@ -179,6 +206,16 @@ import Toast from '../../components/Toast.astro';
     addr.textContent = name ? shortAddr(cAddress, 6, 6) : cAddress;
     info.appendChild(addr);
     btn.appendChild(info);
+
+    // #89: highlight the account this dApp is currently connected to, so a
+    // reconnect reads as "keep this one or switch", never a silent re-bind.
+    if (cAddress === current) {
+      btn.classList.add('current');
+      const tag = document.createElement('span');
+      tag.className = 'account-current';
+      tag.textContent = 'Connected';
+      btn.appendChild(tag);
+    }
 
     const chev = document.createElement('span');
     chev.className = 'chev';

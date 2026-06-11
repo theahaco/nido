@@ -50,6 +50,13 @@ describe('connectUrl', () => {
     expect(u.pathname).toBe('/connect/');
     expect(u.searchParams.get('dapp')).toBe(DAPP);
     expect(u.searchParams.get('return')).toBe(`${DAPP}/cb`);
+    expect(u.searchParams.get('previous')).toBeNull();
+  });
+  it('carries the previously connected address when provided', () => {
+    const u = new URL(
+      connectUrl({ base: BASE, dappOrigin: DAPP, returnUrl: `${DAPP}/cb`, previous: C }),
+    );
+    expect(u.searchParams.get('previous')).toBe(C);
   });
 });
 

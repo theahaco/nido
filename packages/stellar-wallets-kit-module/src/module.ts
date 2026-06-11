@@ -14,8 +14,10 @@
  * URL building and result parsing are pure (`urls.ts` / `handover.ts`).
  *
  * The chosen address is cached in the dApp origin's localStorage (it's a
- * non-secret identifier), so repeat `getAddress` calls don't re-prompt the
- * picker unless `skipRequestAccess` is false and nothing is cached.
+ * non-secret identifier). `getAddress` still opens the picker on every call
+ * (passing the cached address as `previous` so it's highlighted, and so the
+ * picker can fast-path single-account devices) — the cache exists for
+ * `skipRequestAccess: true` reads and to resolve the account for signing.
  */
 
 import {
@@ -42,6 +44,28 @@ import {
 import { openCeremonyPopup } from './redirect.js';
 
 export const G2C_ID = 'g2c';
+
+/**
+ * `error.name` of the rejection thrown when the user hits "Use a different
+ * account" on the sign page. The sign ceremony is structurally bound to one
+ * account (the WebAuthn rpId is its subdomain), so switching mid-sign is
+ * impossible; the module clears the cached address and rejects with this
+ * error so the dApp can react: re-run connect (`kit.getAddress()` /
+ * `requestAccess`) to let the user pick another account, then rebuild the
+ * transaction for the new holder.
+ */
+export const ACCOUNT_SWITCH_REQUESTED = 'ACCOUNT_SWITCH_REQUESTED';
+
+/** Thrown by sign methods when the user asks to switch accounts mid-ceremony. */
+export class AccountSwitchRequestedError extends Error {
+  constructor() {
+    super(
+      'g2c: the user wants to sign with a different account. ' +
+        'Re-run connect to let them pick one, then retry.',
+    );
+    this.name = ACCOUNT_SWITCH_REQUESTED;
+  }
+}
 
 const DEFAULT_NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 
@@ -109,15 +133,20 @@ export class G2cModule implements ModuleInterface {
   }
 
   /**
-   * Return the user's selected smart-account C-address. Uses the dApp-origin
-   * cache when present; otherwise opens the apex `/connect/` picker. Pass
+   * Return the user's selected smart-account C-address.
+   *
+   * Always opens the apex `/connect/` picker (so users with several accounts
+   * can switch on every reconnect), passing the cached address as `previous`
+   * so the picker highlights it — and, when the device has exactly one
+   * account and it matches, auto-confirms without showing UI. Pass
    * `skipRequestAccess: true` to read the cache only (throws if empty rather
-   * than prompting).
+   * than prompting). The SEP-43 `path` param is accepted but unused — there
+   * is no derivation path to select; the picker is always shown instead.
    */
   async getAddress(params?: { path?: string; skipRequestAccess?: boolean }): Promise<{ address: string }> {
     const cached = loadCachedAddress();
-    if (cached) return { address: cached };
     if (params?.skipRequestAccess) {
+      if (cached) return { address: cached };
       throw new Error('g2c: no account connected. Call getAddress without skipRequestAccess to pick one.');
     }
 
@@ -125,6 +154,7 @@ export class G2cModule implements ModuleInterface {
       base: this.base,
       dappOrigin: this.dappOrigin(),
       returnUrl: this.returnUrl(),
+      previous: cached ?? undefined,
     });
     const { search } = await openCeremonyPopup(url, apexOrigin(this.base));
     const result = parseConnectReturn(search);
@@ -217,6 +247,13 @@ export class G2cModule implements ModuleInterface {
     const result = parseSignReturn(search);
     if (!result) throw new Error('g2c: the sign window returned no result.');
     if (result.status === 'cancelled') throw new Error('g2c: signing was cancelled.');
+    if (result.status === 'switch-account') {
+      // The user wants another account. Forget the bound one so the next
+      // connect doesn't fast-path back to it, and reject with a distinct,
+      // documented error the dApp can catch (re-run connect, rebuild the tx).
+      clearCachedAddress();
+      throw new AccountSwitchRequestedError();
+    }
     if (result.status === 'error') throw new Error(`g2c: ${result.error}`);
     return result.result;
   }
