@@ -367,7 +367,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       throw new Error(`Funding simulation failed: ${"error" in sim ? sim.error : "restore needed"}`);
     }
 
-    const assembled = rpc.assembleTransaction(txn, sim).setTimeout(60).build();
+    const assembled = rpc.assembleTransaction(txn, sim).build();
     assembled.sign(keypair);
 
     const send = await server.sendTransaction(assembled);
@@ -610,10 +610,18 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
         fundingComplete = false;
         console.warn("[g2c] testnet funding failed", fundingErr);
         renderCheck(2, "pending");
-        renderCheck(3, "active");
+        renderCheck(3, "pending");
+        $deployNestSpinning.style.display = "none";
+        $deployNestStatic.style.display = "block";
+        $deployFoot.textContent = "Your Nido was created, but testnet funding failed.";
+        showError(
+          fundingErr instanceof Error
+            ? `Testnet funding failed after setup: ${fundingErr.message}`
+            : "Testnet funding failed after setup."
+        );
+        return;
       }
       if (fundingComplete) setCheckProgress(4, -1);
-      else renderCheck(3, "done");
       $deployNestSpinning.style.display = "none";
       $deployNestStatic.style.display = "block";
       $deployFoot.textContent = fundingComplete
