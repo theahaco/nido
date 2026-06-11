@@ -1,0 +1,16 @@
+import { describe, expect, it } from "vitest";
+import { createNido } from "./createNido.js";
+
+describe("createNido", () => {
+  it("keeps apex hosts intact", () => {
+    expect(createNido("nido.fyi")).toMatch(/^\/\/nido\.fyi\/new-account\/\?salt=[0-9a-f]{64}&setup=1$/);
+  });
+
+  it("keeps preview root hosts intact", () => {
+    expect(createNido("pr-85.nido.fyi")).toMatch(/^\/\/pr-85\.nido\.fyi\/new-account\/\?salt=[0-9a-f]{64}&setup=1$/);
+  });
+
+  it("strips account subdomains before setup", () => {
+    expect(createNido("cabc.nido.fyi")).toMatch(/^\/\/nido\.fyi\/new-account\/\?salt=[0-9a-f]{64}&setup=1$/);
+  });
+});
