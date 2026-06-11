@@ -517,6 +517,10 @@ a.link, .link { color: var(--acc-ink); font-weight: 700; text-decoration: none; 
 .hidden { display: none; }
 [hidden] { display: none; }
 
+/* ---------- skip link (accessibility) ---------- */
+.skip-link { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.skip-link:focus { position: fixed; top: 0; left: 0; width: auto; height: auto; padding: 0.5rem 1rem; background: var(--paper); color: var(--ink); border-radius: var(--r-sm); z-index: 10000; }
+
 /* ---------- focus, hover, disabled ---------- */
 :is(.btn, .qa, .addr, .tab, .navrow, .nido-navitem, .mynido-btn, .mn-row, .mn-foot):focus-visible {
   outline: 2px solid var(--acc);
