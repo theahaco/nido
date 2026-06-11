@@ -252,9 +252,14 @@ a.row { text-decoration: none; color: inherit; }
 .faceid .scan {
   position: absolute; left: 8px; right: 8px; height: 2.5px; border-radius: 2px;
   background: var(--acc); box-shadow: 0 0 10px 2px var(--acc-glow);
-  animation: scanmove 1.5s ease-in-out infinite;
 }
-@keyframes scanmove { 0%,100% { top: 16px; } 50% { top: 78px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .faceid .scan { animation: scanmove 1.5s ease-in-out infinite; }
+  @keyframes scanmove { 0%,100% { top: 16px; } 50% { top: 78px; } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .faceid .scan { opacity: 0.5; }
+}
 .faceid.done .scan { display: none; }
 .faceid.done .frame { border-color: var(--good); box-shadow: 0 0 0 6px var(--good-soft); }
 .faceid .tick { position: absolute; inset: 0; display: grid; place-items: center; }

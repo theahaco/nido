@@ -47,7 +47,7 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
       <div id="tx-detail" class="hidden" style="margin-bottom:16px;"></div>
       <button id="toggle-raw" type="button" class="hidden" style="background:none;border:none;color:var(--acc-ink);font-weight:700;cursor:pointer;font-size:12.5px;padding:0;margin:-2px 0 16px;">Show raw transaction</button>
 
-      <div id="error-box" class="alert danger" style="display:none"></div>
+      <div id="error-box" role="alert" class="alert danger" style="display:none"></div>
 
       <div id="needs-register" class="hidden">
         <div class="alert warn">
@@ -57,7 +57,7 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
         </div>
       </div>
 
-      <p id="status" class="status mut"></p>
+      <p id="status" role="status" aria-live="polite" class="status mut"></p>
     </div>
   </div>
 

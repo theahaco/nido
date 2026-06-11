@@ -26,7 +26,7 @@ import Icon from "../../components/Icon.astro";
       <span style="width:40px;"></span>
     </div>
 
-    <div id="error-box" class="alert danger" style="display:none;margin:8px 22px;"></div>
+    <div id="error-box" role="alert" class="alert danger" style="display:none;margin:8px 22px;"></div>
 
     <!-- ===================== STEP 1 · FORM ===================== -->
     <section id="form-step" class="pad" style="padding-top:8px;">
@@ -81,7 +81,7 @@ import Icon from "../../components/Icon.astro";
           <Icon name="faceid" size={18} color="#fff" /> <span class="js-confirm-label">Confirm &amp; send</span>
         </button>
       </div>
-      <div id="review-status" class="mut mono" style="font-size:12.5px;margin-top:12px;text-align:center;line-height:1.5;"></div>
+      <div id="review-status" role="status" aria-live="polite" class="mut mono" style="font-size:12.5px;margin-top:12px;text-align:center;line-height:1.5;"></div>
     </section>
 
     <!-- ===================== STEP 3 · RESULT ===================== -->

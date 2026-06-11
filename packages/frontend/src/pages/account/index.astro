@@ -44,7 +44,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       </MyNidoMenu>
     </div>
 
-    <div id="error-box" class="alert danger" style="display:none; margin:8px 22px;"></div>
+    <div id="error-box" role="alert" class="alert danger" style="display:none; margin:8px 22px;"></div>
 
     <!-- ============================================================= -->
     <!-- SIGNING MODE — reskinned signature request                    -->
@@ -263,7 +263,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
             <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
           </div>
           <button id="claim-name-btn" class="btn acc" style="margin-top:12px;">Claim this name</button>
-          <div id="name-result" class="mut mono" style="display:none; font-size:12.5px; margin-top:12px; text-align:center; line-height:1.5;"></div>
+          <div id="name-result" role="status" aria-live="polite" class="mut mono" style="display:none; font-size:12.5px; margin-top:12px; text-align:center; line-height:1.5;"></div>
         </div>
       </section>
       </div>
