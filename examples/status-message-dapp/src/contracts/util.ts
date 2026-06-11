@@ -14,6 +14,9 @@ const envSchema = z.object({
 	PUBLIC_STELLAR_NETWORK_PASSPHRASE: z.nativeEnum(Networks),
 	PUBLIC_STELLAR_RPC_URL: z.string(),
 	PUBLIC_STELLAR_HORIZON_URL: z.string(),
+	// Optional so existing .env files keep parsing; the export below applies
+	// the hosted-testnet default.
+	PUBLIC_RELAYER_URL: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(import.meta.env)
@@ -55,6 +58,13 @@ export const labPrefix = () => {
 // NOTE: needs to be exported for contract files in this directory
 export const rpcUrl = env.PUBLIC_STELLAR_RPC_URL
 export const horizonUrl = env.PUBLIC_STELLAR_HORIZON_URL
+
+// Gasless submissions (the tip flow in `lib/nidoSign.ts`) POST {func, auth} to
+// this relayer's /relay route; its channel accounts source + fee-bump the tx so
+// the dApp never needs a funded G-address. Default: the hosted testnet relayer.
+export const relayerUrl = (
+	env.PUBLIC_RELAYER_URL ?? "https://nido.fly.dev"
+).replace(/\/+$/, "")
 
 const networkToId = (network: string): NetworkType => {
 	switch (network) {

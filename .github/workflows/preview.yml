@@ -8,6 +8,10 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/preview.yml'
+      # The example-dApp preview (example-preview.yml) points its wallet at
+      # THIS PR's pr-N.nido.fyi — so a dApp-only PR still needs the wallet
+      # preview deployed alongside.
+      - 'examples/status-message-dapp/**'
 
 permissions:
   contents: read
@@ -22,9 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: '20'
 
       - name: Install dependencies
         run: npm install

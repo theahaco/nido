@@ -13,10 +13,12 @@
 #      TransactionBuilder ('e.sourceAccount is not a function'). We rewrite to
 #      match whatever the frontend pins.
 #
-#   2. Missing `Context` import in multisig-policy bindings. The generator
-#      emits code that references `Context` without importing it. We never
-#      call enforce/can_enforce from JS, so an alias to `unknown` after the
-#      imports compiles cleanly and lets the rest of the bindings type-check.
+#   2. Missing `Context` import in policy bindings (multisig-policy,
+#      spending-limit-policy, any future package whose contract takes a
+#      `Context` arg). The generator emits code that references `Context`
+#      without importing it. We never call enforce/can_enforce from JS, so an
+#      alias to `unknown` after the imports compiles cleanly and lets the rest
+#      of the bindings type-check.
 #
 # Usage:
 #   ./scripts/fix-bindings.sh
@@ -62,10 +64,12 @@ else:
 PY
 done
 
-# --- 2. Insert `type Context = unknown` shim in multisig-policy ---------
+# --- 2. Insert `type Context = unknown` shim where bindings need it -----
 
-ms="$BINDINGS_DIR/multisig-policy/src/index.ts"
-if [ -f "$ms" ]; then
+for ms in "$BINDINGS_DIR"/*/src/index.ts; do
+    [ -f "$ms" ] || continue
+    # Only packages whose generated code references the bare `Context` type.
+    grep -q 'context: Context' "$ms" || continue
     if grep -q '^type Context = unknown;' "$ms"; then
         echo "  $ms: Context shim already present"
     else
@@ -95,8 +99,6 @@ open(path, 'w').write(new)
 print(f"  {path}: inserted Context shim")
 PY
     fi
-else
-    echo "  (skipping Context shim: $ms not found)"
-fi
+done
 
 echo "Done."

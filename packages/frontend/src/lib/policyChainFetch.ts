@@ -11,6 +11,7 @@ import {
 } from '@stellar/stellar-sdk';
 import type { ChainRule, ChainSigner, PolicyState } from '@g2c/passkey-sdk';
 import { fetchRegistryAddress as sdkFetchRegistryAddress } from '@g2c/passkey-sdk';
+import { Client as SpendingLimitPolicyClient } from 'spending-limit-policy';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = Networks.TESTNET;
@@ -48,6 +49,16 @@ export async function simulateView(
   return result.retval;
 }
 
+/** OZ's SmartAccountError::ContextRuleNotFound surfaces from a failed
+ *  simulation as `Error(Contract, #3000)`. Rule ids are MONOTONIC and never
+ *  reused (`NextId`), while `get_context_rules_count` only counts live rules —
+ *  so any revoke that isn't the newest rule leaves an id gap that panics
+ *  `get_context_rule`. Enumerators must treat this error as "skip". */
+export function isRuleNotFound(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /Error\(Contract, #3000\)|ContextRuleNotFound/.test(msg);
+}
+
 /** Read all installed context rules from a smart account.
  *
  *  Decodes rules RAW (`scValToNative` with no type hint) rather than through the
@@ -66,28 +77,56 @@ export async function fetchAllChainRules(account: string): Promise<ChainRule[]> 
   const count = scValToNative(countRv) as number;
 
   const out: ChainRule[] = [];
-  for (let i = 0; i < count; i++) {
-    const ruleRv = await simulateView(
-      server,
-      contract,
-      'get_context_rule',
-      nativeToScVal(i, { type: 'u32' }),
-    );
+  // Scan ids upward, skipping revoke-created gaps, until `count` rules are
+  // found. The scan bound only guards a pathological account (more than 100
+  // revoked rules below the live ones) from looping forever.
+  for (let id = 0, found = 0; found < count && id < count + 100; id++) {
+    let ruleRv;
+    try {
+      ruleRv = await simulateView(
+        server,
+        contract,
+        'get_context_rule',
+        nativeToScVal(id, { type: 'u32' }),
+      );
+    } catch (err) {
+      if (isRuleNotFound(err)) continue;
+      throw err;
+    }
     out.push(parseRule(scValToNative(ruleRv)));
+    found++;
+  }
+  // A truncated scan must be LOUD: returning a silently short list re-creates
+  // the original invisible-rule symptom (and callers may react destructively,
+  // e.g. wiping material and re-delegating at an even higher id).
+  if (out.length < count) {
+    throw new Error(
+      `context-rule scan exhausted: found ${out.length} of ${count} live rules within ids 0..${count + 99}`,
+    );
   }
   return out;
 }
 
 /** For each policy address attached to a rule, fetch its per-(account,rule)
- *  state. Currently only the multisig policy is supported — we call its
- *  `get_threshold` view method directly via simulate. */
+ *  state. The multisig policy yields `{ threshold }` (via its `get_threshold`
+ *  view); the spending-limit policy yields `{ spendingLimit }` (via
+ *  `fetchSpendingLimit`). Unknown / unreadable policies yield `{}`. */
 export async function fetchPolicyState(
   account: string,
   rule: ChainRule,
 ): Promise<PolicyState> {
   const server = new rpc.Server(RPC_URL);
   const state: PolicyState = {};
+  const limitPolicyAddr = await spendingLimitPolicyId().catch(() => null);
   for (const policyAddr of rule.policies) {
+    if (policyAddr === limitPolicyAddr) {
+      const limit = await fetchSpendingLimit(account, rule);
+      // 'unreadable' (not {}): the rule verifiably carries the spending-limit
+      // policy, so an unreadable limit must not make the whole block vanish
+      // from the UI (and with it the only Revoke path).
+      state[policyAddr] = limit ? { spendingLimit: limit } : { spendingLimit: 'unreadable' };
+      continue;
+    }
     try {
       const rv = await simulateView(
         server,
@@ -103,6 +142,52 @@ export async function fetchPolicyState(
     }
   }
   return state;
+}
+
+// Registry-resolved spending-limit-policy address, cached as a promise (same
+// pattern as the account page's `nameRegistryId`): all rules on a page share
+// one lookup.
+let _spendingLimitPolicyIdPromise: Promise<string> | null = null;
+function spendingLimitPolicyId(): Promise<string> {
+  return (_spendingLimitPolicyIdPromise ??= fetchRegistryAddress('spending-limit-policy'));
+}
+
+/** Read the spending limit installed on `rule` for `account`, if the rule
+ *  carries the registry-resolved spending-limit policy. READ-ONLY: the
+ *  generated bindings client simulates `get_spending_limit({context_rule_id,
+ *  smart_account})` and we never sign or send. Returns `null` when the rule
+ *  has no spending-limit policy, the params aren't installed, or the read
+ *  fails (mirrors `fetchPolicyState`'s tolerant threshold read). */
+export async function fetchSpendingLimit(
+  account: string,
+  rule: ChainRule,
+): Promise<{ stroops: bigint; periodLedgers: number } | null> {
+  let policyAddr: string;
+  try {
+    policyAddr = await spendingLimitPolicyId();
+  } catch {
+    return null; // registry unreachable
+  }
+  if (!rule.policies.includes(policyAddr)) return null;
+  try {
+    const client = new SpendingLimitPolicyClient({
+      contractId: policyAddr,
+      networkPassphrase: NETWORK_PASSPHRASE,
+      rpcUrl: RPC_URL,
+    });
+    const tx = await client.get_spending_limit({
+      context_rule_id: rule.ruleId,
+      smart_account: account,
+    });
+    const params = tx.result; // Option<SpendingLimitAccountParams>
+    if (!params) return null;
+    return {
+      stroops: BigInt(params.spending_limit),
+      periodLedgers: Number(params.period_ledgers),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Resolve a canonical contract name via the on-chain registry. The factory
@@ -142,8 +227,8 @@ export async function fetchRegistryAddress(name: string): Promise<string> {
  *  delegation install transaction never actually committed, or the rule
  *  has been revoked).
  *
- *  Queries each rule sequentially via `get_context_rule(i)` up to
- *  `get_context_rules_count()`. Used to discover which rule_id our session
+ *  Scans rule ids (gap-tolerant) until `get_context_rules_count()` rules
+ *  have been seen. Used to discover which rule_id our session
  *  passkey lives under so the signing-side AuthPayload + computed digest
  *  both reference the correct rule. */
 export async function findRuleForPubkey(
@@ -154,13 +239,22 @@ export async function findRuleForPubkey(
   const countRv = await simulateView(server, new Contract(account), 'get_context_rules_count');
   const count = scValToNative(countRv) as number;
   const lowerHex = pubkeyHex.toLowerCase();
-  for (let i = 0; i < count; i++) {
-    const ruleRv = await simulateView(
-      server,
-      new Contract(account),
-      'get_context_rule',
-      nativeToScVal(i, { type: 'u32' }),
-    );
+  // Gap-tolerant id scan — see isRuleNotFound for why ids aren't contiguous.
+  let found = 0;
+  for (let id = 0; found < count && id < count + 100; id++) {
+    let ruleRv;
+    try {
+      ruleRv = await simulateView(
+        server,
+        new Contract(account),
+        'get_context_rule',
+        nativeToScVal(id, { type: 'u32' }),
+      );
+    } catch (err) {
+      if (isRuleNotFound(err)) continue;
+      throw err;
+    }
+    found++;
     const native = scValToNative(ruleRv) as { id?: number; signers?: unknown[] };
     for (const s of native.signers ?? []) {
       // ["External", verifier, pubkey_bytes_as_array_or_buffer]
@@ -186,10 +280,18 @@ export async function findRuleForPubkey(
           }
         }
         if (candidateHex && candidateHex.toLowerCase() === lowerHex) {
-          return native.id ?? i;
+          return native.id ?? id;
         }
       }
     }
+  }
+  // A truncated scan must be LOUD: returning a silently short list re-creates
+  // the original invisible-rule symptom (and callers may react destructively,
+  // e.g. wiping material and re-delegating at an even higher id).
+  if (found < count) {
+    throw new Error(
+      `context-rule scan exhausted: found ${found} of ${count} live rules within ids 0..${count + 99}`,
+    );
   }
   return null;
 }

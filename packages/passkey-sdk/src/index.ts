@@ -54,6 +54,15 @@ export { resolveName, resolveNameCached, lookupName } from "./resolve.js";
 export { fetchRegistryAddress, REGISTRY_FALLBACKS } from "./registry.js";
 export type { FetchRegistryAddressOptions } from "./registry.js";
 
+export {
+  RelayerError,
+  submitSorobanTransaction,
+  getRelayerTransaction,
+  waitForConfirmation,
+  extractFuncAndAuth,
+} from "./relayer.js";
+export type { RelayerStatus, RelayerTxResponse } from "./relayer.js";
+
 export type { PendingAccount, SessionKeyMaterial } from "./storage.js";
 
 export {
