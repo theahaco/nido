@@ -50,20 +50,23 @@ test.describe('@testnet send to a named nido', () => {
     await page.goto(`http://${sender.host}/account/`, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#home-mode')).toBeVisible({ timeout: 30_000 });
 
-    // 3) Open Send (the panel is toggle-hidden), type the recipient's NAME, confirm it resolves.
-    await page.locator('#send-section').waitFor({ state: 'attached' });
+    // 3) "Send" navigates to the /transfer/ view (#78 retired the inline
+    //    panel). Type the recipient's NAME and confirm it resolves.
     await page.locator('#send-action').click();
-    await page.locator('#send-to').fill(name);
-    await expect(page.locator('#send-resolve')).toContainText(`${name} →`, { timeout: 30_000 });
+    await page.waitForURL('**/transfer/**', { timeout: 30_000 });
+    await page.locator('#to-input').fill(name);
+    await expect(page.locator('#to-resolve')).toContainText(`${name} →`, { timeout: 30_000 });
 
-    // 4) Send a small amount and approve with the passkey.
-    await page.locator('#send-amount').fill('1');
-    await page.locator('#send-submit').click();
-    // The send flow signs in-page (primaryPasskeySigner) — shim get() auto-approves.
-    // Durable success signal: the success path closes the send panel (the
-    // "Sent" toast and #send-result line are transient and race the poll;
-    // the error path leaves the panel open).
-    await expect(page.locator('#send-section')).toBeHidden({ timeout: 120_000 });
+    // 4) Review, then confirm with the passkey (shim get() auto-approves).
+    await page.locator('#amount-input').fill('1');
+    await page.locator('#review-btn').click();
+    await expect(page.locator('#confirm-btn')).toBeVisible({ timeout: 60_000 });
+    await page.locator('#confirm-btn').click();
+    // Positive success signal: the result step only appears after
+    // signAndSubmit resolves, and its explorer link carries the tx hash
+    // (real in both relayer and classic mode).
+    await expect(page.locator('#result-step')).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator('#result-explorer')).toHaveAttribute('href', /\/tx\/[0-9a-f]{64}$/i);
 
     // 5) Assert the recipient received it: balance on its name subdomain is > 0.
     await page.goto(`http://${name}.localhost:${PORT}/account/`, { waitUntil: 'domcontentloaded' });
