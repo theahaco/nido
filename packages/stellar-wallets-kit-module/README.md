@@ -45,9 +45,14 @@ delegate flow uses).
 - **`getAddress()`** opens the apex `/connect/` account picker in a popup. The
   user chooses one of the smart accounts registered on that device; the picker
   posts the **C-address back** (non-secret — it's just an identifier) and the
-  module caches it in the **dApp origin's** `localStorage`. Subsequent calls
-  return the cached address without re-prompting (pass `skipRequestAccess` to
-  read-cache-only).
+  module caches it in the **dApp origin's** `localStorage`. The picker opens on
+  **every** `getAddress()` call — the previously connected address is passed as
+  `previous` so the picker highlights it, and devices with exactly one account
+  (matching `previous`) auto-confirm without showing UI. This makes every
+  reconnect a chance to switch accounts instead of silently re-binding to the
+  first one ever picked. Pass `skipRequestAccess: true` to read the cache only
+  (no popup; throws if empty). The SEP-43 `path` param is accepted but unused —
+  there's no derivation path to select.
 - **`signTransaction` / `signMessage` / `signAuthEntry`** open
   `<account>.<base>/sign/` in a popup and run the **primary-passkey ceremony**
   there (WebAuthn `rpId` must match the account subdomain, so the ceremony has
@@ -58,6 +63,31 @@ delegate flow uses).
   back to the opener and self-close. A full-page-redirect fallback
   (`redirectTopLevel` + the `parse*Return` helpers) is exported for callers
   that can re-read on navigation.
+- **Switching accounts.** The sign ceremony is structurally bound to one
+  account (the WebAuthn `rpId` is that account's subdomain), so it can never
+  switch in place. The sign page instead offers **"Use a different account"**,
+  which makes the sign method reject with an error whose `name` is
+  `ACCOUNT_SWITCH_REQUESTED` (exported, also as the `AccountSwitchRequestedError`
+  class) after clearing the cached address. Catch it to re-run connect and
+  rebuild the transaction for the newly picked account:
+
+  ```ts
+  import { ACCOUNT_SWITCH_REQUESTED } from '@g2c/stellar-wallets-kit-module';
+
+  try {
+    await kit.signTransaction(xdr, opts);
+  } catch (e) {
+    if (e instanceof Error && e.name === ACCOUNT_SWITCH_REQUESTED) {
+      const { address } = await kit.getAddress(); // user picks another account
+      // rebuild the tx for `address`, then retry signTransaction
+    } else throw e;
+  }
+  ```
+
+  Alternatively (or additionally), a dApp can offer switching at connect time
+  by calling `kit.disconnect()` before re-connecting (the Authline pattern) —
+  with this module that's optional, since the picker reopens on every connect
+  anyway.
 - **Anti-redirect-abuse.** Every handover URL carries the dApp `origin` and a
   same-origin `return` URL; the wallet pages refuse to post results to any
   other origin, and `postMessage` is targeted + origin-checked on receipt.

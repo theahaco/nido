@@ -1,4 +1,9 @@
-export { G2cModule, G2C_ID } from './module.js';
+export {
+  G2cModule,
+  G2C_ID,
+  ACCOUNT_SWITCH_REQUESTED,
+  AccountSwitchRequestedError,
+} from './module.js';
 export type { G2cModuleParams } from './module.js';
 
 export {

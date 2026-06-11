@@ -53,6 +53,9 @@ describe('parseSignReturn', () => {
   it('reports cancellation', () => {
     expect(parseSignReturn('?g2c_sign=cancelled')).toEqual({ status: 'cancelled' });
   });
+  it('reports a switch-account request', () => {
+    expect(parseSignReturn('?g2c_sign=switch-account')).toEqual({ status: 'switch-account' });
+  });
   it('reports an error message', () => {
     expect(parseSignReturn('?g2c_sign=error&g2c_error=boom')).toEqual({ status: 'error', error: 'boom' });
   });
