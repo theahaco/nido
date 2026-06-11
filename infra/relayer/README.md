@@ -349,6 +349,12 @@ PLUGIN_ADMIN_SECRET=<value-from-1Password> \
 
 Then verify all three accounts are funded.
 
+### Plugin Execution Timed Out
+
+Account creation can take longer than a normal transfer because the factory
+deploys a smart-account contract. Keep the Channels plugin timeout above the
+default 30s window; `config/config.json` uses 120s.
+
 ### Fee Budget Exhausted
 
 Symptoms: relayer rejects otherwise valid requests after enough successful
@@ -380,5 +386,5 @@ still moving. Before upgrading:
 - Local keystores are testnet-only operational posture.
 - Memos are not supported on Soroban operations; do not include memos in relay
   requests.
-- The relayer is not yet used for account creation/factory deploy or recovery
-  rotation; those paths still have their own submission flows.
+- The relayer is now used for account creation; recovery rotation still has its
+  own submission flow.
