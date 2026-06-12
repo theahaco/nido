@@ -50,7 +50,7 @@
 
 Run:
 ```bash
-cd /home/willem/c/s/g2c-passkey-e2e
+cd /home/willem/c/s/nido-passkey-e2e
 npm install
 ```
 Expected: completes; `node_modules/` populated (local node_modules is stale per project memory).
@@ -184,7 +184,7 @@ export async function credentialIdForLabel(
   seed: Uint8Array,
   label: string,
 ): Promise<Uint8Array> {
-  return sha256(seed, enc.encode(`g2c-test-cred:${label}`));
+  return sha256(seed, enc.encode(`nido-test-cred:${label}`));
 }
 
 /**

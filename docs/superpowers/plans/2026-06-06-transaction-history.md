@@ -4,7 +4,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Show a g2c wallet user a readable history of their smart account's on-chain activity (payments + smart-account operations) as a "Recent activity" card on the account home and a dedicated paginated `/account/activity` page.
+**Goal:** Show a Nido wallet user a readable history of their smart account's on-chain activity (payments + smart-account operations) as a "Recent activity" card on the account home and a dedicated paginated `/account/activity` page.
 
 **Architecture:** Client-side only. A hybrid data layer fetches full history from the Stellar Expert `/tx` endpoint (primary) and falls back to Soroban RPC `getEvents` (recent window) when Expert is unavailable. Both feed a shared, pure classification layer that turns decoded Soroban contract events into normalized `ActivityItem` rows. Astro pages/components render the rows with the existing Nido design-system classes.
 
@@ -1003,7 +1003,7 @@ Renders a card that, on the client, loads the first page and shows the top 5 row
 <script>
   import { loadActivityPage } from "../lib/activity/history.js";
   import type { ActivityItem } from "../lib/activity/types.js";
-  import { contractIdFromHostname } from "@g2c/passkey-sdk";
+  import { contractIdFromHostname } from "@nidohq/passkey-sdk";
 
   function rowHtml(it: ActivityItem): string {
     const icon = it.kind === "payment" ? (it.direction === "in" ? "↓" : "↑") : "•";
@@ -1103,7 +1103,7 @@ import NidoLayout from "../../../layouts/NidoLayout.astro";
 <script>
   import { loadActivityPage } from "../../../lib/activity/history.js";
   import type { ActivityItem } from "../../../lib/activity/types.js";
-  import { contractIdFromHostname } from "@g2c/passkey-sdk";
+  import { contractIdFromHostname } from "@nidohq/passkey-sdk";
 
   function rowHtml(it: ActivityItem): string {
     const icon = it.kind === "payment" ? (it.direction === "in" ? "↓" : "↑") : "•";
@@ -1272,5 +1272,5 @@ git add -A && git commit -m "chore(frontend): tidy transaction-history feature" 
 
 - **Spec coverage:** network.ts (T1), types (T2), classify+grouping (T3), decodeTx V3/V4 (T4), expertSource+402 fallback signal (T5), rpcSource recent window (T6), history orchestrator+dedup (T7), ActivityRow/RecentActivityCard/activity page (T8-10), sidebar + home mount (T11-12), verification (T13). All spec sections map to a task.
 - **Type consistency:** `ActivityItem`/`ActivityPage`/`DecodedEvent`/`DecodedTx` defined once in T2 and imported everywhere; `groupTxRows`, `decodeExpertRecord`, `fetchExpertPage`/`ExpertUnavailableError`, `fetchRpcRecent`/`mapRpcEvents`, `loadActivityPage` names are used identically across tasks.
-- **Verified during planning:** `NidoLayout` accepts `shell="app"` (the default); the `Sidebar` `NAV` shape is `{ href, label, icon }` and the `activity` icon already exists in `Icon.astro`; the account address resolves client-side via `contractIdFromHostname(window.location.hostname)` from `@g2c/passkey-sdk` (returns `string | null` — both UI surfaces guard the null case).
+- **Verified during planning:** `NidoLayout` accepts `shell="app"` (the default); the `Sidebar` `NAV` shape is `{ href, label, icon }` and the `activity` icon already exists in `Icon.astro`; the account address resolves client-side via `contractIdFromHostname(window.location.hostname)` from `@nidohq/passkey-sdk` (returns `string | null` — both UI surfaces guard the null case).
 - **Remaining to confirm at execution:** the `rpc.Server.getEvents` / `GetEventsRequest` filter type names in stellar-sdk 15.1.0 (Task 6) — verify against `node_modules/@stellar/stellar-sdk` types. The graceful generic-fallback row means any classifier mismatch degrades to a plain row, never crashes the page.

@@ -1,4 +1,4 @@
-use g2c_integration_tests::{build_contract_assertion, WEBAUTHN_VERIFIER_WASM};
+use nido_integration_tests::{build_contract_assertion, WEBAUTHN_VERIFIER_WASM};
 use p256::ecdsa::SigningKey;
 use soroban_sdk::Env;
 use stellar_accounts::verifiers::webauthn::{self, WebAuthnSigData};

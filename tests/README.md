@@ -26,7 +26,7 @@ the `testnet-chromium` / `testnet-webkit` projects (retries: 2), kept out of
 
 - Slow (~15s–3min/test) and dependent on testnet + friendbot availability.
 - The recipe sources `tests/.env.testnet` if present. Set
-  `G2C_TEST_BANK_SECRET=<funded testnet G-account secret>` there to pre-seed the
+  `NIDO_TEST_BANK_SECRET=<funded testnet G-account secret>` there to pre-seed the
   name-tx fee-payer (`localStorage['g2c:name-keypair']`) and skip friendbot;
   without it the app funds its own submitter via friendbot. That file is
   gitignored — never commit the secret.

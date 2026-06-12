@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-g2c facilitates migration from traditional Stellar accounts ("G-addresses") to Soroban Smart Accounts ("C-addresses") using WebAuthn/passkey authentication. The system consists of three Soroban smart contracts (built on OpenZeppelin's stellar-accounts), a passkey SDK (`@g2c/passkey-sdk`), and an Astro-based web app deployed to Cloudflare Pages with a wildcard subdomain architecture. All passkey verification happens on-chain — there is no off-chain backend.
+Nido helps users move from traditional Stellar accounts ("G-addresses") to Soroban Smart Accounts ("C-addresses") using WebAuthn/passkey authentication. The system consists of Soroban smart contracts (built on OpenZeppelin's stellar-accounts), a passkey SDK (`@nidohq/passkey-sdk`), and an Astro-based web app deployed to Cloudflare Pages with a wildcard subdomain architecture. All passkey verification happens on-chain: there is no off-chain backend.
 
 ### High-Level Flow
 1. **Onboarding:** User opens wallet → generates ephemeral G-address → funds it → creates passkey → wallet deploys C-address via Factory → funds migrate from G to C.
@@ -20,14 +20,14 @@ All Stellar interaction happens client-side via `@stellar/stellar-sdk`. There ar
 
 | Route | Purpose |
 |-------|---------|
-| `/` | G2C migration entry point. Generates ephemeral G-address keypair, funds via Friendbot (testnet), computes the predicted C-address via `Factory.get_c_address()`, and links to the deployment page. |
+| `/` | Nido account creation entry point. Generates an ephemeral G-address keypair, funds via Friendbot (testnet), computes the predicted C-address via `Factory.get_c_address()`, and links to the deployment page. |
 | `/new-account/` | Passkey registration + Smart Account deployment. Calls `navigator.credentials.create()` with P-256 (`alg: -7`), RP ID scoped to the subdomain hostname. Builds and submits the `Factory.create_account()` transaction signed by the funder keypair. |
 | `/account/` | Account home + signing endpoint. **Home mode:** register passkeys and sign arbitrary hashes. **Signing mode** (via `?sign=<hash>&callback=<url>`): displays signature request, user approves with passkey, redirects back to callback with `authenticatorData`, `clientDataJSON`, `signature`, and `publicKey` as query params. |
 | `/dapp/` | Demo dApp page. Generates a random transaction hash, redirects to the target account's `/account/` signing endpoint, and displays the returned signature. |
 
 **Subdomain isolation:** The WebAuthn RP ID is the full hostname (e.g., `CABC123.mysoroban.xyz`), so passkeys are cryptographically scoped per-account at the DNS level. A passkey registered for one account cannot sign for another.
 
-### B. Passkey SDK (`@g2c/passkey-sdk`)
+### B. Passkey SDK (`@nidohq/passkey-sdk`)
 
 TypeScript SDK (`packages/passkey-sdk/`) providing WebAuthn + Soroban integration utilities. Peer dependency on `@stellar/stellar-sdk`.
 
@@ -48,9 +48,9 @@ All contracts are `#![no_std]` and delegate core logic to OpenZeppelin's `stella
 
 | Contract | Source | Description |
 |----------|--------|-------------|
-| `g2c-factory` | `contracts/factory/` | Deployment orchestrator. `create_account(funder, key)` deploys a SmartAccount with a WebAuthn signer. `get_c_address(funder)` pre-computes the deterministic C-address. Uses `deployer.with_address(funder, salt=0x00..00)` so each funder maps to exactly one C-address. Lazy-deploys a shared WebAuthn verifier via try-invoke pattern (attempts `verify()` on the expected address; deploys if it fails). Hardcoded WASM hashes for deterministic deployment. |
-| `g2c-smart-account` | `contracts/smart-account/` | Implements OZ `CustomAccountInterface` + `SmartAccount` + `ExecutionEntryPoint`. Constructor takes `signers` and `policies`, creates a default `ContextRule` with the initial passkey signer. `__check_auth` delegates to `do_check_auth` from stellar-accounts. `execute(target, target_fn, target_args)` provides a generic entry point for arbitrary contract calls. All signer/policy mutations require the account's own auth. |
-| `g2c-webauthn-verifier` | `contracts/webauthn-verifier/` | Stateless OZ `Verifier` for secp256r1/P-256 passkey signatures. `KeyData = BytesN<65>` (uncompressed public key), `SigData = WebAuthnSigData` (signature, authenticator_data, client_data). Deploy once, shared across all smart accounts. |
+| `nido-factory` | `contracts/factory/` | Deployment orchestrator. `create_account(funder, key)` deploys a SmartAccount with a WebAuthn signer. `get_c_address(funder)` pre-computes the deterministic C-address. Uses `deployer.with_address(funder, salt=0x00..00)` so each funder maps to exactly one C-address. Lazy-deploys a shared WebAuthn verifier via try-invoke pattern (attempts `verify()` on the expected address; deploys if it fails). Hardcoded WASM hashes for deterministic deployment. |
+| `nido-smart-account` | `contracts/smart-account/` | Implements OZ `CustomAccountInterface` + `SmartAccount` + `ExecutionEntryPoint`. Constructor takes `signers` and `policies`, creates a default `ContextRule` with the initial passkey signer. `__check_auth` delegates to `do_check_auth` from stellar-accounts. `execute(target, target_fn, target_args)` provides a generic entry point for arbitrary contract calls. All signer/policy mutations require the account's own auth. |
+| `nido-webauthn-verifier` | `contracts/webauthn-verifier/` | Stateless OZ `Verifier` for secp256r1/P-256 passkey signatures. `KeyData = BytesN<65>` (uncompressed public key), `SigData = WebAuthnSigData` (signature, authenticator_data, client_data). Deploy once, shared across all smart accounts. |
 
 ### E. Integration Tests (`crates/integration-tests/`)
 
@@ -60,7 +60,7 @@ Cross-contract integration tests using synthetic P-256 keypairs (`p256::ecdsa::S
 
 ### Flow 1: Onboarding (G → C Migration)
 
-1. **User** opens the g2c wallet at `mysoroban.xyz`.
+1. **User** opens the Nido wallet at `mysoroban.xyz`.
 2. **Wallet** generates a random Stellar keypair (`G_temp`) and displays the G-address for funding.
 3. **User** funds `G_temp` (Friendbot on testnet; CEX withdrawal, another wallet, or fiat on-ramp on mainnet).
 4. **Wallet** calls `Factory.get_c_address(G_temp)` to compute the deterministic C-address.
@@ -127,7 +127,7 @@ graph TB
 
     subgraph "Browser"
         WebAuthn["WebAuthn API<br/>navigator.credentials"]
-        SDK["@g2c/passkey-sdk"]
+        SDK["@nidohq/passkey-sdk"]
         Bindings["Contract Bindings<br/>factory / smart-account / verifier"]
         StellarSDK["@stellar/stellar-sdk"]
         SDK --> StellarSDK
@@ -135,9 +135,9 @@ graph TB
     end
 
     subgraph "Stellar Network"
-        Factory["g2c-factory"]
-        SmartAccount["g2c-smart-account"]
-        Verifier["g2c-webauthn-verifier"]
+        Factory["nido-factory"]
+        SmartAccount["nido-smart-account"]
+        Verifier["nido-webauthn-verifier"]
         Factory -- "deploys" --> SmartAccount
         Factory -- "lazy-deploys" --> Verifier
         SmartAccount -- "verify()" --> Verifier
@@ -158,7 +158,7 @@ sequenceDiagram
     participant Wallet as mysoroban.xyz
     participant WebAuthn as WebAuthn API
     participant Stellar as Stellar Network
-    participant Factory as g2c-factory
+    participant Factory as nido-factory
     participant SA as SmartAccount
     participant WV as WebAuthn Verifier
 
@@ -242,13 +242,13 @@ sequenceDiagram
 graph LR
     subgraph "One-time Setup"
         Install["stellar contract install<br/>(WASM → hashes)"]
-        Deploy["Deploy g2c-factory<br/>(hardcoded WASM hashes)"]
+        Deploy["Deploy nido-factory<br/>(hardcoded WASM hashes)"]
         Install --> Deploy
     end
 
     subgraph "Per-User (via Factory)"
         Funder["G_temp (funder)"]
-        FactoryC["g2c-factory"]
+        FactoryC["nido-factory"]
         CAddr["SmartAccount<br/>at deterministic C-address"]
         VerifierC["WebAuthn Verifier<br/>(shared singleton)"]
 

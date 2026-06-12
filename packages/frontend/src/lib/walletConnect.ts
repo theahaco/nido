@@ -1,11 +1,11 @@
 /**
  * walletConnect.ts — a reusable, vanilla-TS wallet-connect helper that mirrors
- * the stellar-scaffold-frontend LOGIN pattern, adapted to g2c and ported from
+ * the stellar-scaffold-frontend LOGIN pattern, adapted to Nido and ported from
  * React to vanilla TS.
  *
  * Architecture (mirrors the scaffold):
- *   - ONE kit instance, initialised once, with g2c registered ALONGSIDE the
- *     standard wallets so g2c shows up in the kit's selector modal.
+ *   - ONE kit instance, initialised once, with Nido registered ALONGSIDE the
+ *     standard wallets so Nido shows up in the kit's selector modal.
  *   - `connect()` opens the kit's selector modal; on a wallet being selected the
  *     kit sets the active module + fetches the address. We then persist
  *     `walletId` + `walletAddress` to localStorage.
@@ -35,12 +35,13 @@
  */
 
 import { StellarWalletsKit, type ModuleInterface } from '@creit.tech/stellar-wallets-kit';
-import { G2cModule, G2C_ID } from '@g2c/stellar-wallets-kit-module';
+import { NidoModule, NIDO_ID } from '@nidohq/stellar-wallets-kit-module';
 
-export { G2C_ID };
+export { NIDO_ID };
 
 const TESTNET_PASSPHRASE = 'Test SDF Network ; September 2015';
 const SESSION_KEY = 'g2c:walletSession';
+const LEGACY_NIDO_ID = 'g2c';
 
 // ---------------------------------------------------------------------------
 // Session store (pure — read/write/clear localStorage). Mirrors the scaffold's
@@ -48,9 +49,9 @@ const SESSION_KEY = 'g2c:walletSession';
 // ---------------------------------------------------------------------------
 
 export interface WalletSession {
-  /** The selected module's productId (e.g. "g2c", "freighter"). */
+  /** The selected module's productId (e.g. "nido", "freighter"). */
   walletId: string;
-  /** The connected account address (C-address for g2c, G-address for classic). */
+  /** The connected account address (C-address for Nido, G-address for classic). */
   walletAddress: string;
 }
 
@@ -65,6 +66,10 @@ function defaultStorage(): SessionStorage | null {
   }
 }
 
+function normalizeWalletId(walletId: string): string {
+  return walletId === LEGACY_NIDO_ID ? NIDO_ID : walletId;
+}
+
 /** Read the persisted session, or null if absent/corrupt. */
 export function readSession(store: SessionStorage | null = defaultStorage()): WalletSession | null {
   if (!store) return null;
@@ -73,7 +78,7 @@ export function readSession(store: SessionStorage | null = defaultStorage()): Wa
   try {
     const parsed = JSON.parse(raw) as Partial<WalletSession>;
     if (parsed && typeof parsed.walletId === 'string' && typeof parsed.walletAddress === 'string') {
-      return { walletId: parsed.walletId, walletAddress: parsed.walletAddress };
+      return { walletId: normalizeWalletId(parsed.walletId), walletAddress: parsed.walletAddress };
     }
   } catch {
     /* corrupt entry — fall through and treat as no session */
@@ -111,7 +116,7 @@ export interface WalletBehavior {
 }
 
 const WALLET_BEHAVIOR: Record<string, WalletBehavior> = {
-  [G2C_ID]: {
+  [NIDO_ID]: {
     kind: 'popup-always',
     supportsGetNetwork: true,
     warning:
@@ -138,12 +143,12 @@ const DEFAULT_BEHAVIOR: WalletBehavior = { kind: 'standard', supportsGetNetwork:
 /** Look up the behaviour/warning record for a wallet id (case-insensitive). */
 export function warningsFor(walletId: string | null | undefined): WalletBehavior {
   if (!walletId) return DEFAULT_BEHAVIOR;
-  return WALLET_BEHAVIOR[walletId.toLowerCase()] ?? DEFAULT_BEHAVIOR;
+  return WALLET_BEHAVIOR[normalizeWalletId(walletId.toLowerCase())] ?? DEFAULT_BEHAVIOR;
 }
 
-/** Is this the g2c smart-account wallet (C-address oriented)? */
-export function isG2cWallet(walletId: string | null | undefined): boolean {
-  return walletId === G2C_ID;
+/** Is this the Nido smart-account wallet (C-address oriented)? */
+export function isNidoWallet(walletId: string | null | undefined): boolean {
+  return walletId === NIDO_ID || walletId === LEGACY_NIDO_ID;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,16 +216,16 @@ export function restoreWith(
 
 export interface InitWalletKitParams {
   /**
-   * The g2c deployment base (apex) origin, e.g. `https://mysoroban.xyz` or
+   * The Nido deployment base (apex) origin, e.g. `https://nido.fyi` or
    * `http://localhost:4321`. If omitted, derived from `window.location`.
    */
   base?: string;
   /** Network passphrase. Defaults to testnet. */
   networkPassphrase?: string;
-  /** Extra/override modules to register alongside g2c + the standard set. */
+  /** Extra/override modules to register alongside Nido + the standard set. */
   extraModules?: ModuleInterface[];
   /**
-   * Replace the standard module set entirely (still keeps g2c first). When
+   * Replace the standard module set entirely (still keeps Nido first). When
    * omitted, the default standard set is loaded lazily from `./walletModules`.
    */
   standardModuleSet?: ModuleInterface[];
@@ -228,7 +233,7 @@ export interface InitWalletKitParams {
 
 let inited = false;
 
-/** Derive the g2c apex origin from the current page if `base` wasn't given. */
+/** Derive the Nido apex origin from the current page if `base` wasn't given. */
 function deriveBase(): string {
   // The page may live on a subdomain (e.g. status-message.<apex>); take the
   // last two labels as the apex. Falls back to the full origin for localhost.
@@ -240,8 +245,8 @@ function deriveBase(): string {
 }
 
 /**
- * Initialise the kit ONCE with g2c registered alongside the standard wallets so
- * g2c appears IN the picker. Idempotent — repeat calls are no-ops. The standard
+ * Initialise the kit ONCE with Nido registered alongside the standard wallets so
+ * Nido appears IN the picker. Idempotent — repeat calls are no-ops. The standard
  * wallet SDKs are imported lazily so this module's pure logic stays importable
  * (and unit-testable) without pulling them in.
  */
@@ -253,7 +258,7 @@ export async function initWalletKit(params: InitWalletKitParams = {}): Promise<v
   const standard =
     params.standardModuleSet ?? (await import('./walletModules.js')).standardModules();
   const modules: ModuleInterface[] = [
-    new G2cModule({ base, networkPassphrase }),
+    new NidoModule({ base, networkPassphrase }),
     ...standard,
     ...(params.extraModules ?? []),
   ];

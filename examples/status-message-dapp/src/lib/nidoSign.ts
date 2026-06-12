@@ -12,7 +12,7 @@
  *  - `signUpdateMessageInPage` — the status-message write. A smart account
  *    (C-address) can't be a classic transaction source, so a throwaway
  *    friendbot-funded G-address pays the fee and submits; the smart account is
- *    only the auth *author*. Ported from the g2c frontend's `status-message`
+ *    only the auth *author*. Ported from the Nido frontend's `status-message`
  *    page so the example is self-contained.
  *
  *  - `tipAuthorInPage` — a GASLESS native-XLM tip via a direct
@@ -35,7 +35,7 @@ import {
 	extractFuncAndAuth,
 	submitSorobanTransaction,
 	waitForConfirmation,
-} from "@g2c/passkey-sdk"
+} from "@nidohq/passkey-sdk"
 import {
 	Address,
 	Asset,
@@ -54,7 +54,7 @@ import { withPasskeySheet } from "./passkeySheet"
 import { decodeContractCall, buildApprovalDetails } from "./describeAuthEntry"
 import { findRuleForPubkey, fetchVerifierAddress } from "./policyChainFetch"
 
-// Same key the g2c frontend uses for its status-message fee payer, so tooling
+// Same storage key the Nido frontend uses for its status-message fee payer, so tooling
 // that seeds a funded bank account (e.g. the e2e harness) funds this too.
 const FEE_PAYER_KEY = "sm:keypairSecret"
 

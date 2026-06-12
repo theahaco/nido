@@ -1,5 +1,5 @@
 [package]
-name = "g2c-smart-account"
+name = "nido-smart-account"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

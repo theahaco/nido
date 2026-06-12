@@ -2,7 +2,7 @@ import {
   resolveFriendInput,
   type ResolvedFriend,
   type ResolveFriendOptions,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 
 // Cosmetic suffixes a user might append to a nido name. Longest first so
 // `alice.nido.fyi` strips the whole suffix, not just `.fyi`. These are pure

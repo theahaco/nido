@@ -36,7 +36,7 @@ new WASM you deploy a fresh contract and repoint the registry name:
 just build-contracts
 
 # deploy fresh
-stellar contract deploy --wasm target/wasm32v1-none/contract/g2c_<name>.wasm \
+stellar contract deploy --wasm target/wasm32v1-none/contract/nido_<name>.wasm \
   --source-account <alias> --network testnet
 # → prints new C-address
 
@@ -54,4 +54,4 @@ factory itself is the same pattern, plus updating `FACTORY_CONTRACT_ID` in
 the four frontend `.astro` pages.
 
 For the upgradable-factory rewrite that would make all of this unnecessary,
-see [#26](https://github.com/theahaco/g2c/issues/26).
+see [#26](https://github.com/nidohq/nido/issues/26).

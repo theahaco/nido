@@ -1,7 +1,7 @@
 import {
 	forgetSessionKeyMaterial,
 	loadSessionKeyMaterial,
-} from "@g2c/passkey-sdk"
+} from "@nidohq/passkey-sdk"
 import { findRuleForPubkey } from "./policyChainFetch"
 
 export type SessionKeyStatus = "missing" | "live" | "revoked"

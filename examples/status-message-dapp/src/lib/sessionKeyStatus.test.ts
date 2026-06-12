@@ -10,7 +10,7 @@ const chain = vi.hoisted(() => ({
 	seenPubkey: null as string | null,
 }))
 
-vi.mock("@g2c/passkey-sdk", () => ({
+vi.mock("@nidohq/passkey-sdk", () => ({
 	loadSessionKeyMaterial: vi.fn(() => sdk.material),
 	forgetSessionKeyMaterial: vi.fn((account: string, target: string) => {
 		sdk.forgotten.push([account, target])

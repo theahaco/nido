@@ -2,7 +2,7 @@
 // subdomain — `alice.nido.fyi` — and that root redirects to `/account/`
 // (src/pages/index.astro). So a shareable / navigational link to an account is
 // the bare subdomain, with no `/account/` suffix.
-import { accountUrl } from "@g2c/passkey-sdk";
+import { accountUrl } from "@nidohq/passkey-sdk";
 import type { MyNidoRow } from "./myNidoModel";
 
 /** Protocol-relative bare account URL, e.g. `//alice.nido.fyi/`. */

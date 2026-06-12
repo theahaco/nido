@@ -179,7 +179,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
     fetchRegistryAddress,
     accountUrl,
     stripSubdomain,
-  } from "@g2c/passkey-sdk";
+  } from "@nidohq/passkey-sdk";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { shortAddr } from "../../lib/address";
   import { checkPasskeySupport } from "../../lib/passkeySupport";
@@ -522,7 +522,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
       credentialIdBytes = reg.credentialId;
 
       sdkSaveCredential(contractId!, credentialIdBytes, passkeyPublicKey);
-      void startTestnetFunding().catch((err) => console.warn("[g2c] testnet funding prep failed", err));
+      void startTestnetFunding().catch((err) => console.warn("[nido] testnet funding prep failed", err));
 
       void buf2base64url(credentialIdBytes);
       void buf2hex(passkeyPublicKey);
@@ -611,7 +611,7 @@ import PasskeySheet from "../../components/PasskeySheet.astro";
         setCheckProgress(3, 3);
       } catch (fundingErr) {
         fundingComplete = false;
-        console.warn("[g2c] testnet funding failed", fundingErr);
+        console.warn("[nido] testnet funding failed", fundingErr);
         renderCheck(2, "pending");
         renderCheck(3, "pending");
         $deployNestSpinning.style.display = "none";

@@ -131,10 +131,10 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
 </style>
 
 <script>
-  import { contractIdFromHostname } from '@g2c/passkey-sdk';
-  import { loadCredential, loadAccountName } from '@g2c/passkey-sdk';
+  import { contractIdFromHostname } from '@nidohq/passkey-sdk';
+  import { loadCredential, loadAccountName } from '@nidohq/passkey-sdk';
   import { avatarBackground } from '../../lib/avatarStyle';
-  import { postResultToOpener } from '@g2c/stellar-wallets-kit-module';
+  import { postResultToOpener } from '@nidohq/stellar-wallets-kit-module';
   import { signTransactionXdr, signMessageRaw, signAuthEntryXdr } from '../../lib/walletSign.js';
   import { withPasskeySheet } from '../../lib/passkeySheet';
   import { detectPasskeyLabel } from '../../lib/passkeyLabel';
@@ -165,7 +165,7 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
 
   // #89: identity block — make WHICH account is bound to this ceremony
   // unmissable. The friendly name lives in this origin's localStorage
-  // (`g2c:names:…` is per-origin, and the sign page runs at the account's own
+  // (the name cache is per-origin, and the sign page runs at the account's own
   // subdomain — same origin the account page saves the name at), but it can
   // be absent (e.g. the account was only ever used here via a dApp), so fall
   // back to the short address alone.
@@ -177,7 +177,7 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
     if (name) $idAddr.textContent = short;
     else $idAddr.remove();
     (document.getElementById('id-avatar') as HTMLElement).style.background =
-      avatarBackground(account ?? 'g2c');
+      avatarBackground(account ?? 'nido');
   }
 
   if (network) {
@@ -328,7 +328,7 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
 
   cancel.addEventListener('click', () => {
     if (!origin) { window.location.href = '/account/'; return; }
-    finish('?g2c_sign=cancelled');
+    finish('?nido_sign=cancelled');
   });
 
   // #89: "Use a different account" — this page can't switch in place (the
@@ -339,7 +339,7 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
   // this device for this account) — that's exactly when escaping matters.
   document.getElementById('switch-account')!.addEventListener('click', () => {
     if (!origin) { window.location.href = '/account/'; return; }
-    finish('?g2c_sign=switch-account');
+    finish('?nido_sign=switch-account');
   });
 
   approve.addEventListener('click', async () => {
@@ -370,7 +370,7 @@ import PasskeySheet from '../../components/PasskeySheet.astro';
         { title: "Confirm it's you", sub: `Confirm with ${passkey.label}.` },
       );
       $status.textContent = 'Done — returning to app…';
-      const qs = new URLSearchParams({ g2c_signed: signed, kind });
+      const qs = new URLSearchParams({ nido_signed: signed, kind });
       setTimeout(() => finish(`?${qs.toString()}`), 300);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

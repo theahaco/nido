@@ -95,10 +95,10 @@ ACCOUNT_NAME="${REGISTRY_PREFIX}smart-account"
 FACTORY_NAME="${REGISTRY_PREFIX}factory"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-POLICY_WASM="$REPO_ROOT/target/wasm32v1-none/contract/g2c_multisig_policy.wasm"
-VERIFIER_WASM="$REPO_ROOT/target/wasm32v1-none/contract/g2c_webauthn_verifier.wasm"
+POLICY_WASM="$REPO_ROOT/target/wasm32v1-none/contract/nido_multisig_policy.wasm"
+VERIFIER_WASM="$REPO_ROOT/target/wasm32v1-none/contract/nido_webauthn_verifier.wasm"
 ACCOUNT_WASM="$REPO_ROOT/target/stellar/$NETWORK/smart_account_${ACCOUNT_VERSION//./_}.wasm"
-FACTORY_WASM="$REPO_ROOT/target/wasm32v1-none/contract/g2c_factory.wasm"
+FACTORY_WASM="$REPO_ROOT/target/wasm32v1-none/contract/nido_factory.wasm"
 
 cd "$REPO_ROOT"
 
@@ -189,7 +189,7 @@ if [ -n "$published_hash" ]; then
 else
     # --wasm-name and --binver override what's read from contract metadata,
     # so we can publish under bare/prefixed names regardless of the
-    # crate's Cargo.toml `[package].name` (which is `g2c-multisig-policy`).
+    # crate's Cargo.toml `[package].name` (which is `nido-multisig-policy`).
     stellar registry publish \
         --wasm "$POLICY_WASM" \
         --wasm-name "$POLICY_NAME" \

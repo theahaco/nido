@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.2.0",
-    "@g2c/passkey-sdk": "*",
-    "@g2c/stellar-wallets-kit-module": "*",
+    "@nidohq/passkey-sdk": "*",
+    "@nidohq/stellar-wallets-kit-module": "*",
     "@stellar/design-system": "^3.2.7",
     "@stellar/stellar-sdk": "^15.1.0",
     "@stellar/stellar-xdr-json": "^23.0.0",

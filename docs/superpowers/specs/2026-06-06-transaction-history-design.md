@@ -48,7 +48,7 @@ The sections below describe the original (pre-pivot) design for context.
 
 ## 1. Goal
 
-Give a logged-in g2c wallet user a readable history of their smart account's
+Give a logged-in Nido wallet user a readable history of their smart account's
 on-chain activity: payments (received / sent) **and** smart-account operations
 (added a signer, set up recovery, changed a policy, etc.). Surfaced in two
 places:

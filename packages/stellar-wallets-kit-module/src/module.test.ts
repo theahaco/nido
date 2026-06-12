@@ -13,11 +13,11 @@ vi.mock('@creit.tech/stellar-wallets-kit', () => ({
 }));
 
 import { openCeremonyPopup } from './redirect.js';
-import { G2cModule, ACCOUNT_SWITCH_REQUESTED, AccountSwitchRequestedError } from './module.js';
+import { NidoModule, ACCOUNT_SWITCH_REQUESTED, AccountSwitchRequestedError } from './module.js';
 import { saveCachedAddress, loadCachedAddress } from './handover.js';
 
 const C = 'CCV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XMCW';
-const BASE = 'g2c.example.xyz';
+const BASE = 'nido.example.xyz';
 const DAPP = 'https://dapp.example.com';
 
 const popup = vi.mocked(openCeremonyPopup);
@@ -32,8 +32,8 @@ class MemStore {
   get length() { return this.m.size; }
 }
 
-function makeModule(): G2cModule {
-  return new G2cModule({ base: BASE, dappOrigin: DAPP, returnUrl: `${DAPP}/cb` });
+function makeModule(): NidoModule {
+  return new NidoModule({ base: BASE, dappOrigin: DAPP, returnUrl: `${DAPP}/cb` });
 }
 
 beforeEach(() => {
@@ -41,10 +41,10 @@ beforeEach(() => {
   popup.mockReset();
 });
 
-describe('G2cModule.getAddress', () => {
+describe('NidoModule.getAddress', () => {
   it('opens the picker even when an address is cached, passing it as `previous`', async () => {
     saveCachedAddress(C);
-    popup.mockResolvedValueOnce({ search: `?g2c_address=${C}` });
+    popup.mockResolvedValueOnce({ search: `?nido_address=${C}` });
 
     const { address } = await makeModule().getAddress();
 
@@ -56,7 +56,7 @@ describe('G2cModule.getAddress', () => {
   });
 
   it('omits `previous` when nothing is cached', async () => {
-    popup.mockResolvedValueOnce({ search: `?g2c_address=${C}` });
+    popup.mockResolvedValueOnce({ search: `?nido_address=${C}` });
 
     await makeModule().getAddress();
 
@@ -65,7 +65,7 @@ describe('G2cModule.getAddress', () => {
   });
 
   it('caches the picked address', async () => {
-    popup.mockResolvedValueOnce({ search: `?g2c_address=${C}` });
+    popup.mockResolvedValueOnce({ search: `?nido_address=${C}` });
 
     await makeModule().getAddress();
 
@@ -89,10 +89,10 @@ describe('G2cModule.getAddress', () => {
   });
 });
 
-describe('G2cModule sign methods on switch-account', () => {
+describe('NidoModule sign methods on switch-account', () => {
   it('clears the cached address and rejects with ACCOUNT_SWITCH_REQUESTED', async () => {
     saveCachedAddress(C);
-    popup.mockResolvedValueOnce({ search: '?g2c_sign=switch-account' });
+    popup.mockResolvedValueOnce({ search: '?nido_sign=switch-account' });
 
     const err = await makeModule()
       .signTransaction('AAAA')

@@ -13,7 +13,7 @@
  *     smart account's auth entry, compute the OZ v0.7 auth digest, get a
  *     WebAuthn assertion over it, and inject the passkey signature into the
  *     auth entry. Returns the signed tx XDR.
- *   - Classic tx: a g2c smart account is a contract (C-address) and cannot be
+ *   - Classic tx: a Nido smart account is a contract (C-address) and cannot be
  *     the source/signer of a classic Stellar operation, so there's nothing for
  *     the passkey to sign in the classic envelope. We surface a clear error
  *     rather than returning an unsigned tx that the dApp would think is signed.
@@ -42,7 +42,7 @@ import {
   hex2buf,
   type SignerSignature,
   type PasskeySignature,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import {
   fetchVerifierAddress,
   fetchDefaultRuleAuthInfo,
@@ -100,13 +100,13 @@ export async function signTransactionXdr(args: {
 
   const parsed = TransactionBuilder.fromXDR(args.txXdr, networkPassphrase);
   if (parsed instanceof FeeBumpTransaction) {
-    throw new Error('Fee-bump transactions are not supported by the g2c passkey signer.');
+    throw new Error('Fee-bump transactions are not supported by the Nido passkey signer.');
   }
   const tx = parsed as Transaction;
 
   if (!isSorobanTx(tx)) {
     throw new Error(
-      'This transaction is not a Soroban contract invocation. A g2c smart ' +
+      'This transaction is not a Soroban contract invocation. A Nido smart ' +
         'account (a contract address) can only authorize Soroban operations, ' +
         'so there is nothing for the passkey to sign on a classic Stellar ' +
         'transaction.',
@@ -364,7 +364,7 @@ async function collectMultiPasskeySignatures(args: {
  * Run the primary-passkey WebAuthn ceremony over an arbitrary 32-byte
  * challenge and return the assertion components, base64url-JSON-encoded.
  *
- * Shared by message and auth-entry signing. Because a g2c smart account
+ * Shared by message and auth-entry signing. Because a Nido smart account
  * verifies P-256/WebAuthn assertions (not Ed25519), the "signature" the wallet
  * produces is the full WebAuthn assertion (authenticatorData + clientData +
  * P-256 signature) plus the signer public key — not a bare 64-byte Stellar
@@ -398,7 +398,7 @@ async function passkeyAssertEnvelope(account: string, challenge32: Uint8Array): 
   });
 
   const envelope = {
-    type: 'g2c-webauthn-assertion',
+    type: 'nido-webauthn-assertion',
     publicKey: cred.publicKey,
     authenticatorData: bytesToHex(sig.authenticatorData),
     clientData: bytesToHex(sig.clientDataJson),

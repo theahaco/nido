@@ -105,7 +105,7 @@ NOTE: Step 5's in-page `import('/src/lib/policyChainFetch.ts')` only works under
 
 Copy the create+deploy block from `tests/e2e/testnet/account-lifecycle.testnet.spec.ts` (steps 1-3, through `#done-section`) to define `cAddress`/`host`. Implement the Node-side `findRuleForPubkey` equivalent (inline rpc `get_context_rule` scan). Run:
 ```bash
-cd /home/willem/c/s/g2c-phase3
+cd /home/willem/c/s/nido-phase3
 npx tsc -p ./packages/passkey-sdk/tsconfig.json && npx astro build --root ./packages/frontend
 set -a; . tests/.env.testnet; set +a
 npx playwright test --project=testnet-chromium tests/e2e/testnet/session-key.testnet.spec.ts

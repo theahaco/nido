@@ -737,77 +737,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "g2c-factory"
-version = "0.1.0"
-dependencies = [
- "g2c-smart-account",
- "soroban-sdk",
- "soroban-sdk-tools",
- "stellar-accounts",
- "stellar-registry",
-]
-
-[[package]]
-name = "g2c-integration-tests"
-version = "0.1.0"
-dependencies = [
- "base64",
- "p256",
- "sha2",
- "soroban-sdk",
- "stellar-accounts",
-]
-
-[[package]]
-name = "g2c-multisig-policy"
-version = "0.1.0"
-dependencies = [
- "soroban-sdk",
- "stellar-accounts",
-]
-
-[[package]]
-name = "g2c-name-registry"
-version = "0.1.0"
-dependencies = [
- "soroban-sdk",
- "soroban-sdk-tools",
-]
-
-[[package]]
-name = "g2c-smart-account"
-version = "0.1.0"
-dependencies = [
- "soroban-sdk",
- "stellar-accounts",
-]
-
-[[package]]
-name = "g2c-spending-limit-policy"
-version = "0.1.0"
-dependencies = [
- "soroban-sdk",
- "stellar-accounts",
-]
-
-[[package]]
-name = "g2c-status-message"
-version = "0.1.0"
-dependencies = [
- "soroban-sdk",
- "soroban-sdk-tools",
- "stellar-accounts",
-]
-
-[[package]]
-name = "g2c-webauthn-verifier"
-version = "0.1.0"
-dependencies = [
- "soroban-sdk",
- "stellar-accounts",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1053,6 +982,77 @@ name = "memchr"
 version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b947ae49db0d222b1dbc6b113ce7248a3fc3a6ca21b696717bfc000ba4484d8"
+
+[[package]]
+name = "nido-factory"
+version = "0.1.0"
+dependencies = [
+ "nido-smart-account",
+ "soroban-sdk",
+ "soroban-sdk-tools",
+ "stellar-accounts",
+ "stellar-registry",
+]
+
+[[package]]
+name = "nido-integration-tests"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "p256",
+ "sha2",
+ "soroban-sdk",
+ "stellar-accounts",
+]
+
+[[package]]
+name = "nido-multisig-policy"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "stellar-accounts",
+]
+
+[[package]]
+name = "nido-name-registry"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "soroban-sdk-tools",
+]
+
+[[package]]
+name = "nido-smart-account"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "stellar-accounts",
+]
+
+[[package]]
+name = "nido-spending-limit-policy"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "stellar-accounts",
+]
+
+[[package]]
+name = "nido-status-message"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "soroban-sdk-tools",
+ "stellar-accounts",
+]
+
+[[package]]
+name = "nido-webauthn-verifier"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+ "stellar-accounts",
+]
 
 [[package]]
 name = "num-bigint"

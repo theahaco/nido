@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-g2c facilitates migration from Stellar G-addresses to Soroban Smart Accounts (C-addresses) using WebAuthn/passkey authentication. All passkey verification is on-chain via the WebAuthn verifier contract and OpenZeppelin's stellar-accounts library.
+Nido helps users move from Stellar G-addresses to Soroban Smart Accounts (C-addresses) using WebAuthn/passkey authentication. All passkey verification is on-chain via the WebAuthn verifier contract and OpenZeppelin's stellar-accounts library.
 
 ## Build & Test Commands
 
@@ -16,7 +16,7 @@ just check             # cargo fmt --check + cargo clippy -D warnings
 just fmt               # cargo fmt --all
 ```
 
-Run a single test by name: `cargo test -p g2c-integration-tests smart_account_check_auth_with_passkey`
+Run a single test by name: `cargo test -p nido-integration-tests smart_account_check_auth_with_passkey`
 
 ## Workspace Architecture
 

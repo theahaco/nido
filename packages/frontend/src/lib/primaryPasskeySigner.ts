@@ -13,7 +13,7 @@ import {
   injectPasskeySignature,
   parseAssertionResponse,
   hex2buf,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import { fetchVerifierAddress } from './policyChainFetch.js';
 import {
   relayerEnabled,
@@ -43,7 +43,7 @@ const SUBMITTER_KEY = 'g2c:name-keypair';
  * Get or mint an ephemeral G-address keypair used as the tx submitter
  * (fee payer + source). The contract being invoked (the smart account) is
  * unrelated — Soroban tx envelopes always need a regular Stellar source
- * account. We use the existing 'g2c:name-keypair' so we share the
+ * account. We use the existing Nido submitter storage key so we share the
  * submitter with the account-page's existing flow.
  *
  * The submitter has no privileges on the smart account; it only pays
@@ -66,7 +66,7 @@ export async function getSubmitter(): Promise<Keypair> {
  * Requirements:
  *  - The page origin matches the account's subdomain so WebAuthn's `rpId`
  *    matches the registered credential.
- *  - Classic mode only: a `g2c:name-keypair` ephemeral G-address exists or
+ *  - Classic mode only: the persisted ephemeral G-address submitter exists or
  *    can be minted via friendbot (handled internally). In relayer mode
  *    (PUBLIC_RELAYER_URL set) no ephemeral keypair is created — the relayer
  *    submits and the response is synthesized from its confirmation.

@@ -1,6 +1,6 @@
 /**
  * walletModules.ts — instantiates the standard @creit.tech/stellar-wallets-kit
- * modules that appear in the picker alongside g2c.
+ * modules that appear in the picker alongside Nido.
  *
  * Kept in its own file (imported lazily by `wallet.ts`) so that the pure
  * session/selector logic does not statically pull in every wallet SDK — some

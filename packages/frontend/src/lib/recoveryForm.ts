@@ -1,10 +1,10 @@
-import type { Friend, MultisigRecoveryBlock } from '@g2c/passkey-sdk';
+import type { Friend, MultisigRecoveryBlock } from '@nidohq/passkey-sdk';
 import {
   multisigRecoveryModule,
   resolveFriendInput,
   resolveName,
   fetchRegistryAddress,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import { installRecovery } from './recoveryActions.js';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';

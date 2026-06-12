@@ -1,5 +1,5 @@
-import { isContractId, RelayerError } from "@g2c/passkey-sdk"
-import { accountOrigin } from "@g2c/stellar-wallets-kit-module"
+import { isContractId, RelayerError } from "@nidohq/passkey-sdk"
+import { accountOrigin } from "@nidohq/stellar-wallets-kit-module"
 import { Button, Card, Icon, Input, Text } from "@stellar/design-system"
 import { useEffect, useState } from "react"
 import statusMessage from "../contracts/status_message"
@@ -19,7 +19,7 @@ import {
 	XLM_SAC_ID,
 } from "../lib/nidoSign"
 import { checkSessionKeyStatus } from "../lib/sessionKeyStatus"
-import { G2C_ID, g2cBase } from "../util/wallet"
+import { NIDO_ID, nidoBase } from "../util/wallet"
 import styles from "./StatusMessage.module.css"
 
 type SaveState = "idle" | "loading" | "success" | "failure"
@@ -133,7 +133,7 @@ function useSessionKeyUiState(
  */
 export const StatusMessage = () => {
 	const { address, walletId, signTransaction } = useWallet()
-	const isNido = walletId === G2C_ID
+	const isNido = walletId === NIDO_ID
 	const nidoAccount =
 		isNido && address && isContractId(address) ? address : null
 
@@ -221,7 +221,7 @@ export const StatusMessage = () => {
 			// <account>.nido.fyi/security/delegate/ to authorize it. Returns here
 			// with ?delegation=ok (handled by the effect above).
 			await startDelegation({
-				walletOrigin: accountOrigin(g2cBase(), nidoAccount),
+				walletOrigin: accountOrigin(nidoBase(), nidoAccount),
 				account: nidoAccount,
 				targetContract: CONTRACT_ID,
 				duration: "24h",
@@ -339,7 +339,7 @@ export const StatusMessage = () => {
 				)
 			}
 			await startDelegation({
-				walletOrigin: accountOrigin(g2cBase(), nidoAccount),
+				walletOrigin: accountOrigin(nidoBase(), nidoAccount),
 				account: nidoAccount,
 				targetContract: XLM_SAC_ID,
 				duration: "7d",
@@ -414,7 +414,7 @@ export const StatusMessage = () => {
 				{nidoAccount && (
 					<Text as="p" size="sm" addlClassName={styles.accountLink}>
 						<a
-							href={accountOrigin(g2cBase(), nidoAccount)}
+							href={accountOrigin(nidoBase(), nidoAccount)}
 							target="_blank"
 							rel="noreferrer"
 						>

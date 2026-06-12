@@ -4,7 +4,7 @@
 // (BEFORE the page's own inline scripts) on a TestingBot REAL Android Chrome
 // device, driven via Playwright's `_android` module?
 //
-// This gates whether g2c's WebAuthn passkey shim (an esbuild IIFE injected via
+// This gates whether Nido's WebAuthn passkey shim (an esbuild IIFE injected via
 // addInitScript) can run on a real Android device in TestingBot's cloud.
 //
 // Secret discipline: TB_KEY / TB_SECRET are read from env and embedded in the
@@ -33,7 +33,7 @@
 // underlying risk is LOW (addInitScript at document_start is a Chromium/CDP
 // property — Page.addScriptToEvaluateOnNewDocument — so it almost certainly
 // works on Chrome-for-Android regardless of vendor). Still-unverified, separate
-// follow-on: the TestingBot Tunnel + g2c's `*.localhost` subdomain routing,
+// follow-on: the TestingBot Tunnel + Nido's `*.localhost` subdomain routing,
 // needed for the FULL passkey flow (this spike deliberately uses a data:/public
 // URL to isolate the addInitScript question from the tunnel).
 
@@ -83,16 +83,16 @@ function redactedEndpoint(caps) {
   )}`;
 }
 
-// The init script under test. Mirrors how g2c's passkey shim is injected:
+// The init script under test. Mirrors how Nido's passkey shim is injected:
 // a side-effecting function that sets a global + a DOM marker as early as
-// possible. If addInitScript runs at document_start, __g2cInitRan will be
+// possible. If addInitScript runs at document_start, __nidoInitRan will be
 // defined BEFORE any inline <script> in <head> parses.
 function initScriptFn() {
   // eslint-disable-next-line no-undef
-  window.__g2cInitRan = 'document_start';
+  window.__nidoInitRan = 'document_start';
   try {
     // eslint-disable-next-line no-undef
-    document.documentElement.dataset.g2cShim = '1';
+    document.documentElement.dataset.nidoShim = '1';
   } catch (e) {
     /* ignore */
   }
@@ -131,10 +131,10 @@ async function runOnDevice(candidate) {
     await context.addInitScript(initScriptFn);
 
     // --- ORDERING proof via data: URL ---------------------------------------
-    // An inline <head> script records whether __g2cInitRan was ALREADY defined
+    // An inline <head> script records whether __nidoInitRan was ALREADY defined
     // at parse time. If addInitScript runs at document_start, sentinel === true.
     const html =
-      '<!doctype html><html><head><script>window.__sentinelAtParse = (typeof window.__g2cInitRan !== "undefined");</script></head><body>ok</body></html>';
+      '<!doctype html><html><head><script>window.__sentinelAtParse = (typeof window.__nidoInitRan !== "undefined");</script></head><body>ok</body></html>';
 
     let urlStrategy = 'data:';
     let atParse = null;
@@ -146,7 +146,7 @@ async function runOnDevice(candidate) {
         timeout: 60000,
       });
       atParse = await page.evaluate(() => window.__sentinelAtParse);
-      ran = await page.evaluate(() => window.__g2cInitRan);
+      ran = await page.evaluate(() => window.__nidoInitRan);
     } catch (dataErr) {
       // data: URLs sometimes rejected on the Android bridge. Fall back to a
       // public URL — proves "ran at all" (weaker) but not ordering at parse.
@@ -155,14 +155,14 @@ async function runOnDevice(candidate) {
       );
       urlStrategy = 'https://example.com (fallback)';
       await page.goto('https://example.com', { waitUntil: 'load', timeout: 60000 });
-      ran = await page.evaluate(() => window.__g2cInitRan);
+      ran = await page.evaluate(() => window.__nidoInitRan);
       // sentinel not meaningful here; leave atParse null.
     }
 
     console.log('\n--- RESULTS ---');
     console.log(`URL strategy:        ${urlStrategy}`);
     console.log(`__sentinelAtParse:   ${JSON.stringify(atParse)} (true => ran at document_start)`);
-    console.log(`__g2cInitRan:        ${JSON.stringify(ran)} (=> ran at all)`);
+    console.log(`__nidoInitRan:      ${JSON.stringify(ran)} (=> ran at all)`);
 
     let status;
     if (atParse === true && ran === 'document_start') {

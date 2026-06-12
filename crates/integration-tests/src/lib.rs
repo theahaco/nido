@@ -8,16 +8,16 @@ use stellar_accounts::policies::spending_limit::SpendingLimitAccountParams;
 use stellar_accounts::smart_account::{ContextRule, ContextRuleType, Signer};
 
 pub const SMART_ACCOUNT_WASM: &[u8] =
-    include_bytes!("../../../target/wasm32v1-none/contract/g2c_smart_account.wasm");
+    include_bytes!("../../../target/wasm32v1-none/contract/nido_smart_account.wasm");
 
 pub const WEBAUTHN_VERIFIER_WASM: &[u8] =
-    include_bytes!("../../../target/wasm32v1-none/contract/g2c_webauthn_verifier.wasm");
+    include_bytes!("../../../target/wasm32v1-none/contract/nido_webauthn_verifier.wasm");
 
 pub const MULTISIG_POLICY_WASM: &[u8] =
-    include_bytes!("../../../target/wasm32v1-none/contract/g2c_multisig_policy.wasm");
+    include_bytes!("../../../target/wasm32v1-none/contract/nido_multisig_policy.wasm");
 
 pub const SPENDING_LIMIT_POLICY_WASM: &[u8] =
-    include_bytes!("../../../target/wasm32v1-none/contract/g2c_spending_limit_policy.wasm");
+    include_bytes!("../../../target/wasm32v1-none/contract/nido_spending_limit_policy.wasm");
 
 #[allow(dead_code)]
 #[soroban_sdk::contractclient(name = "SmartAccountClient")]
@@ -60,7 +60,7 @@ trait SmartAccountInterface {
 /// internally uses a random key for the primary passkey signer.
 pub fn test_key(seed: u64) -> SigningKey {
     let mut hasher = Sha256::new();
-    hasher.update(b"g2c-test-key:");
+    hasher.update(b"nido-test-key:");
     hasher.update(seed.to_le_bytes());
     let bytes = hasher.finalize();
     SigningKey::from_bytes(&bytes).expect("deterministic key from seed")

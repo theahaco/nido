@@ -1,29 +1,29 @@
-# @g2c/stellar-wallets-kit-module
+# @nidohq/stellar-wallets-kit-module
 
 A [`@creit.tech/stellar-wallets-kit`](https://github.com/Creit-Tech/Stellar-Wallets-Kit)
-module that registers a **g2c passkey smart account** as a first-class Stellar
-wallet. With it, any dApp that already uses the kit's wallet picker gets g2c
-alongside Freighter / Albedo / xBull / etc. — no g2c-specific code required.
+module that registers a **Nido passkey smart account** as a first-class Stellar
+wallet. With it, any dApp that already uses the kit's wallet picker gets Nido
+alongside Freighter / Albedo / xBull / etc. with no Nido-specific code required.
 
 ## Install
 
 ```bash
-npm install @g2c/stellar-wallets-kit-module @creit.tech/stellar-wallets-kit
+npm install @nidohq/stellar-wallets-kit-module @creit.tech/stellar-wallets-kit
 ```
 
 ## Usage
 
 ```ts
 import { StellarWalletsKit, allowAllModules } from '@creit.tech/stellar-wallets-kit';
-import { G2cModule } from '@g2c/stellar-wallets-kit-module';
+import { NidoModule } from '@nidohq/stellar-wallets-kit-module';
 
 const kit = new StellarWalletsKit({
   network: WalletNetwork.TESTNET,
   modules: [
     ...allowAllModules(),
-    // `base` is the g2c deployment domain. The module runs at YOUR origin and
+    // `base` is the Nido deployment domain. The module runs at YOUR origin and
     // can't infer it, so it must be supplied. Use a scheme for local dev.
-    new G2cModule({ base: 'g2c.example.xyz' }),
+    new NidoModule({ base: 'nido.example.xyz' }),
   ],
 });
 
@@ -38,7 +38,7 @@ const { signedTxXdr } = await kit.signTransaction(xdr, {
 
 ## How it works (design decisions)
 
-This module reuses g2c's established "wallet at `<account>.<base>`, dApp at
+This module uses Nido's "wallet at `<account>.<base>`, dApp at
 another origin, redirect + return" pattern (the same one the session-key
 delegate flow uses).
 
@@ -72,7 +72,7 @@ delegate flow uses).
   rebuild the transaction for the newly picked account:
 
   ```ts
-  import { ACCOUNT_SWITCH_REQUESTED } from '@g2c/stellar-wallets-kit-module';
+  import { ACCOUNT_SWITCH_REQUESTED } from '@nidohq/stellar-wallets-kit-module';
 
   try {
     await kit.signTransaction(xdr, opts);
@@ -98,7 +98,7 @@ delegate flow uses).
   `InvokeHostFunction` op): it simulates to find the smart account's auth
   entry, computes the OZ v0.7 auth digest, gets a WebAuthn assertion, and
   injects the passkey signature, returning the signed XDR (the dApp submits).
-  A **classic** Stellar tx is rejected with a clear error — a g2c smart account
+  A **classic** Stellar tx is rejected with a clear error: a Nido smart account
   is a contract (C-address) and can't be the source/signer of a classic
   operation, so there's nothing for the passkey to sign there.
 
@@ -114,4 +114,4 @@ kept thin on top of it.
 Implemented against `@creit.tech/stellar-wallets-kit` **2.2.0**'s
 `ModuleInterface` (`moduleType`, `productId/Name/Url/Icon`, `isAvailable`,
 `getAddress`, `signTransaction`, `signMessage`, `signAuthEntry`, `getNetwork`,
-`disconnect`). `g2c` reports as a `HOT_WALLET`.
+`disconnect`). Nido reports as a `HOT_WALLET`.

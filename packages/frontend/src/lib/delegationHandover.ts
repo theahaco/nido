@@ -15,7 +15,7 @@
  * one doesn't.
  */
 
-import { createSessionPasskey, saveSessionKeyMaterial, buf2hex } from '@g2c/passkey-sdk';
+import { createSessionPasskey, saveSessionKeyMaterial, buf2hex } from '@nidohq/passkey-sdk';
 
 // ---------------------------------------------------------------------------
 // Pending-delegation persistence.

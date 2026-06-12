@@ -6,7 +6,7 @@
 
 **Architecture:** The connect/sign pages support a **redirect fallback** (when there's no popup opener, they redirect to the `return` URL with result params). Tests use that: navigate directly to the ceremony URL and assert the redirect carries the result — no popup/postMessage plumbing needed. Connect and message/authEntry signing need **no chain** (fast tier); tx-sign simulates+submits on testnet. A small Node-computed helper seeds the shim's deterministic credential into localStorage so sign tests don't have to run the full registration first.
 
-**Tech Stack:** Playwright 1.60.x, the Phase 1 shim/fixtures, the existing `tests/support/{auth,testnet}.ts`, `@g2c/passkey-sdk` (signing), `@g2c/stellar-wallets-kit-module` (URL builders / result parsers, already unit-tested).
+**Tech Stack:** Playwright 1.60.x, the Phase 1 shim/fixtures, the existing `tests/support/{auth,testnet}.ts`, `@nidohq/passkey-sdk` (signing), `@nidohq/stellar-wallets-kit-module` (URL builders / result parsers, already unit-tested).
 
 **Scope:** Phase 3a = dapp/SEP-7 only. **Phase 3b (multi-actor recovery + session-key delegation) is a separate plan** — it needs N independent shim identities and hits the contract auth-model. Note: on-chain signing flows may surface contract-auth issues (cf. bug #3 `UnvalidatedContext` from Phase 2); where an on-chain step is rejected for a real contract-side reason, **pin it** (assert the known failure with a "flip when fixed" comment) rather than mask.
 
@@ -16,13 +16,13 @@
 
 **Connect** (`/connect/` on the apex/wallet origin, `packages/frontend/src/pages/connect/index.astro`):
 - Lists accounts from the wallet origin's localStorage as `.account-row` buttons inside `#accounts-list`; `#dapp-origin`, `#no-accounts`, `#cancel`, `#error-box`.
-- On account click → `finish('?g2c_address=<C>')`; cancel → `finish('?g2c_connect=cancelled')`. `finish` posts to the popup opener if present, else **redirects to the `return` URL** with the result query string appended. Reads `?dapp=<origin>&return=<url>`; requires `return` same-origin with `dapp`.
+- On account click → `finish('?nido_address=<C>')`; cancel → `finish('?nido_connect=cancelled')`. `finish` posts to the popup opener if present, else **redirects to the `return` URL** with the result query string appended. Reads `?dapp=<origin>&return=<url>`; requires `return` same-origin with `dapp`.
 
 **Sign** (`<caddr>.<base>/sign/`, `packages/frontend/src/pages/sign/index.astro`):
 - `#dapp-origin`, `#kind-label`, `#account-text`, `#payload-text`, `#needs-register`, `#status`, `#approve`, `#cancel`.
-- Reads `?kind=tx|message|authEntry&[xdr|message|authEntry]=…&network=&dapp=&return=`. `#approve` → signs via `walletSign.ts` (uses `computeAuthDigest` — correct) → `finish('?g2c_signed=<result>&kind=<kind>')`; cancel → `?g2c_sign=cancelled`. If no passkey for the account: shows `#needs-register`, `#approve` disabled.
+- Reads `?kind=tx|message|authEntry&[xdr|message|authEntry]=…&network=&dapp=&return=`. `#approve` → signs via `walletSign.ts` (uses `computeAuthDigest` — correct) → `finish('?nido_signed=<result>&kind=<kind>')`; cancel → `?nido_sign=cancelled`. If no passkey for the account: shows `#needs-register`, `#approve` disabled.
 
-**URL builders / result parsers:** `@g2c/stellar-wallets-kit-module` (`urls.ts` builds the URLs; `handover.ts` parses `?g2c_address=` / `?g2c_signed=`). These have unit tests already.
+**URL builders / result parsers:** `@nidohq/stellar-wallets-kit-module` (`urls.ts` builds the URLs; `handover.ts` parses `?nido_address=` / `?nido_signed=`). These have unit tests already.
 
 ---
 
@@ -134,7 +134,7 @@ git commit -m "feat(test): deterministic credential seed helper for dapp sign te
 **Files:**
 - Create: `tests/e2e/ui/dapp-connect.spec.ts`
 
-The connect picker reads accounts from the wallet origin's localStorage (`saveAccount`) and, with no popup opener, redirects to `return` with `?g2c_address=`. No chain.
+The connect picker reads accounts from the wallet origin's localStorage (`saveAccount`) and, with no popup opener, redirects to `return` with `?nido_address=`. No chain.
 
 - [ ] **Step 1: Confirm the account-storage key + saveAccount shape**
 
@@ -174,19 +174,19 @@ test.describe('@fast dapp connect ceremony', () => {
     await expect(page.locator('#dapp-origin')).toContainText('dapp.localhost');
 
     await page.locator('#accounts-list .account-row').first().click();
-    // No opener → redirect to return with ?g2c_address=
-    await page.waitForURL(`**/cb?g2c_address=${ACCOUNT}**`, { timeout: 10_000 });
-    expect(new URL(page.url()).searchParams.get('g2c_address')).toBe(ACCOUNT);
+    // No opener → redirect to return with ?nido_address=
+    await page.waitForURL(`**/cb?nido_address=${ACCOUNT}**`, { timeout: 10_000 });
+    expect(new URL(page.url()).searchParams.get('nido_address')).toBe(ACCOUNT);
   });
 
-  test('cancel returns g2c_connect=cancelled', async ({ page }) => {
+  test('cancel returns nido_connect=cancelled', async ({ page }) => {
     const ret = `${DAPP}/cb`;
     await page.goto(
       `http://localhost:${PORT}/connect/?dapp=${encodeURIComponent(DAPP)}&return=${encodeURIComponent(ret)}`,
       { waitUntil: 'domcontentloaded' },
     );
     await page.locator('#cancel').click();
-    await page.waitForURL('**/cb?g2c_connect=cancelled**', { timeout: 10_000 });
+    await page.waitForURL('**/cb?nido_connect=cancelled**', { timeout: 10_000 });
   });
 });
 ```
@@ -236,21 +236,21 @@ async function gotoSign(page: import('@playwright/test').Page, query: string) {
 }
 
 test.describe('@fast dapp sign (message / authEntry)', () => {
-  test('signs a message and returns g2c_signed', async ({ page }) => {
+  test('signs a message and returns nido_signed', async ({ page }) => {
     await gotoSign(page, 'kind=message&message=' + encodeURIComponent('hello world'));
     await expect(page.locator('#needs-register')).toBeHidden();
     await expect(page.locator('#approve')).toBeEnabled();
     await page.locator('#approve').click();
-    await page.waitForURL('**/cb?g2c_signed=**', { timeout: 15_000 });
+    await page.waitForURL('**/cb?nido_signed=**', { timeout: 15_000 });
     const u = new URL(page.url());
     expect(u.searchParams.get('kind')).toBe('message');
-    expect(u.searchParams.get('g2c_signed')).toBeTruthy();
+    expect(u.searchParams.get('nido_signed')).toBeTruthy();
   });
 
-  test('cancel returns g2c_sign=cancelled', async ({ page }) => {
+  test('cancel returns nido_sign=cancelled', async ({ page }) => {
     await gotoSign(page, 'kind=message&message=hi');
     await page.locator('#cancel').click();
-    await page.waitForURL('**/cb?g2c_sign=cancelled**', { timeout: 10_000 });
+    await page.waitForURL('**/cb?nido_sign=cancelled**', { timeout: 10_000 });
   });
 });
 ```
@@ -308,14 +308,14 @@ test.describe('@testnet dapp tx signing', () => {
     //    rebuilds them (see walletSign.ts).
     // 3) Navigate to http://<caddr>.localhost:PORT/sign/?kind=tx&xdr=<b64>&
     //    network=Test%20SDF%20Network%20;%20September%202015&dapp=...&return=...
-    // 4) #approve → shim signs → assert redirect to return?g2c_signed=<xdr>&kind=tx.
+    // 4) #approve → shim signs → assert redirect to return?nido_signed=<xdr>&kind=tx.
     //    update_message is PROVEN to authorize under the Default rule (the
     //    status-message testnet guard passes), so EXPECT SUCCESS. If it
     //    unexpectedly fails, capture #error-box text and report — do NOT mask.
   });
 });
 ```
-This task is **run-to-validate**: implement the create+deploy (copy from the lifecycle spec) and the `update_message` tx construction, then run on testnet. Assert the `g2c_signed` redirect (success — `update_message` is proven to authorize). If it unexpectedly fails on-chain, capture the `#error-box` text and report rather than loosening the assertion.
+This task is **run-to-validate**: implement the create+deploy (copy from the lifecycle spec) and the `update_message` tx construction, then run on testnet. Assert the `nido_signed` redirect (success — `update_message` is proven to authorize). If it unexpectedly fails on-chain, capture the `#error-box` text and report rather than loosening the assertion.
 
 - [ ] **Step 2: Run on testnet**
 
@@ -325,7 +325,7 @@ npx astro build --root ./packages/frontend
 set -a; . tests/.env.testnet; set +a
 npx playwright test --project=testnet-chromium tests/e2e/testnet/dapp-sign-tx.testnet.spec.ts
 ```
-Expected: PASS asserting the `g2c_signed` redirect (update_message authorizes under the Default rule). Adapt timeouts/selectors to reality.
+Expected: PASS asserting the `nido_signed` redirect (update_message authorizes under the Default rule). Adapt timeouts/selectors to reality.
 
 - [ ] **Step 3: Commit**
 

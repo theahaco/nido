@@ -10,7 +10,7 @@ import {
   activateAccount,
   lookupName,
   fetchRegistryAddress,
-} from "@g2c/passkey-sdk";
+} from "@nidohq/passkey-sdk";
 import { rpc, xdr } from "@stellar/stellar-sdk";
 import { buildMyNidoModel, type MyNidoRow } from "./myNidoModel";
 import { nidoRowHref, accountShareUrl } from "./accountLinks";

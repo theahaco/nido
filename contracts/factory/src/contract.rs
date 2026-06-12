@@ -10,7 +10,7 @@ mod smart_account {
     //! hardcodes its wasm hash. The mechanism:
     //!
     //!  1. `build.rs` stages the `just build-contracts` output
-    //!     (`g2c_smart_account.wasm`) and emits `STELLAR_ACCOUNT_WASM` pointing
+    //!     (`nido_smart_account.wasm`) and emits `STELLAR_ACCOUNT_WASM` pointing
     //!     at it.
     //!  2. `include_bytes!(env!("STELLAR_ACCOUNT_WASM"))` embeds those exact
     //!     bytes into the factory wasm as `WASM` below.

@@ -1,4 +1,4 @@
-import { isContractId } from "@g2c/passkey-sdk";
+import { isContractId } from "@nidohq/passkey-sdk";
 import type { PendingAccount } from "./myNidoModel";
 
 const ACCOUNT_KEY = "g2c:accounts";
@@ -7,8 +7,8 @@ const NAME_PREFIX = "g2c:names:";
 const VALID_NAME_RE = /^[a-z][a-z0-9]{0,14}$/;
 const PREVIEW_SEP = "--pr-";
 
-export const NIDO_STORAGE_REQUEST = "g2c:nido-storage:request:v1";
-export const NIDO_STORAGE_RESPONSE = "g2c:nido-storage:response:v1";
+export const NIDO_STORAGE_REQUEST = "nido:storage:request:v1";
+export const NIDO_STORAGE_RESPONSE = "nido:storage:response:v1";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "key" | "length">;
 
