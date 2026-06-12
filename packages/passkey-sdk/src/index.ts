@@ -87,3 +87,12 @@ export * from './sessionKey.js';
 export * from './syntheticAssertion.js';
 
 export * from './friendSigning.js';
+
+export {
+  RelayerError,
+  submitSorobanTransaction,
+  getRelayerTransaction,
+  waitForConfirmation,
+  extractFuncAndAuth,
+} from './relayer.js';
+export type { RelayerStatus, RelayerTxResponse } from './relayer.js';

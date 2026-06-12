@@ -15,9 +15,19 @@ import {
   hex2buf,
 } from '@g2c/passkey-sdk';
 import { fetchVerifierAddress } from './policyChainFetch.js';
+import {
+  relayerEnabled,
+  extractFuncAndAuth,
+  submitSorobanTransaction,
+  waitForConfirmation,
+} from './relayerClient.js';
+import { RELAYER_SIM_SOURCE } from './network.js';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
+
+/** Keep relayer-held account auth signatures short-lived. */
+const RELAYER_EXPIRATION_OFFSET = 120;
 
 /** localStorage key shared with `account/index.astro` so we don't
  *  proliferate ephemeral submitter accounts. */
@@ -50,8 +60,9 @@ export async function getSubmitter(): Promise<Keypair> {
  * Requirements:
  *  - The page origin matches the account's subdomain so WebAuthn's `rpId`
  *    matches the registered credential.
- *  - A `g2c:name-keypair` ephemeral G-address exists or can be minted via
- *    friendbot (handled internally).
+ *  - Classic mode only: a `g2c:name-keypair` ephemeral G-address exists or can
+ *    be minted via friendbot. Relayer mode uses PUBLIC_RELAYER_SIM_SOURCE for
+ *    simulation and submits through PUBLIC_RELAYER_URL.
  *
  * Returns the send-transaction response. Throws if no passkey is found or
  * if WebAuthn is denied.
@@ -76,10 +87,16 @@ export async function signAndSubmit(args: {
   const finalVerifierAddress =
     args.verifierAddress ?? (await fetchVerifierAddress(args.account));
 
-  // 1. Get the ephemeral submitter G-address; load its current sequence.
-  //    This is the tx source/fee-payer, NOT the smart account itself.
-  const submitter = await getSubmitter();
-  const sourceAccount = await server.getAccount(submitter.publicKey());
+  // 1. Pick the simulation source account. This is the tx source/fee-payer,
+  //    NOT the smart account itself.
+  const useRelayer = relayerEnabled();
+  const submitter = useRelayer ? null : await getSubmitter();
+  if (useRelayer && !RELAYER_SIM_SOURCE) {
+    throw new Error('Relayer misconfigured: PUBLIC_RELAYER_URL is set but PUBLIC_RELAYER_SIM_SOURCE is not.');
+  }
+  const sourceAccount = submitter
+    ? await server.getAccount(submitter.publicKey())
+    : await server.getAccount(RELAYER_SIM_SOURCE);
 
   // 2. Build & simulate the un-signed tx.
   //
@@ -123,7 +140,8 @@ export async function signAndSubmit(args: {
   //    and the digest the contract recomputes both refer to the same rule.
   const authEntry = getAuthEntry(successSim);
   const lastLedger = successSim.latestLedger;
-  const signaturePayload = buildAuthHash(authEntry, Networks.TESTNET, lastLedger);
+  const expirationOffset = useRelayer ? RELAYER_EXPIRATION_OFFSET : undefined;
+  const signaturePayload = buildAuthHash(authEntry, Networks.TESTNET, lastLedger, expirationOffset);
   const contextRuleIds = [0];
   const challengeBytes = computeAuthDigest(signaturePayload, contextRuleIds);
 
@@ -158,9 +176,36 @@ export async function signAndSubmit(args: {
     finalVerifierAddress,
     hex2buf(cred.publicKey),
     lastLedger,
-    undefined,
+    expirationOffset,
     contextRuleIds,
   );
+
+  if (useRelayer) {
+    const { func, auth } = extractFuncAndAuth(assembled_tx);
+    if (auth.length > 1) {
+      throw new Error(`Expected a single auth entry, got ${auth.length}; only the first is passkey-signed.`);
+    }
+    const submitted = await submitSorobanTransaction({ func, auth });
+    if (!submitted.transactionId) {
+      if (submitted.status === 'confirmed' && submitted.hash) {
+        return {
+          status: 'PENDING',
+          hash: submitted.hash,
+          latestLedger: 0,
+          latestLedgerCloseTime: 0,
+        };
+      }
+      throw new Error('Relayer accepted the transaction but returned no transaction id');
+    }
+    const confirmed = await waitForConfirmation(submitted.transactionId);
+    if (!confirmed.hash) throw new Error('Relayer confirmed without a transaction hash');
+    return {
+      status: 'PENDING',
+      hash: confirmed.hash,
+      latestLedger: 0,
+      latestLedgerCloseTime: 0,
+    };
+  }
 
   // 7. Re-simulate the now-signed tx in ENFORCE mode — both to verify
   //    the auth (surfaces bad sig / wrong rule before submit) AND to
@@ -208,6 +253,7 @@ export async function signAndSubmit(args: {
   // auth entries on our InvokeHostFunction op). build() emits a new
   // Transaction with the right footprint AND our signature intact.
   const refitted_tx = refittedBuilder.build();
+  if (!submitter) throw new Error('unreachable: classic path without submitter');
   refitted_tx.sign(submitter);
   // 8. Submit and wait for chain confirmation. A successful enforce-mode
   //    sim isn't proof the tx lands — fee-bid races, ledger close failures,

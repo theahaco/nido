@@ -1,6 +1,6 @@
 ---
 // Nido reskin of the account-recovery ceremony page. BOTH modes are preserved:
-//  - friend mode (?handoff=…): a friend approves & signs a rotation
+//  - friend mode (?handoff=…): a friend approves & signs a Refractor-backed rotation
 //  - originator mode: stage an M-of-N rotation, collect friend signatures, submit
 // The entire <script> (recoveryActions wiring, M-of-N logic, handoff, staging
 // resume, key persistence) is preserved verbatim from the BaseLayout version.
@@ -134,7 +134,12 @@ import Icon from '../../../components/Icon.astro';
 </NidoLayout>
 
 <script>
-  import { contractIdFromHostname, createSessionPasskey, buf2hex } from '@g2c/passkey-sdk';
+  import {
+    contractIdFromHostname,
+    createSessionPasskey,
+    buf2hex,
+    decodeRotationHandoff,
+  } from '@g2c/passkey-sdk';
   import { fetchVerifierAddress } from '../../../lib/policyChainFetch.js';
   import {
     findRecoveryRules,
@@ -145,6 +150,7 @@ import Icon from '../../../components/Icon.astro';
     getStaging,
     clearStaging,
     collectedCount,
+    recoveryHandoffLinkFromStaging,
   } from '../../../lib/recoveryActions.js';
 
   const account = contractIdFromHostname(window.location.hostname);
@@ -169,9 +175,11 @@ import Icon from '../../../components/Icon.astro';
       return;
     }
     try {
-      // Lazily peek at the description by decoding via the helper inside sign.
-      document.getElementById('fm-account')!.textContent = account;
-    } catch { /* ignore */ }
+      document.getElementById('fm-account')!.textContent =
+        decodeRotationHandoff(encoded).account;
+    } catch {
+      document.getElementById('fm-account')!.textContent = 'this account';
+    }
 
     document.getElementById('fm-sign')!.addEventListener('click', async () => {
       const btn = document.getElementById('fm-sign') as HTMLButtonElement;
@@ -353,6 +361,10 @@ import Icon from '../../../components/Icon.astro';
       const staging = getStaging(account!);
       if (!staging) return;
       const have = collectedCount(staging);
+      const linkBox = document.getElementById('om-link') as HTMLTextAreaElement;
+      if (!linkBox.value) {
+        linkBox.value = recoveryHandoffLinkFromStaging(window.location.origin, staging);
+      }
       document.getElementById('om-progress')!.textContent =
         `${have} of ${staging.threshold} required signatures collected.`;
       const ul = document.getElementById('om-collected')!;
