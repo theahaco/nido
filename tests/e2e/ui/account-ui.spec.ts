@@ -19,6 +19,7 @@ const DIST_DIR = join(process.cwd(), 'packages/frontend/dist');
 // contractId from the subdomain via contractIdFromHostname() and uppercases it,
 // so visiting `<lower>.localhost` yields exactly FAKE_CONTRACT_ID.
 const FAKE_CONTRACT_ID = 'CDLZFC2SYJYDZT7K7VJRL2CU7LQV6AFZ2K2QJLY7QV53KIGWXJOANPYY';
+const SECOND_CONTRACT_ID = `C${'B'.repeat(55)}`;
 const ACCOUNT_URL = `http://${FAKE_CONTRACT_ID.toLowerCase()}.localhost:${PORT}/account/`;
 
 test.describe('account page — UI only (no chain) @fast', () => {
@@ -81,5 +82,26 @@ test.describe('transfer page — UI only (no chain) @fast', () => {
     expect(html).toContain('id="to-input"');
     expect(html).toContain('id="to-resolve"');
     expect(html).toContain('placeholder="name, C…, or G…"');
+  });
+
+  test('account-page switcher shows accounts stored on the apex origin @fast', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.evaluate(
+      ({ first, second }) => {
+        localStorage.setItem('g2c:accounts', JSON.stringify([first, second]));
+        localStorage.setItem(`g2c:names:${first}`, 'alpha');
+        localStorage.setItem(`g2c:names:${second}`, 'beta');
+      },
+      { first: FAKE_CONTRACT_ID, second: SECOND_CONTRACT_ID },
+    );
+
+    await page.goto(ACCOUNT_URL, { waitUntil: 'networkidle' });
+    await page.locator('[data-mynido-trigger]:visible').first().click();
+
+    const panel = page.locator('[data-mynido-panel]:visible').first();
+    await expect(panel.locator('.mn-name', { hasText: 'alpha' })).toBeVisible();
+    await expect(panel.locator('.mn-name', { hasText: 'beta' })).toBeVisible();
   });
 });

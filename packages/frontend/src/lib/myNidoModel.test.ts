@@ -39,6 +39,20 @@ describe("buildMyNidoModel", () => {
     ]);
   });
 
+  it("accepts the setupKey pending shape emitted by the built SDK", () => {
+    const m = buildMyNidoModel(
+      ["CABC"],
+      [{ contractId: "CPEND", setupKey: "S123" }],
+      () => null,
+    );
+    expect(m.rows[1]).toEqual({
+      contractId: "CPEND",
+      name: null,
+      status: "pending",
+      resumeKey: "S123",
+    });
+  });
+
   it("shows the create-card (empty) but still lists pending-only accounts", () => {
     const m = buildMyNidoModel(
       [],

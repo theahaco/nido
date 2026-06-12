@@ -1,0 +1,40 @@
+---
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Nido storage bridge</title>
+  </head>
+  <body>
+    <script>
+      import {
+        NIDO_STORAGE_REQUEST,
+        NIDO_STORAGE_RESPONSE,
+        localNidoSnapshot,
+        mergeNidoSnapshot,
+        sameNidoApexOrigin,
+        type NidoStorageRequest,
+      } from "../../lib/nidoSharedStorage";
+
+      window.addEventListener("message", (event: MessageEvent<NidoStorageRequest>) => {
+        if (!sameNidoApexOrigin(event.origin, window.location.host)) return;
+        const data = event.data;
+        if (data?.type !== NIDO_STORAGE_REQUEST || typeof data.id !== "string") return;
+
+        mergeNidoSnapshot(data.snapshot);
+        const source = event.source as Window | null;
+        source?.postMessage(
+          {
+            type: NIDO_STORAGE_RESPONSE,
+            id: data.id,
+            snapshot: localNidoSnapshot(),
+          },
+          event.origin,
+        );
+      });
+    </script>
+  </body>
+</html>

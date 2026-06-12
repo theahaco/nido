@@ -11,7 +11,7 @@ export type MyNidoModel = {
   rows: MyNidoRow[];
 };
 
-export type PendingAccount = { contractId: string; setupKey: string; secretKey?: string };
+export type PendingAccount = { contractId: string; secretKey?: string; setupKey?: string };
 
 /**
  * Derive the My Nido menu model from localStorage-backed account state.
@@ -39,7 +39,7 @@ export function buildMyNidoModel(
       contractId: p.contractId,
       name: nameOf(p.contractId),
       status: "pending",
-      resumeKey: p.setupKey || p.secretKey,
+      resumeKey: p.setupKey ?? p.secretKey,
     }));
 
   const activeCount = accounts.length;
