@@ -1,6 +1,6 @@
 /**
  * walletModules.ts — instantiates the standard @creit.tech/stellar-wallets-kit
- * wallet modules to register alongside g2c.
+ * wallet modules to register alongside Nido.
  *
  * Kept in its own file (imported dynamically by `walletConnect.initWalletKit`)
  * so that importing the pure session/warning logic from `walletConnect.ts`

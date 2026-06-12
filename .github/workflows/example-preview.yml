@@ -20,12 +20,19 @@ permissions:
 env:
   PAGES_PROJECT: mysoroban
   # Testnet runtime config (all public). base stays "/" — the preview sits at a
-  # subdomain apex, unlike the /g2c/ GitHub Pages path.
+  # subdomain apex, unlike the GitHub Pages project path.
   PUBLIC_STELLAR_NETWORK: TESTNET
   PUBLIC_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
   PUBLIC_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org"
   PUBLIC_STELLAR_HORIZON_URL: "https://horizon-testnet.stellar.org"
-  PUBLIC_G2C_BASE: "https://nido.fyi"
+  # Wallet = THIS PR's preview, not production: the kit module's accountOrigin
+  # maps a pr-N base to <account>--pr-N.nido.fyi account origins, so connect,
+  # delegation handover, and session signing exercise the PR's wallet build —
+  # cross-site (pages.dev is on the Public Suffix List), like the GH Pages
+  # production demo. preview.yml also triggers on examples/** so the wallet
+  # preview exists even for dApp-only PRs.
+  PUBLIC_NIDO_BASE: "https://pr-${{ github.event.pull_request.number }}.nido.fyi"
+  PUBLIC_RELAYER_URL: "https://nido.fly.dev"
 
 jobs:
   deploy:
@@ -33,9 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
@@ -43,8 +50,8 @@ jobs:
 
       - name: Build workspace dependencies
         run: |
-          npm run build -w @g2c/passkey-sdk
-          npm run build -w @g2c/stellar-wallets-kit-module
+          npm run build -w @nidohq/passkey-sdk
+          npm run build -w @nidohq/stellar-wallets-kit-module
           npm run build -w status_message
 
       - name: Build the example (apex base)
@@ -86,7 +93,8 @@ jobs:
             const prNum = context.payload.pull_request.number;
             const previewUrl = process.env.PREVIEW_URL
               || `https://example-pr-${prNum}.mysoroban.pages.dev`;
-            const body = `**Example dApp preview deployed!**\n\n${previewUrl}\n\nThe \`status-message\` example (testnet) connecting through the g2c wallet selector at mysoroban.xyz. The live home is https://theahaco.github.io/g2c/ once merged.`;
+            const liveUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/`;
+            const body = `**Example dApp preview deployed!**\n\n${previewUrl}\n\nThe \`status-message\` example (testnet), wallet = THIS PR's preview (https://pr-${prNum}.nido.fyi). The live home is ${liveUrl} once merged.`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,

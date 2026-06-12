@@ -10,7 +10,7 @@ import Logo from '../../components/Logo.astro';
 import Icon from '../../components/Icon.astro';
 import Toast from '../../components/Toast.astro';
 ---
-<NidoLayout title="Connect to dApp" shell="focused">
+<NidoLayout title="Connect to app" shell="focused">
   <div class="topbar">
     <Logo mark size={20} />
     <span class="chip good"><span class="dot"></span> Read-only</span>
@@ -28,7 +28,7 @@ import Toast from '../../components/Toast.astro';
         account's public address is shared — no signing happens here.
       </p>
 
-      <div id="error-box" class="alert danger" style="display:none"></div>
+      <div id="error-box" role="alert" class="alert danger" style="display:none"></div>
 
       <section id="accounts-section">
         <div id="accounts-list" class="picker"></div>
@@ -86,26 +86,28 @@ import Toast from '../../components/Toast.astro';
   .picker .account-name { font-size: 14.5px; font-weight: 700; color: var(--ink); }
   .picker .account-address { font-family: var(--mono); font-size: 12px; color: var(--mut); word-break: break-all; }
   .picker .account-row .chev { color: var(--mut); flex: 0 0 auto; }
+  /* #89: the account this dApp is currently connected to. */
+  .picker .account-row.current { border-color: var(--acc); box-shadow: var(--sh-1); }
+  .picker .account-current {
+    flex: 0 0 auto; font-size: 11px; font-weight: 700;
+    color: var(--acc-ink); background: var(--acc-soft);
+    border-radius: var(--r-sm); padding: 2px 8px;
+  }
 </style>
 
 <script>
-  import { loadAccounts, loadAccountName, isContractId } from '@g2c/passkey-sdk';
-  import { postResultToOpener } from '@g2c/stellar-wallets-kit-module';
+  import { loadAccounts, loadAccountName, isContractId } from '@nidohq/passkey-sdk';
+  import { postResultToOpener } from '@nidohq/stellar-wallets-kit-module';
   import { shortAddr } from '../../lib/address';
+  import { avatarBackground } from '../../lib/avatarStyle';
 
-  // Deterministic identicon avatar — FNV-1a hash → hsl radial gradient.
-  // Mirrors src/components/Avatar.astro so picker rows built at runtime match
-  // the Nido avatar look without a server render.
+  // Deterministic identicon avatar using the shared avatarBackground formula
+  // so picker rows built at runtime match the Nido avatar look.
   function avatarEl(seed: string): HTMLElement {
-    let h = 2166136261;
-    for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-    h = h >>> 0;
-    const hue1 = h % 360;
-    const hue2 = (h >> 3) % 360;
     const el = document.createElement('div');
     el.style.cssText =
       `width:38px;height:38px;border-radius:50%;flex:0 0 auto;` +
-      `background:radial-gradient(circle at 32% 28%, hsl(${hue1} 70% 62%), hsl(${hue2} 65% 42%));` +
+      `background:${avatarBackground(seed)};` +
       `box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);`;
     return el;
   }
@@ -113,11 +115,16 @@ import Toast from '../../components/Toast.astro';
   const params = new URLSearchParams(window.location.search);
   const dappOrigin = params.get('dapp') ?? '';
   const returnUrl = params.get('return') ?? '';
+  // #89: the address this dApp was previously connected to. Untrusted URL
+  // input — validated here and only honored if it's actually one of this
+  // device's accounts (checked below). Used to highlight the row, and to
+  // auto-confirm when it's the only account on the device.
+  const previousRaw = (params.get('previous') ?? '').toUpperCase();
+  const previous = isContractId(previousRaw) ? previousRaw : null;
 
   const $err = document.getElementById('error-box')!;
   const $list = document.getElementById('accounts-list')!;
   const $none = document.getElementById('no-accounts')!;
-  document.getElementById('dapp-origin')!.textContent = dappOrigin || '(unknown)';
 
   function showError(msg: string) {
     $err.textContent = msg;
@@ -146,6 +153,8 @@ import Toast from '../../components/Toast.astro';
   }
 
   const ret = validatedReturn();
+  // Write only the validated origin to the DOM — never the raw ?dapp= value.
+  document.getElementById('dapp-origin')!.textContent = ret ? ret.origin : '(unknown)';
 
   function finish(search: string) {
     if (!ret) return;
@@ -153,7 +162,8 @@ import Toast from '../../components/Toast.astro';
   }
 
   document.getElementById('cancel')!.addEventListener('click', () => {
-    finish('?g2c_connect=cancelled');
+    if (!ret) { window.location.href = '/account/'; return; }
+    finish('?nido_connect=cancelled');
   });
 
   // Render the device's accounts as pick buttons.
@@ -161,6 +171,20 @@ import Toast from '../../components/Toast.astro';
   if (accounts.length === 0) {
     $none.classList.remove('hidden');
   }
+
+  // Only treat `previous` as current if it's genuinely one of this device's
+  // accounts (a dApp could send any address).
+  const current = previous && accounts.includes(previous) ? previous : null;
+
+  // Single-account fast path: exactly one account on the device AND it's the
+  // one this dApp already uses → nothing to choose, finish immediately. The
+  // popup closes itself via postResultToOpener; the rendered list below is
+  // only ever visible if that handover fails. Multi-account devices always
+  // see the full picker — that's the #89 switch opportunity.
+  if (ret && current && accounts.length === 1) {
+    finish(`?nido_address=${current}`);
+  }
+
   for (const cAddress of accounts) {
     const name = loadAccountName(cAddress);
     const btn = document.createElement('button');
@@ -183,6 +207,16 @@ import Toast from '../../components/Toast.astro';
     info.appendChild(addr);
     btn.appendChild(info);
 
+    // #89: highlight the account this dApp is currently connected to, so a
+    // reconnect reads as "keep this one or switch", never a silent re-bind.
+    if (cAddress === current) {
+      btn.classList.add('current');
+      const tag = document.createElement('span');
+      tag.className = 'account-current';
+      tag.textContent = 'Connected';
+      btn.appendChild(tag);
+    }
+
     const chev = document.createElement('span');
     chev.className = 'chev';
     chev.innerHTML =
@@ -190,7 +224,7 @@ import Toast from '../../components/Toast.astro';
     btn.appendChild(chev);
 
     btn.addEventListener('click', () => {
-      finish(`?g2c_address=${cAddress}`);
+      finish(`?nido_address=${cAddress}`);
     });
     $list.appendChild(btn);
   }

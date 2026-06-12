@@ -1,10 +1,10 @@
-import type { Friend, MultisigRecoveryBlock } from '@g2c/passkey-sdk';
+import type { Friend, MultisigRecoveryBlock } from '@nidohq/passkey-sdk';
 import {
   multisigRecoveryModule,
   resolveFriendInput,
   resolveName,
   fetchRegistryAddress,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import { installRecovery } from './recoveryActions.js';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
@@ -77,6 +77,8 @@ export function mountRecoveryForm(container: HTMLElement, account: string): void
     container.innerHTML = '';
   });
   $('#rc-save').addEventListener('click', async () => {
+    const existingError = container.querySelector('.form-error');
+    if (existingError) existingError.textContent = '';
     if (!validate()) return;
     const saveBtn = $('#rc-save') as HTMLButtonElement;
     saveBtn.disabled = true;
@@ -87,7 +89,8 @@ export function mountRecoveryForm(container: HTMLElement, account: string): void
       setTimeout(() => location.reload(), 800);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      alert('Failed to install recovery: ' + msg);
+      console.error('Failed to install recovery:', e);
+      showFormError('Failed to save: ' + msg);
       saveBtn.disabled = false;
       saveBtn.textContent = 'Sign & save';
     }
@@ -100,7 +103,7 @@ export function mountRecoveryForm(container: HTMLElement, account: string): void
       row.className = 'friend-row';
       row.style.cssText = 'display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem';
       row.innerHTML = `
-        <input value="${f.inputAs}" placeholder="g2c name, C…, or G…" style="flex:1"/>
+        <input value="${f.inputAs}" placeholder="name, C…, or G…" style="flex:1"/>
         <span class="resolve-status muted" style="font-size:0.85em"></span>
         <button class="remove" type="button">\xd7</button>
       `;
@@ -154,13 +157,24 @@ export function mountRecoveryForm(container: HTMLElement, account: string): void
     ($('#rc-summary') as HTMLElement).textContent = multisigRecoveryModule.summarize(draft);
   }
 
+  function showFormError(msg: string) {
+    let errEl = container.querySelector<HTMLElement>('.form-error');
+    if (!errEl) {
+      errEl = document.createElement('p');
+      errEl.className = 'form-error muted';
+      errEl.style.cssText = 'color:var(--warn,#b45309);margin-top:0.5rem;font-size:13px;';
+      container.querySelector('.actions')!.before(errEl);
+    }
+    errEl.textContent = msg;
+  }
+
   function validate(): boolean {
     if (draft.friends.length < 1) {
-      alert('Add at least one friend.');
+      showFormError('Add at least one friend.');
       return false;
     }
     if (draft.friends.some((f) => !f.address)) {
-      alert('Some friends did not resolve.');
+      showFormError('Some friends did not resolve — check the addresses.');
       return false;
     }
     return true;

@@ -18,7 +18,7 @@
 
 **Byte-identity invariant:** the originator freezes a single absolute `parentSignatureExpirationLedger` into the `RotationHandoff`; the friend recomputes the parent auth digest via `buildAuthHashAt(parentEntry, TESTNET, thatLedger)` + `computeAuthDigest(payload, [recoveryRuleId])` — must be identical across originator/friend/chain or auth fails.
 
-**Setup (security page, `mountRecoveryForm`):** `#add-recovery` → form ids `#rc-friends` (friend rows, placeholder "g2c name, C…, or G…"), `#rc-add-friend`, `#rc-m-down`/`#rc-m-up`/`#rc-m-value` (threshold), `#rc-n-value`, `#rc-rule-name`, `#rc-cancel`, `#rc-save` → `installRecovery(account, draft)` (a primary-passkey self-mod adding the `CallContract(self)` recovery rule). Friends must be **pre-deployed** accounts.
+**Setup (security page, `mountRecoveryForm`):** `#add-recovery` → form ids `#rc-friends` (friend rows, placeholder "Nido name, C…, or G…"), `#rc-add-friend`, `#rc-m-down`/`#rc-m-up`/`#rc-m-value` (threshold), `#rc-n-value`, `#rc-rule-name`, `#rc-cancel`, `#rc-save` → `installRecovery(account, draft)` (a primary-passkey self-mod adding the `CallContract(self)` recovery rule). Friends must be **pre-deployed** accounts.
 
 **Originator ceremony** (`/security/recover/`, no `?handoff=`): `#om-new-key` (`createSessionPasskey` — new passkey, shim `create`) → `#om-remove-id` (old signer id, optional) → `#om-prepare` (`prepareRotation` → stages `g2c.{account}.recovery-rotation`, emits handoff link in `#om-link`) → `#om-collect` reveals: `#om-paste` + `#om-add-sig` + `#om-progress` + `#om-collected` → `#om-submit` (`submitRotation`, on-chain) + `#om-submit-status`.
 
@@ -210,7 +210,7 @@ test.describe('@testnet social recovery (1-of-1)', () => {
 - [ ] **Step 2: Run on testnet**
 
 ```bash
-cd /home/willem/c/s/g2c-phase3
+cd /home/willem/c/s/nido-phase3
 npx tsc -p ./packages/passkey-sdk/tsconfig.json && npx astro build --root ./packages/frontend
 set -a; . tests/.env.testnet; set +a
 npx playwright test --project=testnet-chromium tests/e2e/testnet/recovery.testnet.spec.ts

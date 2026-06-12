@@ -1,27 +1,27 @@
-# Status Message dApp — a stellar-scaffold template with the g2c wallet selector
+# Status Message dApp — a stellar-scaffold template with the Nido wallet selector
 
 A minimal [stellar-scaffold](https://github.com/theahaco/scaffold-stellar) dApp
 (React + Vite) that demonstrates a third‑party app connecting through the
 [`@creit.tech/stellar-wallets-kit`](https://github.com/Creit-Tech/Stellar-Wallets-Kit)
-**wallet selector** with the **g2c passkey smart account**
-(`@g2c/stellar-wallets-kit-module`) registered alongside the standard wallets
+**wallet selector** with the **Nido passkey smart account**
+(`@nidohq/stellar-wallets-kit-module`) registered alongside the standard wallets
 (Freighter, xBull, Albedo, LOBSTR, Rabet, Hana).
 
 The app reads and writes an on‑chain **status message** through an automatically
 generated TypeScript contract client. Writing requires the author's
-authorization, so saving routes through whichever wallet you picked — a g2c
+authorization, so saving routes through whichever wallet you picked: a Nido
 account signs with a passkey, classic wallets sign normally.
 
-![The wallet selector with g2c listed first](./docs/wallet-selector.png)
+![The wallet selector with Nido listed first](./docs/wallet-selector.png)
 
 ## What's inside
 
 | Path | Purpose |
 | --- | --- |
-| `contracts/status-message/` | The Soroban contract (one `String` per account). A self‑contained copy of `contracts/status-message` from the g2c repo root, with the historical `udpate_message` typo fixed to `update_message`. |
+| `contracts/status-message/` | The Soroban contract (one `String` per account). A self-contained copy of `contracts/status-message` from the Nido repo root, with the historical `udpate_message` typo fixed to `update_message`. |
 | `environments.toml` | Tells Scaffold to build + deploy the contract and generate a TS client for `development` (local) and `testing` (testnet). |
-| `src/util/wallet.ts` | Configures the wallet selector: registers `G2cModule` first, then the standard wallets. |
-| `src/util/moduleOrder.ts` | The pure “g2c first” ordering helper (unit‑tested in `moduleOrder.test.ts`). |
+| `src/util/wallet.ts` | Configures the wallet selector: registers `NidoModule` first, then the standard wallets. |
+| `src/util/moduleOrder.ts` | The pure "Nido first" ordering helper (unit-tested in `moduleOrder.test.ts`). |
 | `src/components/StatusMessage.tsx` | The read/write UI, built on the generated client. |
 
 ## Prerequisites
@@ -30,7 +30,7 @@ account signs with a passkey, classic wallets sign normally.
   [`stellar`](https://developers.stellar.org/docs/tools/cli/install-cli) +
   `stellar-scaffold` CLIs.
 - Install dependencies **from the repo root** (this example is a member of the
-  repo's npm workspace, so it consumes the local `@g2c/*` packages):
+  repo's npm workspace, so it consumes the local `@nidohq/*` packages):
 
   ```bash
   cd <repo-root> && npm install
@@ -49,8 +49,7 @@ builds the contract, deploys it to the network selected by `STELLAR_SCAFFOLD_ENV
 (`development` by default), and generates the client into `packages/status_message`
 + `src/contracts/status_message.ts`. Vite serves the app.
 
-> **Committed client for the live demo.** So the [GitHub Pages
-> deployment](https://theahaco.github.io/g2c/) can build with a plain
+> **Committed client for the live demo.** So the GitHub Pages deployment can build with a plain
 > `npm ci && vite build` (no Rust, no scaffold, no live RPC), the generated
 > client for the deployed testnet contract is checked in: the `staging`
 > environment binds `status_message` by id
@@ -83,36 +82,36 @@ uncommenting the testnet `PUBLIC_STELLAR_*` block. Scaffold needs a funded
 stellar keys generate testnet-user --network testnet --fund
 ```
 
-## Wallet selector & the g2c passkey
+## Wallet selector & the Nido passkey
 
-The picker shows g2c first, then the standard wallets. g2c is a **hosted**
-wallet: the passkey ceremony runs at the g2c deployment, not in this app. Set
+The picker shows Nido first, then the standard wallets. Nido is a **hosted**
+wallet: the passkey ceremony runs at the Nido deployment, not in this app. Set
 which deployment via `.env`:
 
 ```dotenv
-PUBLIC_G2C_BASE="https://nido.fyi"
+PUBLIC_NIDO_BASE="https://nido.fyi"
 ```
 
 `getAddress` opens `<base>/connect/` to pick a smart account; signing opens
 `<account>.<base>/sign/` for the passkey ceremony. A classic Stellar transaction
-cannot be signed by a g2c account (it's a contract), but the status‑message call
-is a Soroban invocation, which is exactly what g2c signs.
+cannot be signed by a Nido account (it's a contract), but the status-message call
+is a Soroban invocation, which is exactly what Nido signs.
 
-> Passkeys require a secure context. Serve the g2c deployment over HTTPS (or
+> Passkeys require a secure context. Serve the Nido deployment over HTTPS (or
 > `localhost`); an insecure `http://<hostname>` origin disables WebAuthn.
 
 ## Tests & checks
 
 ```bash
-npm test        # vitest — verifies g2c is registered first in the selector
+npm test        # vitest: verifies Nido is registered first in the selector
 npm run typecheck
 npm run build
 ```
 
 ## Using this outside the repo
 
-This example links the local `@g2c/*` packages through the repo's npm workspace.
-To lift it into its own project, swap the `@g2c/passkey-sdk` and
-`@g2c/stellar-wallets-kit-module` dependencies from `"*"` to their published
+This example links the local `@nidohq/*` packages through the repo's npm workspace.
+To lift it into its own project, swap the `@nidohq/passkey-sdk` and
+`@nidohq/stellar-wallets-kit-module` dependencies from `"*"` to their published
 versions, add a `"workspaces": ["packages/*"]` field back to `package.json` (so
 the generated contract client resolves), and run `npm install` in the project.

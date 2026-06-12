@@ -1,4 +1,4 @@
-use g2c_integration_tests::{build_contract_assertion, compute_auth_digest, deploy_smart_account};
+use nido_integration_tests::{build_contract_assertion, compute_auth_digest, deploy_smart_account};
 use p256::ecdsa::SigningKey;
 use soroban_sdk::auth::{Context, ContractContext};
 use soroban_sdk::testutils::Address as _;

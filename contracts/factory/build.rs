@@ -3,7 +3,7 @@
 //! The factory embeds the smart-account contract wasm (via `include_bytes!` in
 //! `src/contract.rs`) so it can derive the deploy hash at runtime instead of
 //! hardcoding it. The wasm is produced by `just build-contracts` at
-//! `target/wasm32v1-none/contract/g2c_smart_account.wasm`.
+//! `target/wasm32v1-none/contract/nido_smart_account.wasm`.
 //!
 //! This script copies that wasm to a stable staging location —
 //!   <workspace-target>/stellar/<STELLAR_NETWORK or "local">/smart_account_0_1_0.wasm
@@ -32,7 +32,7 @@ fn main() {
     let built_wasm = target_dir
         .join("wasm32v1-none")
         .join("contract")
-        .join("g2c_smart_account.wasm");
+        .join("nido_smart_account.wasm");
 
     // Mirror `stellar_build`: network dir defaults to "local".
     let network = std::env::var("STELLAR_NETWORK").unwrap_or_else(|_| "local".to_owned());

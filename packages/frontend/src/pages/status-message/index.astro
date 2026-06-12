@@ -13,7 +13,7 @@ import Icon from "../../components/Icon.astro";
 <NidoLayout title="Status Message">
   <div class="col-scroll screen-in pad">
     <div class="topbar">
-      <Logo mark size={20} />
+      <a href="/" class="topbar-mark"><Logo mark size={20} /></a>
       <div class="header-links">
         <a id="account-link" class="chip hidden">Open wallet</a>
         <a id="home-link" class="chip" href="/">Home</a>
@@ -29,7 +29,7 @@ import Icon from "../../components/Icon.astro";
       </p>
     </header>
 
-    <div id="error-box" class="sm-error" style="display:none"></div>
+    <div id="error-box" role="alert" class="alert danger" style="display:none"></div>
 
     <!-- Delegation status banner -->
     <div id="delegation-status"></div>
@@ -81,7 +81,7 @@ import Icon from "../../components/Icon.astro";
           <p class="sm-info">
             This panel talks to your wallet <strong>only through</strong>
             <code>@creit.tech/stellar-wallets-kit</code>. The
-            <code>@g2c/stellar-wallets-kit-module</code> registers Nido
+            <code>@nidohq/stellar-wallets-kit-module</code> registers Nido
             <strong>alongside</strong> the standard wallets (Freighter, xBull, …) so
             you pick one from the kit's selector modal — no Nido-specific connect
             code. For a Nido smart account, Set note builds the
@@ -90,9 +90,9 @@ import Icon from "../../components/Icon.astro";
             <code>/sign/</code>), then submits the returned signed XDR.
           </p>
           <div class="field">
-            <g2c-wallet-button id="kit-wallet"></g2c-wallet-button>
+            <nido-wallet-button id="kit-wallet"></nido-wallet-button>
           </div>
-          <div id="kit-nong2c" class="sm-display hidden">
+          <div id="kit-non-nido" class="sm-display hidden">
             <div class="value">
               This demo signs as a Nido <strong>smart account</strong> (C-address).
               The selected wallet is a classic Stellar account — switch to a Nido
@@ -160,12 +160,6 @@ import Icon from "../../components/Icon.astro";
     padding: 1px 5px; border-radius: var(--r-sm);
   }
 
-  .sm-error {
-    background: var(--acc-soft); color: var(--danger);
-    border: 1px solid var(--acc-glow); border-radius: var(--r-md);
-    padding: 12px 14px; margin: 0 0 16px; font-size: 14px; font-weight: 600;
-  }
-
   .sm-display {
     background: var(--paper-3); border: 1px solid var(--line);
     border-radius: var(--r-md); padding: 14px 16px; margin: 14px 0 0;
@@ -177,31 +171,31 @@ import Icon from "../../components/Icon.astro";
   .sm-display .value { font-size: 15px; color: var(--ink); margin-top: 5px; word-break: break-word; }
   .sm-display a { display: inline-block; margin-top: 8px; font-size: 13px; }
 
-  /* ---- <g2c-wallet-button> reskin (Nido tokens) ---- */
-  g2c-wallet-button .g2c-wb {
+  /* ---- <nido-wallet-button> reskin (Nido tokens) ---- */
+  nido-wallet-button .nido-wb {
     display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
   }
-  g2c-wallet-button .g2c-wb-connect { width: 100%; }
-  g2c-wallet-button .g2c-wb-meta {
+  nido-wallet-button .nido-wb-connect { width: 100%; }
+  nido-wallet-button .nido-wb-meta {
     display: inline-flex; align-items: center; gap: 9px; flex: 1; min-width: 0;
   }
-  g2c-wallet-button .g2c-wb-addr {
+  nido-wallet-button .nido-wb-addr {
     font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft);
     word-break: break-all;
   }
-  g2c-wallet-button .g2c-wb-warning {
+  nido-wallet-button .nido-wb-warning {
     flex-basis: 100%; font-size: 12.5px; color: var(--warn);
     background: var(--warn-soft); border-radius: var(--r-sm); padding: 8px 11px;
   }
-  g2c-wallet-button .g2c-wb-warning a { color: var(--warn); font-weight: 700; }
-  g2c-wallet-button .g2c-wb-error {
+  nido-wallet-button .nido-wb-warning a { color: var(--warn); font-weight: 700; }
+  nido-wallet-button .nido-wb-error {
     flex-basis: 100%; font-size: 12.5px; color: var(--danger);
   }
 </style>
 
 <script>
   import { Buffer } from "buffer";
-  import { Client } from "status-message";
+  import { Client } from "@nidohq/status-message";
   import {
     buildAuthHash,
     computeAuthDigest,
@@ -215,12 +209,12 @@ import Icon from "../../components/Icon.astro";
     forgetSessionKeyMaterial,
     signWithSessionPasskey,
     fetchRegistryAddress,
-  } from "@g2c/passkey-sdk";
+  } from "@nidohq/passkey-sdk";
   import { findRuleForPubkey, fetchVerifierAddress } from "../../lib/policyChainFetch.js";
   import { startDelegation, readDelegationReturn, consumePendingDelegation } from "../../lib/delegationHandover.js";
   import { Keypair, Networks, TransactionBuilder, Transaction, rpc, xdr } from "@stellar/stellar-sdk";
-  import { defineG2cWalletButton, WALLET_CHANGED_EVENT } from "../../components/g2c-wallet-button.js";
-  import { signTransaction as kitSignTransaction, isG2cWallet, type WalletSession } from "../../lib/walletConnect.js";
+  import { defineNidoWalletButton, WALLET_CHANGED_EVENT } from "../../components/nido-wallet-button.js";
+  import { signTransaction as kitSignTransaction, isNidoWallet, type WalletSession } from "../../lib/walletConnect.js";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
   // Resolved by name via the on-chain registry (with a single hardcoded
@@ -788,17 +782,17 @@ import Icon from "../../components/Icon.astro";
   // ===================================================================
   //
   // Everything below is what an *arbitrary* dApp would write: it knows
-  // nothing about g2c passkeys, subdomains, or the WebAuthn verifier. It only
+  // nothing about Nido passkeys, subdomains, or the WebAuthn verifier. It only
   // knows the kit API (`connect`/`signTransaction`) and that it registered the
-  // g2c module ALONGSIDE the standard wallets (via the reusable helper in
+  // Nido module ALONGSIDE the standard wallets (via the reusable helper in
   // ../../lib/walletConnect.ts). The user picks a wallet from the kit's
   // selector modal; the module + /connect/ + /sign/ pages do all the
-  // g2c-specific work behind the redirect ceremony.
+  // Nido-specific work behind the redirect ceremony.
 
   {
     const $kitWallet = document.getElementById("kit-wallet")!;
 
-    // Tell the button the g2c apex base BEFORE it upgrades — the page lives at
+    // Tell the button the Nido apex base BEFORE it upgrades: the page lives at
     // `status-message[.--pr-N].<base>`, and `stripSubdomain` recovers the apex
     // (preserving the `--pr-N` preview prefix, which a naive last-two-labels
     // split would drop). Set the attribute first so the element's
@@ -807,17 +801,17 @@ import Icon from "../../components/Icon.astro";
     $kitWallet.setAttribute("base", apexBase);
     $kitWallet.setAttribute("network-passphrase", Networks.TESTNET);
 
-    // Register the <g2c-wallet-button> custom element. It inits the kit once
-    // (g2c + standard modules) and owns connect/disconnect/session-restore.
-    defineG2cWalletButton();
+    // Register the <nido-wallet-button> custom element. It inits the kit once
+    // (Nido + standard modules) and owns connect/disconnect/session-restore.
+    defineNidoWalletButton();
     const $kitMessageInput = document.getElementById("kit-message-input") as HTMLInputElement;
     const $kitSet = document.getElementById("kit-set") as HTMLButtonElement;
     const $kitStatus = document.getElementById("kit-status")!;
     const $kitStatusValue = document.getElementById("kit-status-value")!;
     const $kitTxLink = document.getElementById("kit-tx-link") as HTMLAnchorElement;
-    const $kitNonG2c = document.getElementById("kit-nong2c")!;
+    const $kitNonNido = document.getElementById("kit-non-nido")!;
 
-    // The currently connected session, or null. Only g2c (C-address) sessions
+    // The currently connected session, or null. Only Nido (C-address) sessions
     // can drive the smart-account set-message flow below.
     let kitSession: WalletSession | null = null;
 
@@ -828,10 +822,10 @@ import Icon from "../../components/Icon.astro";
 
     function applySession(session: WalletSession | null) {
       kitSession = session;
-      if (session && isG2cWallet(session.walletId)) {
-        // A g2c smart account: enable set-message and feed the C-address into
+      if (session && isNidoWallet(session.walletId)) {
+        // A Nido smart account: enable set-message and feed the C-address into
         // the read/load + delegation sections above.
-        $kitNonG2c.classList.add("hidden");
+        $kitNonNido.classList.add("hidden");
         $kitSet.disabled = false;
         $contractInput.value = session.walletAddress;
         updateDelegationBanner(session.walletAddress);
@@ -839,10 +833,10 @@ import Icon from "../../components/Icon.astro";
       } else if (session) {
         // A classic G-address wallet — degrade gracefully: the set-message
         // flow signs as a smart account, so it can't use this wallet.
-        $kitNonG2c.classList.remove("hidden");
+        $kitNonNido.classList.remove("hidden");
         $kitSet.disabled = true;
       } else {
-        $kitNonG2c.classList.add("hidden");
+        $kitNonNido.classList.add("hidden");
         $kitSet.disabled = true;
       }
     }
@@ -857,8 +851,8 @@ import Icon from "../../components/Icon.astro";
       clearError();
       const message = $kitMessageInput.value.trim();
       const kitAccount = kitSession?.walletAddress ?? null;
-      if (!kitAccount || !kitSession || !isG2cWallet(kitSession.walletId)) {
-        showError("Connect a g2c smart-account wallet first.");
+      if (!kitAccount || !kitSession || !isNidoWallet(kitSession.walletId)) {
+        showError("Connect a Nido smart-account wallet first.");
         return;
       }
       if (!message) { showError("Enter a message to set via the kit."); return; }
@@ -884,7 +878,7 @@ import Icon from "../../components/Icon.astro";
         );
         const unsignedXdr = tx.built!.toXDR();
 
-        // 2. Hand the XDR to the kit. The g2c module opens `<account>.<base>/sign/`,
+        // 2. Hand the XDR to the kit. The Nido module opens `<account>.<base>/sign/`,
         //    runs the passkey ceremony, and returns the XDR with the smart
         //    account's auth entry signed (SEP-43: signing != submitting).
         kitSetStatus("Awaiting wallet signature (passkey)…");

@@ -20,7 +20,7 @@ interface Props {
 
 const {
   title,
-  description = "Your passkey-secured Stellar smart account.",
+  description = "A safe place for everything you own — secured by your passkey on Stellar.",
   shell = "app",
 } = Astro.props;
 
@@ -30,6 +30,7 @@ const {
 // page/subdomain; per-name cards need an edge function (tracked separately).
 const ogImage = new URL("/og-image.png", Astro.site).href;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const exampleDappUrl = import.meta.env.PUBLIC_EXAMPLE_DAPP_URL as string | undefined;
 ---
 
 <!doctype html>
@@ -37,8 +38,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#FFF8F0" />
+    <meta name="color-scheme" content="light" />
+    <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{title}</title>
+    <title>{!title || title.includes('Nido') ? title || 'Nido' : `${title} · Nido`}</title>
     <meta name="description" content={description} />
 
     <!-- Open Graph / Twitter card. Generic, build-time tags so a shared Nido
@@ -69,23 +73,26 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
         <p>Passkeys need your real browser to work their magic.</p>
         <p>Tap the menu (<strong>&middot;&middot;&middot;</strong>) and choose <strong>"Open in Safari"</strong> or <strong>"Open in Browser"</strong> — we'll be right here.</p>
       </div>
-      {shell === "bleed" && <slot />}
+      <a href="#main-content" class="skip-link">Skip to content</a>
+      {shell === "bleed" && <main id="main-content"><slot /></main>}
       {shell === "focused" && (
         <div class="appwrap">
-          <div class="col"><slot /></div>
+          <main id="main-content" class="col"><slot /></main>
         </div>
       )}
       {shell === "app" && (
         <div class="appwrap appwrap-app">
           <Sidebar />
-          <div class="col col-app"><slot /></div>
+          <main id="main-content" class="col col-app"><slot /></main>
         </div>
       )}
-      <footer class="site-footer">
-        <a href="https://theahaco.github.io/g2c/" target="_blank" rel="noopener">
-          Example dApp ↗
-        </a>
-      </footer>
+      {shell !== "focused" && exampleDappUrl && (
+        <footer class="site-footer">
+          <a href={exampleDappUrl} target="_blank" rel="noopener">
+            Example app ↗
+          </a>
+        </footer>
+      )}
     </div>
   </body>
 </html>
@@ -132,7 +139,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     margin: 0.25rem 0;
   }
 
-  /* Global link to the live example dApp (status-message on GitHub Pages). */
+  /* Global link to the live example app (status-message on GitHub Pages). */
   .site-footer {
     text-align: center;
     padding: 1.25rem 1rem 2rem;
@@ -155,11 +162,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
   // Preview banner
   const sub = window.location.hostname.split(".")[0];
   const match = sub.match(/(?:--)?pr-(\d+)$/);
-  if (match) {
+  const githubRepository = import.meta.env.PUBLIC_GITHUB_REPOSITORY;
+  if (match && githubRepository) {
     const prNum = match[1];
     const banner = document.getElementById("preview-banner") as HTMLAnchorElement;
     banner.textContent = `Preview PR #${prNum}`;
-    banner.href = `https://github.com/theahaco/g2c/pull/${prNum}`;
+    banner.href = `https://github.com/${githubRepository}/pull/${prNum}`;
     banner.style.display = "block";
   }
 

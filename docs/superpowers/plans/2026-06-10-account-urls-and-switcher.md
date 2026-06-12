@@ -6,7 +6,7 @@
 
 **Architecture:** Centralize bare-link construction in one tested helper (`lib/accountLinks.ts`). Extract the switcher's runtime out of `MyNidoMenu.astro`'s inline script into `lib/nidoSwitcher.ts` (`mountNidoSwitcher(root)`), scoped per-root by data-attributes so multiple triggers coexist on a page. `MyNidoMenu.astro` becomes a thin wrapper with a `trigger` slot + `placement` prop; the account topbar and the shared `Sidebar` render it with the existing chip as the trigger.
 
-**Tech Stack:** Astro (static), TypeScript, vitest, `@g2c/passkey-sdk` (`accountUrl`, `stripSubdomain`), `@stellar/stellar-sdk`.
+**Tech Stack:** Astro (static), TypeScript, vitest, `@nidohq/passkey-sdk` (`accountUrl`, `stripSubdomain`), `@stellar/stellar-sdk`.
 
 Spec: `docs/superpowers/specs/2026-06-10-account-urls-and-switcher-design.md`
 
@@ -49,7 +49,7 @@ Expected: `Test Files 15 passed`, `Tests 87 passed`.
 - Create: `packages/frontend/src/lib/accountLinks.ts`
 - Test: `packages/frontend/src/lib/accountLinks.test.ts`
 
-Background: `accountUrl(host, nameOrId, path = "/")` (in `@g2c/passkey-sdk`, `packages/passkey-sdk/src/url.ts`) returns a protocol-relative `//<id>.<apex><path>` and lowercases the id/name. It already defaults `path` to `/`, so a bare account URL is just `accountUrl(host, nameOrId, "/")`.
+Background: `accountUrl(host, nameOrId, path = "/")` (in `@nidohq/passkey-sdk`, `packages/passkey-sdk/src/url.ts`) returns a protocol-relative `//<id>.<apex><path>` and lowercases the id/name. It already defaults `path` to `/`, so a bare account URL is just `accountUrl(host, nameOrId, "/")`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -112,7 +112,7 @@ Create `packages/frontend/src/lib/accountLinks.ts`:
 // subdomain — `alice.nido.fyi` — and that root redirects to `/account/`
 // (src/pages/index.astro). So a shareable / navigational link to an account is
 // the bare subdomain, with no `/account/` suffix.
-import { accountUrl } from "@g2c/passkey-sdk";
+import { accountUrl } from "@nidohq/passkey-sdk";
 import type { MyNidoRow } from "./myNidoModel";
 
 /** Protocol-relative bare account URL, e.g. `//alice.nido.fyi/`. */
@@ -156,7 +156,7 @@ git commit -m "feat(frontend): add bare account-link helpers (no /account suffix
 
 - [ ] **Step 1: Add the import**
 
-In the script's import block (it already imports `accountUrl`, `stripSubdomain`, … from `@g2c/passkey-sdk`), add below the SDK import:
+In the script's import block (it already imports `accountUrl`, `stripSubdomain`, … from `@nidohq/passkey-sdk`), add below the SDK import:
 
 ```ts
   import { accountShareUrl, accountShareLabel } from "../../lib/accountLinks";
@@ -246,7 +246,7 @@ Append to the end of `Sidebar.astro`:
 
 ```astro
 <script>
-  import { stripSubdomain } from "@g2c/passkey-sdk";
+  import { stripSubdomain } from "@nidohq/passkey-sdk";
   // On an account subdomain, "/" redirects back to /account/, so the brand would
   // loop. Point it at the apex home instead (mirrors the mobile #home-link fix).
   const brand = document.getElementById("sidebar-home-link") as HTMLAnchorElement | null;
@@ -291,7 +291,7 @@ import {
   loadPendingAccounts,
   loadAccountName,
   activateAccount,
-} from "@g2c/passkey-sdk";
+} from "@nidohq/passkey-sdk";
 import { rpc, xdr } from "@stellar/stellar-sdk";
 import { buildMyNidoModel, type MyNidoRow } from "./myNidoModel";
 import { nidoRowHref } from "./accountLinks";

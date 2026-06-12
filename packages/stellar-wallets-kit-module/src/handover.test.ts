@@ -20,19 +20,19 @@ class MemStore {
 }
 
 describe('parseConnectReturn', () => {
-  it('extracts a valid g2c_address', () => {
-    const qs = `?g2c_address=${C}`;
+  it('extracts a valid nido_address', () => {
+    const qs = `?nido_address=${C}`;
     expect(parseConnectReturn(qs)).toEqual({ status: 'ok', address: C });
   });
   it('uppercases the address it returns', () => {
-    const qs = `?g2c_address=${C.toLowerCase()}`;
+    const qs = `?nido_address=${C.toLowerCase()}`;
     expect(parseConnectReturn(qs)).toEqual({ status: 'ok', address: C });
   });
   it('reports cancellation', () => {
-    expect(parseConnectReturn('?g2c_connect=cancelled')).toEqual({ status: 'cancelled' });
+    expect(parseConnectReturn('?nido_connect=cancelled')).toEqual({ status: 'cancelled' });
   });
   it('rejects a malformed address', () => {
-    expect(parseConnectReturn('?g2c_address=nope')).toEqual({ status: 'error', error: expect.any(String) });
+    expect(parseConnectReturn('?nido_address=nope')).toEqual({ status: 'error', error: expect.any(String) });
   });
   it('returns null when no relevant params are present', () => {
     expect(parseConnectReturn('?foo=bar')).toBeNull();
@@ -41,20 +41,23 @@ describe('parseConnectReturn', () => {
 
 describe('parseSignReturn', () => {
   it('extracts a signed tx XDR', () => {
-    expect(parseSignReturn('?g2c_signed=AAAA&kind=tx')).toEqual({
+    expect(parseSignReturn('?nido_signed=AAAA&kind=tx')).toEqual({
       status: 'ok', kind: 'tx', result: 'AAAA',
     });
   });
   it('extracts a signed message', () => {
-    expect(parseSignReturn('?g2c_signed=ZZZ&kind=message')).toEqual({
+    expect(parseSignReturn('?nido_signed=ZZZ&kind=message')).toEqual({
       status: 'ok', kind: 'message', result: 'ZZZ',
     });
   });
   it('reports cancellation', () => {
-    expect(parseSignReturn('?g2c_sign=cancelled')).toEqual({ status: 'cancelled' });
+    expect(parseSignReturn('?nido_sign=cancelled')).toEqual({ status: 'cancelled' });
+  });
+  it('reports a switch-account request', () => {
+    expect(parseSignReturn('?nido_sign=switch-account')).toEqual({ status: 'switch-account' });
   });
   it('reports an error message', () => {
-    expect(parseSignReturn('?g2c_sign=error&g2c_error=boom')).toEqual({ status: 'error', error: 'boom' });
+    expect(parseSignReturn('?nido_sign=error&nido_error=boom')).toEqual({ status: 'error', error: 'boom' });
   });
   it('returns null when no relevant params are present', () => {
     expect(parseSignReturn('?foo=bar')).toBeNull();

@@ -18,20 +18,34 @@ async function gotoSign(page: import('@playwright/test').Page, query: string) {
 }
 
 test.describe('@fast dapp sign (message)', () => {
-  test('signs a message and returns g2c_signed', async ({ page }) => {
+  test('signs a message and returns nido_signed', async ({ page }) => {
     await gotoSign(page, 'kind=message&message=' + encodeURIComponent('hello world'));
     await expect(page.locator('#needs-register')).toBeHidden();
     await expect(page.locator('#approve')).toBeEnabled();
     await page.locator('#approve').click();
-    await page.waitForURL('**/cb?g2c_signed=**', { timeout: 15_000 });
+    await page.waitForURL('**/cb?nido_signed=**', { timeout: 15_000 });
     const u = new URL(page.url());
     expect(u.searchParams.get('kind')).toBe('message');
-    expect(u.searchParams.get('g2c_signed')).toBeTruthy();
+    expect(u.searchParams.get('nido_signed')).toBeTruthy();
   });
 
-  test('cancel returns g2c_sign=cancelled', async ({ page }) => {
+  test('cancel returns nido_sign=cancelled', async ({ page }) => {
     await gotoSign(page, 'kind=message&message=hi');
     await page.locator('#cancel').click();
-    await page.waitForURL('**/cb?g2c_sign=cancelled**', { timeout: 10_000 });
+    await page.waitForURL('**/cb?nido_sign=cancelled**', { timeout: 10_000 });
+  });
+
+  // #89: the ceremony is bound to one account; the page must say WHICH and
+  // offer a way out for users who meant to use a different one.
+  test('shows the bound account identity prominently', async ({ page }) => {
+    await gotoSign(page, 'kind=message&message=hi');
+    // No friendly name stored on this origin → the short address is the title.
+    await expect(page.locator('#id-name')).toContainText('CDLZFC');
+  });
+
+  test('"Use a different account" returns nido_sign=switch-account', async ({ page }) => {
+    await gotoSign(page, 'kind=message&message=hi');
+    await page.locator('#switch-account').click();
+    await page.waitForURL('**/cb?nido_sign=switch-account**', { timeout: 10_000 });
   });
 });

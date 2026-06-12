@@ -1,14 +1,14 @@
 /**
- * <g2c-wallet-button> — a vanilla-TS custom element mirroring the
+ * <nido-wallet-button> — a vanilla-TS custom element mirroring the
  * stellar-scaffold-frontend `WalletButton` UX:
  *   - logged out  → a "Connect wallet" button that opens the kit's selector
- *     modal (g2c + standard wallets).
+ *     modal (Nido + standard wallets).
  *   - logged in   → the connected address (shortened) + a Disconnect action.
  *   - restores the persisted session on load AND re-checks on window focus
  *     (lighter than the scaffold's 1s React polling).
  *   - renders any per-wallet warnings from the behaviour table.
  *
- * It emits a `g2c:wallet-changed` CustomEvent (detail: WalletSession | null) on
+ * It emits a `nido:wallet-changed` CustomEvent (detail: WalletSession | null) on
  * connect/disconnect/restore so the host page can react (e.g. the
  * status-message demo wiring its `author` to the connected account).
  *
@@ -23,7 +23,7 @@ import {
   initWalletKit,
   restore,
   warningsFor,
-  isG2cWallet,
+  isNidoWallet,
   type WalletSession,
 } from '../lib/walletConnect.js';
 
@@ -38,9 +38,9 @@ function esc(s: string): string {
   );
 }
 
-export const WALLET_CHANGED_EVENT = 'g2c:wallet-changed';
+export const WALLET_CHANGED_EVENT = 'nido:wallet-changed';
 
-export class G2cWalletButton extends HTMLElement {
+export class NidoWalletButton extends HTMLElement {
   private session: WalletSession | null = null;
   private busy = false;
   private onFocus = () => this.recheck();
@@ -132,7 +132,7 @@ export class G2cWalletButton extends HTMLElement {
   }
 
   private setError(msg: string): void {
-    const el = this.querySelector<HTMLElement>('.g2c-wb-error');
+    const el = this.querySelector<HTMLElement>('.nido-wb-error');
     if (el) {
       el.textContent = msg;
       el.style.display = 'block';
@@ -145,13 +145,13 @@ export class G2cWalletButton extends HTMLElement {
       // Logged-out: a warm "Connect your Nido" call-to-action. Reskin only —
       // the click handler + connect() flow are unchanged.
       this.innerHTML = `
-        <div class="g2c-wb">
-          <button type="button" class="g2c-wb-connect btn acc"${this.busy ? ' disabled' : ''}>
+        <div class="nido-wb">
+          <button type="button" class="nido-wb-connect btn acc"${this.busy ? ' disabled' : ''}>
             ${this.busy ? 'Finding your nest…' : 'Connect your Nido'}
           </button>
-          <div class="g2c-wb-error" style="display:none"></div>
+          <div class="nido-wb-error" style="display:none"></div>
         </div>`;
-      this.querySelector<HTMLButtonElement>('.g2c-wb-connect')!.addEventListener('click', () =>
+      this.querySelector<HTMLButtonElement>('.nido-wb-connect')!.addEventListener('click', () =>
         this.handleConnect(),
       );
       return;
@@ -159,34 +159,34 @@ export class G2cWalletButton extends HTMLElement {
 
     const behavior = warningsFor(s.walletId);
     const warningHtml = behavior.warning
-      ? `<div class="g2c-wb-warning">⚠ ${esc(behavior.warning)}${
+      ? `<div class="nido-wb-warning">⚠ ${esc(behavior.warning)}${
           behavior.helpUrl
             ? ` <a href="${esc(behavior.helpUrl)}" target="_blank" rel="noopener">learn more</a>`
             : ''
         }</div>`
       : '';
-    const kindLabel = isG2cWallet(s.walletId) ? 'Nido smart account' : esc(s.walletId);
+    const kindLabel = isNidoWallet(s.walletId) ? 'Nido smart account' : esc(s.walletId);
 
     this.innerHTML = `
-      <div class="g2c-wb g2c-wb-connected">
-        <span class="g2c-wb-meta">
-          <span class="g2c-wb-id chip ${isG2cWallet(s.walletId) ? 'acc' : ''}">${kindLabel}</span>
-          <span class="g2c-wb-addr" title="${esc(s.walletAddress)}">${esc(shorten(s.walletAddress))}</span>
+      <div class="nido-wb nido-wb-connected">
+        <span class="nido-wb-meta">
+          <span class="nido-wb-id chip ${isNidoWallet(s.walletId) ? 'acc' : ''}">${kindLabel}</span>
+          <span class="nido-wb-addr" title="${esc(s.walletAddress)}">${esc(shorten(s.walletAddress))}</span>
         </span>
-        <button type="button" class="g2c-wb-disconnect btn ghost sm"${this.busy ? ' disabled' : ''}>
+        <button type="button" class="nido-wb-disconnect btn ghost sm"${this.busy ? ' disabled' : ''}>
           ${this.busy ? '…' : 'Disconnect'}
         </button>
         ${warningHtml}
       </div>`;
-    this.querySelector<HTMLButtonElement>('.g2c-wb-disconnect')!.addEventListener('click', () =>
+    this.querySelector<HTMLButtonElement>('.nido-wb-disconnect')!.addEventListener('click', () =>
       this.handleDisconnect(),
     );
   }
 }
 
 /** Register the element (idempotent). Call once before using the tag. */
-export function defineG2cWalletButton(): void {
-  if (typeof customElements !== 'undefined' && !customElements.get('g2c-wallet-button')) {
-    customElements.define('g2c-wallet-button', G2cWalletButton);
+export function defineNidoWalletButton(): void {
+  if (typeof customElements !== 'undefined' && !customElements.get('nido-wallet-button')) {
+    customElements.define('nido-wallet-button', NidoWalletButton);
   }
 }

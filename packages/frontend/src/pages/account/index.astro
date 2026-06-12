@@ -44,7 +44,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       </MyNidoMenu>
     </div>
 
-    <div id="error-box" class="alert danger" style="display:none; margin:8px 22px;"></div>
+    <div id="error-box" role="alert" class="alert danger" style="display:none; margin:8px 22px;"></div>
 
     <!-- ============================================================= -->
     <!-- SIGNING MODE — reskinned signature request                    -->
@@ -52,24 +52,39 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     <div id="signing-mode" class="hidden screen-in pad" style="padding-top:18px;">
       <div style="text-align:center; margin-bottom:18px;">
         <div style="width:72px; height:72px; border-radius:20px; background:var(--acc-soft); display:grid; place-items:center; margin:0 auto 14px;">
-          <Icon name="shieldcheck" size={36} color="var(--acc)" />
+          <span id="sign-icon-generic"><Icon name="shieldcheck" size={36} color="var(--acc)" /></span>
+          <span id="sign-icon-claim" class="hidden"><Icon name="sparkle" size={36} color="var(--acc)" /></span>
         </div>
-        <div class="disp" style="font-weight:800; font-size:26px;">Approve this request</div>
-        <p class="mut" style="font-size:14px; line-height:1.5; max-width:320px; margin:8px auto 0;">
-          A dApp is asking you to sign. Review it, then confirm with your passkey.
+        <div id="sign-title" class="disp" style="font-weight:800; font-size:26px;">Approve this request</div>
+        <p id="sign-sub" class="mut" style="font-size:14px; line-height:1.5; max-width:320px; margin:8px auto 0;">
+          An app is asking you to sign. Review it, then confirm with your passkey.
         </p>
       </div>
 
       <div class="card" style="padding:4px 16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px 0;">
+        <!-- Name row — shown only when this request is a recognized name claim
+             (the incoming hash matches the one the claim flow stashed). Default
+             hidden via inline display (NOT the .hidden class) because the row
+             also carries an inline display, and an inline style would otherwise
+             override the class and leak an empty row into the generic path. -->
+        <div id="sign-name-row" style="display:none; justify-content:space-between; align-items:center; gap:14px; padding:14px 0;">
+          <span class="mut" style="font-size:13.5px; font-weight:600; white-space:nowrap;">Name</span>
+          <code id="sign-name" class="mono" style="font-size:15px; font-weight:700; margin-left:auto; text-align:right; word-break:break-all; color:var(--acc-ink);"></code>
+        </div>
+        <div id="sign-from-row" style="display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px 0;">
           <span class="mut" style="font-size:13.5px; font-weight:600; white-space:nowrap;">From</span>
           <span id="sign-origin" class="mono" style="font-size:13px; margin-left:auto; text-align:right; word-break:break-all;"></span>
         </div>
-        <div style="display:flex; justify-content:space-between; gap:14px; padding:14px 0; border-top:1px solid var(--line-soft);">
+        <div id="sign-hash-row" style="display:flex; justify-content:space-between; gap:14px; padding:14px 0; border-top:1px solid var(--line-soft);">
           <span class="mut" style="font-size:13.5px; font-weight:600; white-space:nowrap;">Hash</span>
           <code id="sign-hash" class="mono" style="font-size:11.5px; margin-left:auto; text-align:right; word-break:break-all;"></code>
         </div>
       </div>
+      <!-- For a recognized name claim the verifiable details (the decoded
+           transaction + the raw hash) are collapsed behind this toggle (mirrors
+           the /sign/ page's "Show raw transaction"). Populated by JS. -->
+      <button id="sign-toggle-tech" type="button" class="hidden" style="background:none; border:none; color:var(--acc-ink); font-weight:700; cursor:pointer; font-size:12.5px; padding:0; margin:10px 0 0;">Show technical details</button>
+      <div id="sign-tech" class="hidden" style="margin-top:12px;"></div>
 
       <div id="sign-needs-register" style="margin-top:18px;">
         <p class="mut" style="font-size:13.5px; line-height:1.5; text-align:center; margin:0 0 14px;">
@@ -101,6 +116,9 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         <div>
           <div class="mut home-greeting-eyebrow">Welcome back</div>
           <h1 class="disp home-hello js-account-name">Your Nido</h1>
+          <button id="claim-name-top-btn" class="btn acc sm hidden" style="margin-top:8px; font-size:13px;" type="button">
+            Claim a name
+          </button>
         </div>
         <span class="chip acc"><span class="dot"></span> Testnet</span>
       </div>
@@ -129,7 +147,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           <button type="button" class="btn acc js-send" style="width:auto; padding:0 24px;">
             <Icon name="send" size={17} color="#fff" /> Send
           </button>
-          <button type="button" class="btn soft js-receive" style="width:auto; padding:0 24px;">
+          <button type="button" class="btn soft js-receive" style="width:auto; padding:0 24px;" aria-expanded="false" aria-controls="receive-section">
             <Icon name="receive" size={17} /> Receive
           </button>
         </div>
@@ -139,23 +157,37 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
            (H-02); "Prove" is demoted to neutral + renamed the concrete job it
            does, "Approve" (→ the focused /sign/ surface); "Settings" → "Security"
            with the shield glyph so the entry points agree on one label (K-03). -->
+
       <div class="span-all home-actions-mobile" style="display:flex; gap:6px; padding:26px 30px 6px;">
         <button id="send-action" class="qa js-send" type="button">
           <div class="circ"><Icon name="send" size={24} color="#fff" /></div>
           <span>Send</span>
         </button>
-        <button id="receive-action" class="qa js-receive" type="button">
+        <button id="receive-action" class="qa js-receive" type="button" aria-expanded="false" aria-controls="receive-section">
           <div class="circ soft"><Icon name="receive" size={23} /></div>
           <span>Receive</span>
         </button>
-        <a class="qa" href="/sign/">
-          <div class="circ soft"><Icon name="shieldcheck" size={23} /></div>
-          <span>Approve</span>
-        </a>
         <a class="qa" href="/security/">
           <div class="circ soft"><Icon name="shield" size={23} /></div>
           <span>Security</span>
         </a>
+        <button id="claim-name-mobile-action" class="qa hidden" type="button">
+          <div class="circ soft"><Icon name="sparkle" size={22} /></div>
+          <span>Claim</span>
+        </button>
+      </div>
+
+      <!-- Inline name-claim form — shared by the desktop greeting button and the
+           mobile quick action. Hidden until JS reveals it (unclaimed accounts only). -->
+      <div class="span-all hidden" id="claim-name-inline" style="padding:0 22px 6px;">
+        <p class="mut" style="font-size:13px; line-height:1.45; margin:0 0 8px;">
+          Use 1-15 lowercase letters and digits, starting with a letter. After it is claimed, we'll open the new domain address and register its passkey because browsers lock passkeys to the domain shown.
+        </p>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" style="font-size:13px; min-width:0; flex:1;" />
+          <button id="claim-name-btn" class="btn acc sm" type="button" style="font-size:13px;">Claim + passkey</button>
+        </div>
+        <div id="name-result" role="status" aria-live="polite" class="mut mono" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.5;"></div>
       </div>
 
       <!-- The XLM-only inline Send panel was retired here: "Send" now opens the
@@ -171,32 +203,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       <div class="grid-cell home-col-activity">
         <RecentActivityCard />
       </div>
-
-      <!-- ============ SECURITY AT-A-GLANCE (desktop dashboard, ≥1024) ============
-           A summary card beside Recent activity on the desktop Home. The chips
-           are filled from live on-chain policy data (fetchSecuritySummary), the
-           same source the full Security page renders. -->
-      <section class="card home-sec-card" style="padding:6px 22px 18px;">
-        <header style="display:flex; align-items:center; justify-content:space-between; padding:16px 0 8px;">
-          <span class="section-label">Security</span>
-          <a class="link" href="/security/" style="font-size:13.5px; font-weight:700;">Manage →</a>
-        </header>
-        <div class="row" style="border-top:none;">
-          <div class="rmain"><div class="rtitle">Passkey on this device</div><div class="rsub" style="font-family:var(--body);">You're the only one who gets in</div></div>
-          <span id="sec-passkey-chip" class="chip" style="flex:0 0 auto;">…</span>
-        </div>
-        <div class="row">
-          <div class="rmain"><div class="rtitle">Trusted friends</div><div class="rsub" style="font-family:var(--body);">Recover with people you trust</div></div>
-          <span id="sec-friends-chip" class="chip" style="flex:0 0 auto;">…</span>
-        </div>
-        <div class="row">
-          <div class="rmain"><div class="rtitle">Apps you've let in</div><div class="rsub" style="font-family:var(--body);">Acting on your behalf</div></div>
-          <span id="sec-apps-chip" class="chip" style="flex:0 0 auto;">…</span>
-        </div>
-        <a class="btn ghost" href="/security/" style="margin-top:18px; height:46px; font-size:14px;">
-          <Icon name="shield" size={16} /> Review who has access
-        </a>
-      </section>
 
       <!-- ============ RECEIVE PANEL (display-only) ============ -->
       <div class="grid-cell home-panel">
@@ -239,17 +245,6 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           </div>
         </div>
 
-        <div id="name-claim" class="hidden">
-          <p class="mut" style="font-size:13.5px; line-height:1.5; margin:0 0 14px;">
-            Claim a friendly name for your Nido. 1–15 characters, lowercase letters and digits, starting with a letter.
-          </p>
-          <div class="field">
-            <label for="name-input">Name</label>
-            <input id="name-input" class="input" placeholder="e.g. alice" maxlength="15" pattern="[a-z][a-z0-9]*" />
-          </div>
-          <button id="claim-name-btn" class="btn acc" style="margin-top:12px;">Claim this name</button>
-          <div id="name-result" class="mut mono" style="display:none; font-size:12.5px; margin-top:12px; text-align:center; line-height:1.5;"></div>
-        </div>
       </section>
       </div>
 
@@ -258,11 +253,11 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       <section id="register-section" class="hidden pad" style="padding-top:18px;">
         <span class="section-label" style="display:block; margin-bottom:12px;">Set up your passkey</span>
         <div class="card" style="padding:16px;">
-          <p class="mut" style="font-size:13.5px; line-height:1.5; margin:0 0 14px;">
+          <p id="register-copy" class="mut" style="font-size:13.5px; line-height:1.5; margin:0 0 14px;">
             Create a passkey bound to this Nido. It's how you'll prove it's you — no seed phrase, no password.
           </p>
           <button id="register-btn" class="btn acc">
-            <Icon name="key" size={20} color="#fff" /> Set up your passkey
+            <Icon name="key" size={20} color="#fff" /> <span id="register-label">Set up your passkey</span>
           </button>
         </div>
       </section>
@@ -313,16 +308,20 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     resolveNameCached,
     stripSubdomain,
     accountUrl,
+    saveAccount,
     saveCredential as sdkSaveCredential,
     loadCredential as sdkLoadCredential,
     saveAccountName,
     loadAccountName,
     fetchRegistryAddress,
-  } from "@g2c/passkey-sdk";
+  } from "@nidohq/passkey-sdk";
   import { accountShareUrl, accountShareLabel } from "../../lib/accountLinks";
   import { fetchVerifierAddress } from "../../lib/policyChainFetch";
-  import { fetchSecuritySummary } from "../../lib/securitySummary";
   import { toast } from "../../lib/toast";
+  import { describeSignRequest } from "../../lib/signRequestSummary";
+  import { describeTransaction } from "../../lib/transfer/txSummary";
+  import { renderNameRegister } from "../../lib/transfer/review";
+  import { esc } from "../../lib/html";
   import { withPasskeySheet } from "../../lib/passkeySheet";
   import { detectPasskeyLabel } from "../../lib/passkeyLabel";
   import { shortAddr } from "../../lib/address";
@@ -351,6 +350,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   const signHashParam = params.get("sign");
   const callbackUrl = params.get("callback");
   const isSigningMode = signHashParam && callbackUrl;
+  const shouldRegisterNamePasskey = params.get("namepasskey") === "1";
 
   // --- State ---
 
@@ -412,6 +412,12 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     return contractId ? sdkLoadCredential(contractId) : null;
   }
 
+  function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+    const buffer = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(buffer).set(bytes);
+    return buffer;
+  }
+
   // --- Shared: register passkey ---
 
   async function registerPasskey() {
@@ -450,7 +456,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     const cred = loadCredential();
     if (!cred) throw new Error("No passkey registered");
 
-    const challenge = hex2buf(hashHex);
+    const challenge = bytesToArrayBuffer(hex2buf(hashHex));
 
     const assertion = (await navigator.credentials.get({
       publicKey: {
@@ -458,7 +464,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         rpId: rpId,
         allowCredentials: [
           {
-            id: cred.credentialId,
+            id: bytesToArrayBuffer(cred.credentialId),
             type: "public-key",
           },
         ],
@@ -497,6 +503,12 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     return `Passkey ${action} was blocked. If you're using an in-app browser (Twitter, Instagram, etc.), tap the menu (…) and choose "Open in Safari" or "Open in Browser".`;
   }
 
+  function clearNamePasskeyParam() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("namepasskey");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
   function initAccountCard() {
     const display = contractId ? shortAddr(contractId, 6, 6) : "(unknown)";
     document.getElementById("contract-id")!.textContent = display;
@@ -523,6 +535,68 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   // SIGNING MODE
   // =====================
 
+  // The raw auth digest, as a labelled card — the irreducible "what you're
+  // signing" detail, shown inside the collapsible technical section.
+  function renderSignHashCard(hash: string): string {
+    return `<div class="card" style="padding:13px 16px;margin-top:10px;">
+      <div class="mut" style="font-size:12px;font-weight:600;margin-bottom:6px;">Signature hash</div>
+      <code class="mono" style="font-size:11.5px;word-break:break-all;line-height:1.5;">${esc(hash)}</code>
+    </div>`;
+  }
+
+  function renderStoredNameClaimDetails(name: string, signHash: string): string {
+    const account = contractId;
+    const registry = localStorage.getItem("g2c:name-registry-id");
+    const row = (label: string, valueHtml: string, first = false) => {
+      const border = first ? "" : "border-top:1px solid var(--line-soft);";
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;${border}">
+        <span class="mut" style="font-size:13px;font-weight:600;white-space:nowrap;">${label}</span>
+        <span style="font-size:13.5px;font-weight:600;text-align:right;min-width:0;word-break:break-word;">${valueHtml}</span>
+      </div>`;
+    };
+    const accountRow = account
+      ? row("For account", `<span class="mono">${esc(shortAddr(account))}</span>`)
+      : "";
+    const registryRow = registry
+      ? row("Registry", `<span class="mono">${esc(shortAddr(registry))}</span>`)
+      : "";
+    return `<div class="card" style="padding:2px 16px;">
+      ${row("Action", "Register a name", true)}
+      ${row("Name", `<code class="mono">${esc(name)}</code>`)}
+      ${accountRow}
+      ${registryRow}
+    </div>${renderSignHashCard(signHash)}`;
+  }
+
+  // Decode the transaction the claim flow stashed (same origin) and render it as
+  // human-readable detail, so "technical details" shows the actual register
+  // operation, not just the digest. Best-effort: any failure leaves the
+  // already-rendered hash card in place.
+  async function renderClaimTxDetails($tech: HTMLElement, signHash: string) {
+    const txXdr = localStorage.getItem("g2c:name-txXdr");
+    if (!txXdr) return;
+    try {
+      // stellar-sdk's XDR parsing needs the Buffer global (same lazy polyfill
+      // the claim/finalize paths use before any SDK call).
+      const { Buffer: B } = await import("buffer");
+      if (typeof globalThis.Buffer === "undefined") (globalThis as any).Buffer = B;
+
+      const summary = describeTransaction(txXdr, Networks.TESTNET);
+      const reg = summary.ops.find((o) => o.kind === "name-register");
+      if (!reg || reg.kind !== "name-register") return;
+
+      let fee: bigint | undefined;
+      try {
+        fee = BigInt(summary.fee);
+      } catch {
+        fee = undefined;
+      }
+      $tech.innerHTML = renderNameRegister(reg, fee) + renderSignHashCard(signHash);
+    } catch {
+      /* keep the hash-only card already shown */
+    }
+  }
+
   function initSigningMode() {
     document.getElementById("signing-mode")!.classList.remove("hidden");
 
@@ -544,6 +618,46 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     }
     document.getElementById("sign-origin")!.textContent = originDisplay;
     document.getElementById("sign-hash")!.textContent = signHashParam;
+
+    // If this request is the name claim the user just started, surface what
+    // they're actually approving — the name — instead of only the raw hash.
+    // describeSignRequest binds that friendly copy to the exact hash (the claim
+    // flow stashed both), so a mismatched/forged request can't borrow it.
+    const summary = describeSignRequest({
+      signHash: signHashParam!,
+      claimHash: localStorage.getItem("g2c:name-claim-hash"),
+      claimName: localStorage.getItem("g2c:name-pending"),
+    });
+    const signingNameClaim = summary.kind === "name-claim" ? summary.name : null;
+    if (summary.kind === "name-claim") {
+      document.getElementById("sign-icon-generic")!.classList.add("hidden");
+      document.getElementById("sign-icon-claim")!.classList.remove("hidden");
+      document.getElementById("sign-title")!.textContent = "Claim your name";
+      document.getElementById("sign-sub")!.textContent =
+        `You're claiming the name "${summary.name}" for your Nido. Confirm with your passkey to lock it in.`;
+
+      document.getElementById("sign-name")!.textContent = summary.name;
+      document.getElementById("sign-name-row")!.style.display = "flex";
+      // The "From" origin and the in-card raw-hash row are noise for a
+      // self-initiated claim — hide both. The verifiable details (the decoded
+      // transaction + the hash) move into the collapsible block below.
+      document.getElementById("sign-from-row")!.style.display = "none";
+      document.getElementById("sign-hash-row")!.style.display = "none";
+
+      const $tech = document.getElementById("sign-tech")!;
+      // Show hash-bound name-claim details immediately so the toggle is useful
+      // even if async XDR decoding fails; enrich with the decoded transaction
+      // when ready.
+      $tech.innerHTML = renderStoredNameClaimDetails(summary.name, signHashParam!);
+      void renderClaimTxDetails($tech, signHashParam!);
+
+      const $toggle = document.getElementById("sign-toggle-tech")!;
+      $toggle.classList.remove("hidden");
+      $toggle.addEventListener("click", () => {
+        const shown = $tech.classList.toggle("hidden") === false;
+        $toggle.textContent = shown ? "Hide technical details" : "Show technical details";
+      });
+    }
 
     const cred = loadCredential();
     if (cred) {
@@ -595,10 +709,18 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       try {
         btn.disabled = true;
 
-        const result = await withPasskeySheet(() => signHash(signHashParam!), {
-          title: confirmLabel,
-          sub: "Approving the request from the app.",
-        });
+        const result = await withPasskeySheet(
+          () => signHash(signHashParam!),
+          signingNameClaim
+            ? {
+                title: "Claim your name",
+                sub: `Confirm with ${passkey.label} to register "${signingNameClaim}" for this Nido.`,
+              }
+            : {
+                title: confirmLabel,
+                sub: "Approving the request from the app.",
+              },
+        );
 
         const $result = document.getElementById("sign-mode-result")!;
         $result.style.display = "block";
@@ -643,38 +765,21 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     document.getElementById("home-mode")!.classList.remove("hidden");
 
     const cred = loadCredential();
-    if (!cred) {
-      document.getElementById("register-section")!.classList.remove("hidden");
-    }
+    const $registerSection = document.getElementById("register-section")!;
+    const $registerBtn = document.getElementById("register-btn") as HTMLButtonElement;
+    const $registerCopy = document.getElementById("register-copy");
+    const $registerLabel = document.getElementById("register-label");
 
-    // Security at-a-glance card (desktop Home). Best-effort: filled from the same
-    // on-chain policy the Security page reads; on any failure the chips fall back
-    // to a neutral state rather than blocking the wallet.
-    void (async () => {
-      const passkeyChip = document.getElementById("sec-passkey-chip");
-      const friendsChip = document.getElementById("sec-friends-chip");
-      const appsChip = document.getElementById("sec-apps-chip");
-      if (!passkeyChip || !friendsChip || !appsChip || !contractId) return;
-      const setPasskey = (on: boolean) => {
-        passkeyChip.textContent = on ? "On" : "Off";
-        passkeyChip.classList.toggle("good", on);
-      };
-      try {
-        const summary = await fetchSecuritySummary(contractId);
-        setPasskey(summary.hasPasskey);
-        friendsChip.textContent = summary.recovery
-          ? `${summary.recovery.threshold} of ${summary.recovery.friends}`
-          : "Not set";
-        appsChip.textContent =
-          summary.delegations > 0 ? `${summary.delegations} active` : "None";
-      } catch {
-        // Passkey state is local, so it's still trustworthy on a fetch failure;
-        // the on-chain counts fall back to an em dash.
-        setPasskey(Boolean(cred));
-        friendsChip.textContent = "—";
-        appsChip.textContent = "—";
+    if (!cred) {
+      $registerSection.classList.remove("hidden");
+      if (detectedName && $registerCopy) {
+        $registerCopy.textContent =
+          `Your Nido now opens at ${detectedName}. Browsers bind passkeys to each domain address, so register a passkey here before approving from this name.`;
+        if ($registerLabel) $registerLabel.textContent = `Register passkey for ${detectedName}`;
       }
-    })();
+    } else if (shouldRegisterNamePasskey) {
+      clearNamePasskeyParam();
+    }
 
     // Receive panel toggle (display-only)
     const $receiveSection = document.getElementById("receive-section")!;
@@ -685,6 +790,10 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         if (!open) {
           $receiveSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }
+        // Update aria-expanded on all receive toggle buttons
+        document.querySelectorAll('[aria-controls="receive-section"]').forEach(btn => {
+          btn.setAttribute('aria-expanded', String(!open));
+        });
       }),
     );
     // Receive copy button
@@ -716,11 +825,11 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     }
 
     // Register passkey (when none exists yet)
-    const $registerBtn = document.getElementById("register-btn") as HTMLButtonElement;
-    $registerBtn.addEventListener("click", async () => {
+    async function runPasskeyRegistration(options?: { namePasskey?: boolean }) {
       clearError();
       const support = checkPasskeySupport();
       if (!support.ok) {
+        if (options?.namePasskey) clearNamePasskeyParam();
         showError(support.message!);
         return;
       }
@@ -730,14 +839,18 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         await withPasskeySheet(
           () => registerPasskey(),
           {
-            title: "Set up your passkey",
-            sub: `Confirm with ${passkey.label} to create it.`,
+            title: options?.namePasskey ? "Register this name's passkey" : "Set up your passkey",
+            sub: options?.namePasskey && detectedName
+              ? `${detectedName} is a new domain address. Passkeys are locked to the domain shown, so confirm once to use this name.`
+              : `Confirm with ${passkey.label} to create it.`,
           },
         );
 
-        document.getElementById("register-section")!.classList.add("hidden");
-        toast({ msg: "Passkey ready", icon: "check" });
+        $registerSection.classList.add("hidden");
+        if (options?.namePasskey) clearNamePasskeyParam();
+        toast({ msg: options?.namePasskey ? "Passkey ready for this name" : "Passkey ready", icon: "check" });
       } catch (err: any) {
+        if (options?.namePasskey) clearNamePasskeyParam();
         if (err.name === "NotAllowedError") {
           showError(passkeyBlockedHint("registration"));
         } else {
@@ -746,7 +859,18 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       } finally {
         $registerBtn.disabled = false;
       }
+    }
+
+    $registerBtn.addEventListener("click", () => {
+      void runPasskeyRegistration();
     });
+
+    if (!cred && shouldRegisterNamePasskey && detectedName && !isSigningMode) {
+      $registerSection.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => {
+        void runPasskeyRegistration({ namePasskey: true });
+      }, 250);
+    }
   }
 
   // --- Init ---
@@ -759,6 +883,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   if (isSigningMode) {
     initSigningMode();
   } else {
+    if (contractId) saveAccount(contractId);
     initHomeMode();
   }
 
@@ -785,12 +910,9 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
   if (SHOW_NAME_SECTION && contractId && !isSigningMode) {
     const $nameSection = document.getElementById("name-section")!;
     const $nameDisplay = document.getElementById("name-display")!;
-    const $nameClaim = document.getElementById("name-claim")!;
     const $claimBtn = document.getElementById("claim-name-btn") as HTMLButtonElement;
     const $nameInput = document.getElementById("name-input") as HTMLInputElement;
     const $nameResult = document.getElementById("name-result")!;
-
-    $nameSection.classList.remove("hidden");
 
     // The name is known authoritatively when we arrived via a name subdomain
     // (detectedName already resolved to THIS account); otherwise fall back to a
@@ -800,6 +922,7 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
     const existingName = detectedName ?? loadAccountName(contractId);
     if (existingName) {
       if (detectedName) saveAccountName(contractId, detectedName);
+      $nameSection.classList.remove("hidden");
       $nameDisplay.classList.remove("hidden");
       document.getElementById("account-name")!.textContent = existingName;
       // Reflect the claimed name in the top bar nickname + desktop greeting.
@@ -812,7 +935,23 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
       nameLink.href = accountShareUrl(rootHost, existingName);
       nameLink.textContent = accountShareLabel(rootHost, existingName);
     } else {
-      $nameClaim.classList.remove("hidden");
+      // Show claim-a-name entry points (desktop greeting button + mobile quick action)
+      const topBtn = document.getElementById("claim-name-top-btn") as HTMLButtonElement | null;
+      const mobileAction = document.getElementById("claim-name-mobile-action") as HTMLButtonElement | null;
+      const inlineForm = document.getElementById("claim-name-inline") as HTMLElement | null;
+      if (topBtn) topBtn.classList.remove("hidden");
+      if (mobileAction) mobileAction.classList.remove("hidden");
+      // Auto-open inline form when returning from signing
+      if (params.get("nameresult") === "1" && inlineForm) {
+        inlineForm.classList.remove("hidden");
+      }
+      const openClaimForm = () => {
+        inlineForm?.classList.remove("hidden");
+        inlineForm?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        $nameInput.focus();
+      };
+      topBtn?.addEventListener("click", openClaimForm);
+      mobileAction?.addEventListener("click", openClaimForm);
     }
 
 
@@ -858,13 +997,14 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
           .getAccount(keypair.publicKey())
           .then((res: Account) => new Account(res.accountId(), res.sequenceNumber()));
 
+        const nameRegistryId = await fetchRegistryAddress("name-registry");
         const simTx = new TransactionBuilder(sourceAccount, {
           fee: "10000000",
           networkPassphrase: Networks.TESTNET,
         })
           .addOperation(
             Operation.invokeContractFunction({
-              contract: await fetchRegistryAddress("name-registry"),
+              contract: nameRegistryId,
               function: "register",
               args: [
                 Address.fromString(contractId).toScVal(),
@@ -904,6 +1044,12 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
         localStorage.setItem("g2c:name-txXdr", assembled.toXDR());
         localStorage.setItem("g2c:name-lastLedger", lastLedger.toString());
         localStorage.setItem("g2c:name-pending", name);
+        localStorage.setItem("g2c:name-registry-id", nameRegistryId);
+        // Bind the friendly "claiming <name>" copy shown on the signing surface
+        // to the exact hash we're about to ask the user to sign. The signing
+        // mode (same origin) reads this back and only shows the name when the
+        // incoming ?sign= hash matches — see describeSignRequest.
+        localStorage.setItem("g2c:name-claim-hash", authHashHex);
 
         $nameResult.textContent = "Taking you to confirm with your passkey…";
 
@@ -1036,11 +1182,13 @@ import MyNidoMenu from "../../components/MyNidoMenu.astro";
               localStorage.removeItem("g2c:name-txXdr");
               localStorage.removeItem("g2c:name-lastLedger");
               localStorage.removeItem("g2c:name-pending");
+              localStorage.removeItem("g2c:name-claim-hash");
+              localStorage.removeItem("g2c:name-registry-id");
 
               // Redirect to the claimed name's subdomain
               const rootHost = stripSubdomain(window.location.host);
-              $nameResult.textContent = `Your Nido is now "${pendingName}" — taking you there…`;
-              const nameUrl = accountShareUrl(rootHost, pendingName);
+              $nameResult.textContent = `Your Nido is now "${pendingName}" — opening it so you can register the passkey for that new domain address…`;
+              const nameUrl = accountUrl(rootHost, pendingName, "/account/?namepasskey=1");
               setTimeout(() => {
                 window.location.href = `${window.location.protocol}${nameUrl}`;
               }, 1500);

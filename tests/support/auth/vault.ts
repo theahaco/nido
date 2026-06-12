@@ -19,7 +19,7 @@ export async function credentialIdForLabel(
   seed: Uint8Array,
   label: string,
 ): Promise<Uint8Array> {
-  return sha256(seed, enc.encode(`g2c-test-cred:${label}`));
+  return sha256(seed, enc.encode(`nido-test-cred:${label}`));
 }
 
 /**

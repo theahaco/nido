@@ -25,15 +25,15 @@ export function uniqueName(prefix: string, nowMs: number): string {
 
 /**
  * Pre-seed a funded "bank" submitter so name txs skip friendbot. If
- * G2C_TEST_BANK_SECRET is unset, the app falls back to its own friendbot
+ * NIDO_TEST_BANK_SECRET is unset, the app falls back to its own friendbot
  * funding (slower, flakier). Sets the key on every origin in the context.
  */
 export async function seedBank(context: BrowserContext): Promise<void> {
-  const secret = process.env.G2C_TEST_BANK_SECRET;
+  const secret = process.env.NIDO_TEST_BANK_SECRET;
   if (!secret) return; // no bank → app friendbots its own submitter
   await context.addInitScript(
     ([k1, k2, v]) => {
-      // Seed BOTH submitters: the name-claim flow (g2c:name-keypair) and the
+      // Seed BOTH submitters: the name-claim flow and the
       // status-message dApp's fee payer (sm:keypairSecret). Same funded bank
       // secret — both are only ever the tx source/fee payer, never the signer.
       try { localStorage.setItem(k1, v); } catch { /* pre-DOM on some engines */ }

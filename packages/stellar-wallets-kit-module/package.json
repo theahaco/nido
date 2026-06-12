@@ -1,7 +1,7 @@
 {
-  "name": "@g2c/stellar-wallets-kit-module",
+  "name": "@nidohq/stellar-wallets-kit-module",
   "version": "0.1.0",
-  "description": "A @creit.tech/stellar-wallets-kit module that makes a g2c passkey smart-account available to any dApp using the kit.",
+  "description": "A @creit.tech/stellar-wallets-kit module that makes a Nido passkey smart account available to any dApp using the kit.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,7 +19,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@g2c/passkey-sdk": "*"
+    "@nidohq/passkey-sdk": "^0.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "peerDependencies": {
     "@creit.tech/stellar-wallets-kit": "^2.0.0"

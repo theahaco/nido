@@ -31,7 +31,7 @@ import {
  * by the example's own createSessionPasskey, so its pubkey flows through to the
  * on-chain rule and the in-page get() re-derives the same key.
  *
- * RUN (quarantined testnet tier; needs G2C_TEST_BANK_SECRET in tests/.env.testnet):
+ * RUN (quarantined testnet tier; needs NIDO_TEST_BANK_SECRET in tests/.env.testnet):
  *   1. Build the wallet:   npx tsc -p packages/passkey-sdk/tsconfig.json && \
  *                          npx astro build --root packages/frontend
  *   2. Build the example for LOCAL (apex base, wallet → local server):
@@ -40,7 +40,7 @@ import {
  *        PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015" \
  *        PUBLIC_STELLAR_RPC_URL="https://soroban-testnet.stellar.org" \
  *        PUBLIC_STELLAR_HORIZON_URL="https://horizon-testnet.stellar.org" \
- *        PUBLIC_G2C_BASE="http://localhost:4399" npx vite build
+ *        PUBLIC_NIDO_BASE="http://localhost:4399" npx vite build
  *   3. Serve the example:  node tests/support/example-server.mjs &   (port 4400)
  *   4. set -a; . ./tests/.env.testnet; set +a
  *      npx playwright test tests/e2e/testnet/example-dapp.testnet.spec.ts \
@@ -59,7 +59,7 @@ const CONTRACT = 'CBXVJXHPSYORSAHPX4I6NYPQMDJWK2STQCE6JTIM7FNV4OZSIDJFGNDM';
 
 const PASSPHRASE = 'Test SDF Network ; September 2015';
 
-// --- Node-side on-chain readers (stellar-sdk only; no @g2c/passkey-sdk barrel,
+// --- Node-side on-chain readers (stellar-sdk only; no @nidohq/passkey-sdk barrel,
 // which trips Playwright's TS transform). Copied from session-key.testnet.spec. ---
 
 async function simulateView(account: string, method: string, ...args: ReturnType<typeof nativeToScVal>[]) {
@@ -143,12 +143,12 @@ test.describe('@testnet example status-message dApp — Nido delegation + in-pag
 
     // -------- PART B — open the EXAMPLE and seed the connected Nido account ----
     // The example's storage util JSON-encodes values; WalletProvider reads these
-    // four keys and (for the popup-always g2c wallet) takes the cached address
+    // four keys and (for the popup-always Nido wallet) takes the cached address
     // without opening the picker.
     await page.goto(`${EXAMPLE}/`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(
       ([addr, pass]) => {
-        localStorage.setItem('walletId', JSON.stringify('g2c'));
+        localStorage.setItem('walletId', JSON.stringify('nido'));
         localStorage.setItem('walletAddress', JSON.stringify(addr));
         localStorage.setItem('walletNetwork', JSON.stringify('testnet'));
         localStorage.setItem('networkPassphrase', JSON.stringify(pass));

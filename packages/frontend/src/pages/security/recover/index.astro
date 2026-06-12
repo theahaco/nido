@@ -17,7 +17,7 @@ import Icon from '../../../components/Icon.astro';
       <a href="/security/" class="btn ghost sm" style="width:40px;height:40px;padding:0;border-radius:12px;" aria-label="Back">
         <Icon name="back" size={18} />
       </a>
-      <div class="disp" style="font-weight:800;font-size:19px;">Get back in</div>
+      <h1 class="disp" style="font-weight:800;font-size:19px;">Get back in</h1>
       <span style="width:40px;"></span>
     </div>
 
@@ -32,7 +32,7 @@ import Icon from '../../../components/Icon.astro';
             <div class="disp" style="font-weight:800;font-size:17px;">A friend needs your help</div>
           </div>
           <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 12px;">
-            Your friend <code id="fm-account" class="mono"></code> lost their phone and is
+            Your friend <code id="fm-account" class="mono" style="word-break:break-all; display:block;"></code> lost their phone and is
             getting back in. Take a look, then approve with your own passkey — your
             okay only counts toward this one request.
           </p>
@@ -71,6 +71,23 @@ import Icon from '../../../components/Icon.astro';
         </div>
 
         <p id="om-multi-rule" class="mut" style="font-size:12.5px;margin-top:12px;" hidden></p>
+
+        <!-- Repair mode (issue #87): rule 0 is multi-signer with no policy,
+             so EVERY passkey must co-sign every action — single-passkey
+             signing is bricked. Friends can authorize installing a 1-of-N
+             approval policy without touching any keys. -->
+        <div id="om-repair" hidden>
+          <div class="card" style="padding:18px;margin-top:14px;border:1px solid var(--warn-ink, #b45309);">
+            <div class="disp" style="font-weight:800;font-size:15px;margin-bottom:8px;">This account is locked</div>
+            <p class="mut" style="font-size:13px;line-height:1.55;margin:0 0 12px;" id="om-repair-text">
+              All of this account's passkeys currently have to approve together,
+              so signing with one passkey always fails. Your friends can fix
+              this — no keys change.
+            </p>
+            <button id="om-repair-btn" class="btn acc" type="button">Repair with my friends</button>
+            <p id="om-repair-status" class="mut" style="font-size:12.5px;margin-top:10px;"></p>
+          </div>
+        </div>
 
         <div id="om-stage">
           <span class="section-label" style="display:block;margin:22px 0 10px;">Step 1 · New passkey</span>
@@ -137,9 +154,9 @@ import Icon from '../../../components/Icon.astro';
   import {
     contractIdFromHostname,
     createSessionPasskey,
-    buf2hex,
     decodeRotationHandoff,
-  } from '@g2c/passkey-sdk';
+    buf2hex,
+  } from '@nidohq/passkey-sdk';
   import { fetchVerifierAddress } from '../../../lib/policyChainFetch.js';
   import {
     findRecoveryRules,
@@ -147,6 +164,7 @@ import Icon from '../../../components/Icon.astro';
     addFriendSignature,
     submitRotation,
     signRotationAsFriend,
+    checkDefaultRuleRepair,
     getStaging,
     clearStaging,
     collectedCount,
@@ -186,7 +204,11 @@ import Icon from '../../../components/Icon.astro';
       btn.disabled = true;
       status.textContent = 'Signing…';
       try {
-        const { blob, description } = await signRotationAsFriend(account!, encoded);
+        const { blob, description } = await signRotationAsFriend(
+          account!,
+          encoded,
+          (m) => { status.textContent = m; },
+        );
         document.getElementById('fm-desc')!.textContent = description;
         (document.getElementById('fm-blob') as HTMLTextAreaElement).value = blob;
         document.getElementById('fm-result')!.hidden = false;
@@ -257,6 +279,47 @@ import Icon from '../../../components/Icon.astro';
       showCollect(existing.threshold);
       refreshProgress();
     }
+
+    // Issue #87: offer the repair path when rule 0 is multi-signer with no
+    // policy (single-passkey signing bricked). The repair is a recovery-
+    // authorized rotation that ONLY installs the 1-of-N approval policy.
+    void (async () => {
+      try {
+        const repair = await checkDefaultRuleRepair(account!);
+        if (!repair.needsRepair) return;
+        document.getElementById('om-repair')!.hidden = false;
+        document.getElementById('om-repair-text')!.textContent =
+          `All ${repair.signerCount} of this account's passkeys currently have to ` +
+          `approve together, so signing with one passkey always fails. Your ` +
+          `friends can fix this by installing a 1-of-${repair.signerCount} ` +
+          `approval policy — no keys change.`;
+      } catch { /* detection is best-effort; the normal flow still works */ }
+    })();
+
+    document.getElementById('om-repair-btn')!.addEventListener('click', async () => {
+      const btn = document.getElementById('om-repair-btn') as HTMLButtonElement;
+      const status = document.getElementById('om-repair-status')!;
+      btn.disabled = true;
+      status.textContent = 'Staging repair…';
+      try {
+        // Bare request: no key added or removed. planRotation sees the
+        // bricked rule state and plans the lone add_policy call.
+        const { handoffLink } = await prepareRotation({
+          account: account!,
+          recoveryRuleId: recoveryRuleId!,
+          friends,
+          threshold,
+          request: { defaultRuleId: 0 },
+        });
+        (document.getElementById('om-link') as HTMLTextAreaElement).value = handoffLink;
+        showCollect(threshold);
+        refreshProgress();
+        status.textContent = 'Staged. Share the link with your friends (Step 4 below).';
+      } catch (e) {
+        status.textContent = 'Failed: ' + (e instanceof Error ? e.message : String(e));
+        btn.disabled = false;
+      }
+    });
 
     document.getElementById('om-new-key')!.addEventListener('click', async () => {
       keyStatus.textContent = 'Creating passkey…';
@@ -350,11 +413,6 @@ import Icon from '../../../components/Icon.astro';
 
     function showCollect(_threshold: number) {
       document.getElementById('om-collect')!.hidden = false;
-      const link = getStaging(account!)?.txXdr;
-      if (link && !(document.getElementById('om-link') as HTMLTextAreaElement).value) {
-        // Reconstruct the share link from staging on resume.
-        // (link param recomputed on next prepare; on resume we leave blank.)
-      }
     }
 
     function refreshProgress() {
@@ -391,11 +449,11 @@ import Icon from '../../../components/Icon.astro';
   textarea.input { font-family: var(--mono); font-size: 12px; }
   #om-collected { list-style: none; padding: 0; margin: 12px 0 0; }
   #om-collected :global(li) {
-    font-family: var(--mono); font-size: 12px; color: var(--good);
+    font-family: var(--mono); font-size: 12px; color: var(--good-ink);
     padding: 4px 0;
   }
   #om-collected :global(code) {
-    background: var(--good-soft); color: var(--good);
+    background: var(--good-soft); color: var(--good-ink);
     padding: 1px 6px; border-radius: var(--r-sm);
   }
   /* status / error markup the script may inject into om-stage uses .muted */

@@ -68,9 +68,9 @@ import Nest from '../../components/Nest.astro';
                 </div>
                 <div style="flex:1;">
                   <div style="font-weight:700;font-size:14.5px;">Your passkey on this device</div>
-                  <div class="mut" style="font-size:12.5px;">You're the only one who gets in</div>
+                  <div id="passkey-status-sub" class="mut" style="font-size:12.5px;">You're the only one who gets in</div>
                 </div>
-                <span class="chip good" style="font-size:11px;">On</span>
+                <span id="passkey-status-chip" class="chip mut" style="font-size:11px;">…</span>
               </div>
               <div id="device-details" hidden style="border-top:1px solid var(--line-soft);padding:14px 16px;">
                 <div class="mut" style="font-size:12px;font-weight:700;margin-bottom:4px;">Public key</div>
@@ -110,7 +110,7 @@ import Nest from '../../components/Nest.astro';
     loadSessionKeyMaterial,
     loadCredential,
     buf2base64url,
-  } from '@g2c/passkey-sdk';
+  } from '@nidohq/passkey-sdk';
   import { fetchAllChainRules, fetchPolicyState } from '../../lib/policyChainFetch.js';
   import { renderRecoveryCard } from '../../components/MultisigRecoveryCard.js';
   import { renderSessionKeyCard } from '../../components/SessionKeyCard.js';
@@ -121,11 +121,18 @@ import Nest from '../../components/Nest.astro';
 
   // Passkey details for this device (relocated here from the account page).
   const deviceCred = account ? loadCredential(account) : null;
+  const chip = document.getElementById('passkey-status-chip') as HTMLElement | null;
+  const sub = document.getElementById('passkey-status-sub') as HTMLElement | null;
   if (deviceCred) {
+    if (chip) { chip.className = 'chip good'; chip.textContent = 'On'; }
+    if (sub) { sub.hidden = false; }
     (document.getElementById('device-details') as HTMLElement).hidden = false;
     document.getElementById('device-pubkey')!.textContent = deviceCred.publicKey;
     document.getElementById('device-cred-id')!.textContent = buf2base64url(deviceCred.credentialId);
     document.getElementById('device-rp-id')!.textContent = window.location.hostname;
+  } else {
+    if (chip) { chip.className = 'chip warn'; chip.textContent = 'Not set up'; }
+    if (sub) { sub.hidden = true; }
   }
 
   const recoveryList = document.getElementById('recovery-list')!;
@@ -154,13 +161,21 @@ import Nest from '../../components/Nest.astro';
         overlay,
       });
 
+      const delegationsEmpty =
+        '<p class="mut" style="font-size:13px;">No apps have been let in yet.</p>';
       recoveryList.innerHTML = '';
       delegationList.innerHTML = '';
       for (const block of blocks) {
         if (block.kind === 'multisig-recovery') {
           recoveryList.appendChild(renderRecoveryCard(block));
         } else if (block.kind === 'scoped-session-key') {
-          delegationList.appendChild(renderSessionKeyCard(block));
+          delegationList.appendChild(
+            renderSessionKeyCard(block, account, () => {
+              if (!delegationList.children.length) {
+                delegationList.innerHTML = delegationsEmpty;
+              }
+            }),
+          );
         }
       }
       if (!recoveryList.children.length) {
@@ -168,8 +183,7 @@ import Nest from '../../components/Nest.astro';
           '<p class="mut" style="font-size:13px;">No trusted friends yet.</p>';
       }
       if (!delegationList.children.length) {
-        delegationList.innerHTML =
-          '<p class="mut" style="font-size:13px;">No apps have been let in yet.</p>';
+        delegationList.innerHTML = delegationsEmpty;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -253,4 +267,12 @@ import Nest from '../../components/Nest.astro';
   :global(.rule-card .chips) { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
   :global(.rule-card .actions) { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   :global(.rule-card .small) { font-size: 12px; }
+
+  /* Session-key scope line (injected via innerHTML — must be :global). */
+  :global(.rule-card .scope-line) { margin: 8px 0 0; line-height: 1.5; }
+  :global(.rule-card .scope-line .contract-link) {
+    color: var(--acc); font-size: 11.5px; text-decoration: underline;
+    text-underline-offset: 2px; word-break: break-all;
+  }
+  :global(.rule-card .revoke[disabled]) { opacity: 0.55; cursor: default; }
 </style>

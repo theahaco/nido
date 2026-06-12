@@ -1,8 +1,8 @@
-use g2c_integration_tests::deploy_smart_account;
+use nido_integration_tests::deploy_smart_account;
 use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 const NAME_REGISTRY_WASM: &[u8] =
-    include_bytes!("../../../../target/wasm32v1-none/contract/g2c_name_registry.wasm");
+    include_bytes!("../../../../target/wasm32v1-none/contract/nido_name_registry.wasm");
 
 #[allow(dead_code)]
 #[soroban_sdk::contractclient(name = "NameRegistryClient")]

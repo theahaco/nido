@@ -8,7 +8,7 @@ import {
 	useTransition,
 } from "react"
 import storage from "../util/storage"
-import { wallet, fetchBalances, type MappedBalances } from "../util/wallet"
+import { wallet, fetchBalances, NIDO_ID, type MappedBalances } from "../util/wallet"
 
 const signTransaction = wallet.signTransaction.bind(wallet)
 
@@ -41,10 +41,16 @@ const DEFAULT_WALLET_BEHAVIOR: WalletBehavior = {
 	supportsGetNetwork: false,
 }
 
+const LEGACY_NIDO_ID = "g2c"
+
+function normalizeWalletId(walletId: string): string {
+	return walletId === LEGACY_NIDO_ID ? NIDO_ID : walletId
+}
+
 const WALLET_BEHAVIORS: Record<string, WalletBehavior> = {
-	// g2c runs the passkey ceremony in a popup on every sign, and the network is
+	// Nido runs the passkey ceremony in a popup on every sign, and the network is
 	// fixed by the deployment rather than queried from the wallet.
-	g2c: { getAddressBehavior: "popup-always", supportsGetNetwork: false },
+	[NIDO_ID]: { getAddressBehavior: "popup-always", supportsGetNetwork: false },
 	freighter: { getAddressBehavior: "standard", supportsGetNetwork: true },
 	"hot-wallet": {
 		getAddressBehavior: "popup-always",
@@ -79,7 +85,7 @@ const WALLET_BEHAVIORS: Record<string, WalletBehavior> = {
  * Get the behavior configuration for a specific wallet
  */
 function getWalletBehavior(walletId: string): WalletBehavior {
-	return WALLET_BEHAVIORS[walletId] ?? DEFAULT_WALLET_BEHAVIOR
+	return WALLET_BEHAVIORS[normalizeWalletId(walletId)] ?? DEFAULT_WALLET_BEHAVIOR
 }
 
 /**
@@ -151,7 +157,7 @@ function deepEqual<T>(a: T, b: T): boolean {
 
 export interface WalletContextType {
 	address?: string
-	/** The selected wallet's product id (e.g. "g2c" for Nido), or null. */
+	/** The selected wallet's product id (e.g. "nido" for Nido), or null. */
 	walletId: string | null
 	balances: MappedBalances
 	isPending: boolean
@@ -259,14 +265,21 @@ export const WalletProvider = ({ children }: { children: React.ReactNode }) => {
 	}
 
 	const updateCurrentWalletState = async () => {
-		// Kit v2 is static and must be initialised (with the g2c + standard
+		// Kit v2 is static and must be initialised (with the Nido + standard
 		// modules) before any setWallet/getAddress call. Idempotent.
 		await wallet.init()
 
 		// There is no way, with StellarWalletsKit, to check if the wallet is
 		// installed/connected/authorized. We need to manage that on our side by
 		// checking our storage item.
-		const storedWalletId = storage.getItem("walletId")
+		const rawStoredWalletId = storage.getItem("walletId")
+		let storedWalletId: string | null = null
+		if (rawStoredWalletId) {
+			storedWalletId = normalizeWalletId(rawStoredWalletId)
+			if (storedWalletId !== rawStoredWalletId) {
+				storage.setItem("walletId", storedWalletId)
+			}
+		}
 		const walletNetwork = storage.getItem("walletNetwork")
 		const walletAddr = storage.getItem("walletAddress")
 		const passphrase = storage.getItem("networkPassphrase")

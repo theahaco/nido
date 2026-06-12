@@ -19,13 +19,14 @@ const DIST_DIR = join(process.cwd(), 'packages/frontend/dist');
 // contractId from the subdomain via contractIdFromHostname() and uppercases it,
 // so visiting `<lower>.localhost` yields exactly FAKE_CONTRACT_ID.
 const FAKE_CONTRACT_ID = 'CDLZFC2SYJYDZT7K7VJRL2CU7LQV6AFZ2K2QJLY7QV53KIGWXJOANPYY';
+const SECOND_CONTRACT_ID = `C${'B'.repeat(55)}`;
 const ACCOUNT_URL = `http://${FAKE_CONTRACT_ID.toLowerCase()}.localhost:${PORT}/account/`;
 
 test.describe('account page — UI only (no chain) @fast', () => {
   test('built HTML contains name section elements @fast', () => {
     const html = readFileSync(join(DIST_DIR, 'account/index.html'), 'utf-8');
     expect(html).toContain('id="name-section"');
-    expect(html).toContain('id="name-claim"');
+    expect(html).toContain('id="claim-name-inline"');
     expect(html).toContain('id="claim-name-btn"');
     expect(html).toContain('id="name-input"');
   });
@@ -55,10 +56,13 @@ test.describe('account page — UI only (no chain) @fast', () => {
     await expect(page.locator('#home-mode')).toBeVisible();
 
     // SHOW_NAME_SECTION is on: on a contract subdomain the JS reveals the
-    // name section and the claim form (no chain required). The claim button is
-    // wired to client-side validation — an empty name surfaces the 1-15 chars
-    // error before any network call.
-    await expect(page.locator('#name-section')).toBeVisible();
+    // claim-name button in the desktop greeting (no chain required). Clicking it
+    // reveals the inline form. The claim button is wired to client-side
+    // validation — an empty name surfaces the 1-15 chars error before any
+    // network call.
+    await expect(page.locator('#claim-name-top-btn')).toBeVisible();
+    await page.locator('#claim-name-top-btn').click();
+    await expect(page.locator('#claim-name-inline')).toBeVisible();
     await expect(page.locator('#claim-name-btn')).toBeVisible();
 
     await page.locator('#claim-name-btn').click();
@@ -66,12 +70,38 @@ test.describe('account page — UI only (no chain) @fast', () => {
     await expect(page.locator('#error-box')).toContainText('1-15 characters');
   });
 
-  test('send panel exposes a recipient resolve-status element @fast', () => {
-    // The send / recipient UI now lives on the /transfer/ page (multi-asset
-    // transfer, #78): the input is #to-input and its resolve-status is #to-resolve.
+});
+
+// The XLM-only inline Send panel was retired from the account page in #78 (the
+// multi-asset transfer rework): "Send" now opens the dedicated /transfer/ view,
+// so the recipient input + its live resolve-status element moved there (renamed
+// send-to → to-input, send-resolve → to-resolve). This UI-only check follows them.
+test.describe('transfer page — UI only (no chain) @fast', () => {
+  test('transfer view exposes a recipient resolve-status element @fast', () => {
     const html = readFileSync(join(DIST_DIR, 'transfer/index.html'), 'utf-8');
     expect(html).toContain('id="to-input"');
     expect(html).toContain('id="to-resolve"');
     expect(html).toContain('placeholder="name, C…, or G…"');
+  });
+
+  test('account-page switcher shows accounts stored on the apex origin @fast', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.evaluate(
+      ({ first, second }) => {
+        localStorage.setItem('g2c:accounts', JSON.stringify([first, second]));
+        localStorage.setItem(`g2c:names:${first}`, 'alpha');
+        localStorage.setItem(`g2c:names:${second}`, 'beta');
+      },
+      { first: FAKE_CONTRACT_ID, second: SECOND_CONTRACT_ID },
+    );
+
+    await page.goto(ACCOUNT_URL, { waitUntil: 'networkidle' });
+    await page.locator('[data-mynido-trigger]:visible').first().click();
+
+    const panel = page.locator('[data-mynido-panel]:visible').first();
+    await expect(panel.locator('.mn-name', { hasText: 'alpha' })).toBeVisible();
+    await expect(panel.locator('.mn-name', { hasText: 'beta' })).toBeVisible();
   });
 });

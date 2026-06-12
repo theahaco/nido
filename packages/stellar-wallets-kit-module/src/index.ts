@@ -1,5 +1,10 @@
-export { G2cModule, G2C_ID } from './module.js';
-export type { G2cModuleParams } from './module.js';
+export {
+  NidoModule,
+  NIDO_ID,
+  ACCOUNT_SWITCH_REQUESTED,
+  AccountSwitchRequestedError,
+} from './module.js';
+export type { NidoModuleParams } from './module.js';
 
 export {
   connectUrl,

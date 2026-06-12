@@ -13,20 +13,26 @@ import {
   injectPasskeySignature,
   parseAssertionResponse,
   hex2buf,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import { fetchVerifierAddress } from './policyChainFetch.js';
 import {
   relayerEnabled,
   extractFuncAndAuth,
   submitSorobanTransaction,
   waitForConfirmation,
-} from './relayerClient.js';
-import { RELAYER_SIM_SOURCE } from './network.js';
+} from './relayerClient';
+import { RELAYER_SIM_SOURCE } from './network';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
 
-/** Keep relayer-held account auth signatures short-lived. */
+/** Signature validity in relayer mode: ~10 minutes. The sdk default (10000
+ *  ledgers ≈ 14h) is fine when the signed entry never leaves the browser, but
+ *  in relayer mode we hand it to an external service — whoever holds the body
+ *  can submit at any moment until expiry. The relayer only needs it valid for
+ *  well under a minute (channel tx lifetime is 60s; the plugin's minimum
+ *  buffer is 2 ledgers), so keep the window tight. MUST be passed identically
+ *  to buildAuthHash and injectPasskeySignature or the digest won't verify. */
 const RELAYER_EXPIRATION_OFFSET = 120;
 
 /** localStorage key shared with `account/index.astro` so we don't
@@ -37,7 +43,7 @@ const SUBMITTER_KEY = 'g2c:name-keypair';
  * Get or mint an ephemeral G-address keypair used as the tx submitter
  * (fee payer + source). The contract being invoked (the smart account) is
  * unrelated — Soroban tx envelopes always need a regular Stellar source
- * account. We use the existing 'g2c:name-keypair' so we share the
+ * account. We use the existing Nido submitter storage key so we share the
  * submitter with the account-page's existing flow.
  *
  * The submitter has no privileges on the smart account; it only pays
@@ -60,9 +66,10 @@ export async function getSubmitter(): Promise<Keypair> {
  * Requirements:
  *  - The page origin matches the account's subdomain so WebAuthn's `rpId`
  *    matches the registered credential.
- *  - Classic mode only: a `g2c:name-keypair` ephemeral G-address exists or can
- *    be minted via friendbot. Relayer mode uses PUBLIC_RELAYER_SIM_SOURCE for
- *    simulation and submits through PUBLIC_RELAYER_URL.
+ *  - Classic mode only: the persisted ephemeral G-address submitter exists or
+ *    can be minted via friendbot (handled internally). In relayer mode
+ *    (PUBLIC_RELAYER_URL set) no ephemeral keypair is created — the relayer
+ *    submits and the response is synthesized from its confirmation.
  *
  * Returns the send-transaction response. Throws if no passkey is found or
  * if WebAuthn is denied.
@@ -89,9 +96,13 @@ export async function signAndSubmit(args: {
 
   // 1. Pick the simulation source account. This is the tx source/fee-payer,
   //    NOT the smart account itself.
-  const useRelayer = relayerEnabled();
-  const submitter = useRelayer ? null : await getSubmitter();
-  if (useRelayer && !RELAYER_SIM_SOURCE) {
+  //
+  //    Relayer mode: no ephemeral G is created or funded — recording-mode
+  //    simulation just needs SOME existing on-chain source account, so we use
+  //    the relayer's (public) fund address. It never signs and never pays here.
+  //    Classic mode: friendbot-funded ephemeral G as before.
+  const submitter = relayerEnabled() ? null : await getSubmitter();
+  if (relayerEnabled() && !RELAYER_SIM_SOURCE) {
     throw new Error('Relayer misconfigured: PUBLIC_RELAYER_URL is set but PUBLIC_RELAYER_SIM_SOURCE is not.');
   }
   const sourceAccount = submitter
@@ -140,7 +151,7 @@ export async function signAndSubmit(args: {
   //    and the digest the contract recomputes both refer to the same rule.
   const authEntry = getAuthEntry(successSim);
   const lastLedger = successSim.latestLedger;
-  const expirationOffset = useRelayer ? RELAYER_EXPIRATION_OFFSET : undefined;
+  const expirationOffset = relayerEnabled() ? RELAYER_EXPIRATION_OFFSET : undefined;
   const signaturePayload = buildAuthHash(authEntry, Networks.TESTNET, lastLedger, expirationOffset);
   const contextRuleIds = [0];
   const challengeBytes = computeAuthDigest(signaturePayload, contextRuleIds);
@@ -180,25 +191,25 @@ export async function signAndSubmit(args: {
     contextRuleIds,
   );
 
-  if (useRelayer) {
+  if (relayerEnabled()) {
+    // The Channels plugin re-simulates server-side in enforce mode, builds
+    // the footprint itself, and a channel account becomes the tx source with
+    // the fund account fee-bumping — the enforce re-sim + fee refit + G
+    // signature + RPC submission below are all its job now. We ship only the
+    // host function and the passkey-signed auth entry.
     const { func, auth } = extractFuncAndAuth(assembled_tx);
     if (auth.length > 1) {
-      throw new Error(`Expected a single auth entry, got ${auth.length}; only the first is passkey-signed.`);
+      throw new Error(`Expected a single auth entry, got ${auth.length} — only the first is passkey-signed.`);
     }
     const submitted = await submitSorobanTransaction({ func, auth });
     if (!submitted.transactionId) {
-      if (submitted.status === 'confirmed' && submitted.hash) {
-        return {
-          status: 'PENDING',
-          hash: submitted.hash,
-          latestLedger: 0,
-          latestLedgerCloseTime: 0,
-        };
-      }
       throw new Error('Relayer accepted the transaction but returned no transaction id');
     }
     const confirmed = await waitForConfirmation(submitted.transactionId);
     if (!confirmed.hash) throw new Error('Relayer confirmed without a transaction hash');
+    // Only `hash` is real (the transfer page links it to the explorer) —
+    // latestLedger/latestLedgerCloseTime are placeholder zeros and the tx is
+    // already confirmed ('PENDING' kept for shape compatibility).
     return {
       status: 'PENDING',
       hash: confirmed.hash,

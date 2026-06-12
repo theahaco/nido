@@ -1,7 +1,7 @@
 /**
  * wallet.ts — wires the @creit.tech/stellar-wallets-kit wallet selector with the
- * g2c passkey smart account registered alongside the standard wallets, so g2c
- * shows up IN the kit's picker. Adapted from the g2c repo's
+ * Nido passkey smart account registered alongside the standard wallets, so Nido
+ * shows up IN the kit's picker. Adapted from the Nido repo's
  * `packages/frontend/src/lib/walletConnect.ts` and the scaffold's own wallet
  * helper.
  *
@@ -20,28 +20,28 @@ import {
 	StellarWalletsKit,
 	type ModuleInterface,
 } from "@creit.tech/stellar-wallets-kit"
-import { G2cModule, G2C_ID } from "@g2c/stellar-wallets-kit-module"
-import { isContractId } from "@g2c/passkey-sdk"
+import { NidoModule, NIDO_ID } from "@nidohq/stellar-wallets-kit-module"
+import { isContractId } from "@nidohq/passkey-sdk"
 import { Horizon } from "@stellar/stellar-sdk"
 import { networkPassphrase, stellarNetwork } from "../contracts/util"
 import { fetchContractXlmBalance, formatStroops } from "../lib/balance"
 import { markAutoStartDelegation } from "../lib/delegationHandover"
-import { withG2cFirst } from "./moduleOrder"
+import { withNidoFirst } from "./moduleOrder"
 import storage from "./storage"
 
-export { G2C_ID }
+export { NIDO_ID }
 
 /**
- * The g2c deployment apex origin (e.g. `https://nido.fyi`). The module
+ * The Nido deployment apex origin (e.g. `https://nido.fyi`). The module
  * opens `<base>/connect/` for account selection and `<account>.<base>/sign/`
  * for the passkey ceremony.
  */
-export function g2cBase(): string {
-	return import.meta.env.PUBLIC_G2C_BASE ?? "https://nido.fyi"
+export function nidoBase(): string {
+	return import.meta.env.PUBLIC_NIDO_BASE ?? "https://nido.fyi"
 }
 
 /**
- * Build the module list with g2c FIRST, followed by the standard wallets. Pure
+ * Build the module list with Nido FIRST, followed by the standard wallets. Pure
  * (no kit interaction) so it can be unit-tested without a browser.
  */
 export function buildModules(params: {
@@ -49,17 +49,17 @@ export function buildModules(params: {
 	networkPassphrase: string
 	standard: ModuleInterface[]
 }): ModuleInterface[] {
-	const g2c = new G2cModule({
+	const nido = new NidoModule({
 		base: params.base,
 		networkPassphrase: params.networkPassphrase,
 	})
-	return withG2cFirst(g2c, params.standard)
+	return withNidoFirst(nido, params.standard)
 }
 
 let inited = false
 
 /**
- * Initialise the kit ONCE with g2c + the standard wallets. Idempotent. The
+ * Initialise the kit ONCE with Nido + the standard wallets. Idempotent. The
  * standard wallet SDKs are imported lazily so the rest of this module stays
  * importable (and unit-testable) without pulling them in.
  */
@@ -68,7 +68,7 @@ export async function initWalletKit(): Promise<void> {
 	const { standardModules } = await import("./walletModules")
 	StellarWalletsKit.init({
 		modules: buildModules({
-			base: g2cBase(),
+			base: nidoBase(),
 			networkPassphrase,
 			standard: standardModules(),
 		}),
@@ -91,7 +91,7 @@ export const connectWallet = async () => {
 			storage.setItem("walletAddress", address)
 			// Picking Nido interactively → flag a one-shot auto-start of session-key
 			// delegation; StatusMessage fires it once the provider sees the account.
-			if (selectedId === G2C_ID) markAutoStartDelegation(address)
+			if (selectedId === NIDO_ID) markAutoStartDelegation(address)
 		} else {
 			storage.setItem("walletId", "")
 			storage.setItem("walletAddress", "")
@@ -124,10 +124,25 @@ export const wallet = {
 	getAddress: () => StellarWalletsKit.getAddress(),
 	getNetwork: () => StellarWalletsKit.getNetwork(),
 	disconnect: () => StellarWalletsKit.disconnect(),
-	signTransaction: (
+	signTransaction: async (
 		xdr: string,
 		opts?: { networkPassphrase?: string; address?: string; path?: string },
-	) => StellarWalletsKit.signTransaction(xdr, opts),
+	) => {
+		try {
+			return await StellarWalletsKit.signTransaction(xdr, opts)
+		} catch (e) {
+			// The Nido sign popup's "Use a different account" button rejects with
+			// this typed error: the wallet has already dropped its cached account,
+			// so drop our session too — the next Connect reopens the picker.
+			if (e instanceof Error && e.name === "ACCOUNT_SWITCH_REQUESTED") {
+				await disconnectWallet()
+				throw new Error(
+					"You chose to use a different account. Connect again, pick the account you want, then retry.",
+				)
+			}
+			throw e
+		}
+	},
 }
 
 function getHorizonHost(mode: string) {

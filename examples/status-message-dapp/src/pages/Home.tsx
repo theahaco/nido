@@ -10,7 +10,7 @@ const Home: React.FC = () => (
 			<h1>Status Message</h1>
 			<p>
 				A minimal Stellar dApp template: connect with the{" "}
-				<strong>wallet selector</strong> — a g2c passkey smart account or any
+				<strong>wallet selector</strong> — a Nido passkey smart account or any
 				standard wallet (Freighter, xBull, Albedo, LOBSTR, Rabet, Hana) — and
 				read or write an on-chain status message through an automatically
 				generated contract client.
@@ -25,7 +25,7 @@ const Home: React.FC = () => (
 			<p>
 				The <code>status-message</code> contract stores one string per account.
 				Writing requires the author&apos;s authorization, so saving routes
-				through whichever wallet you connected. A g2c smart account signs with a
+				through whichever wallet you connected. A Nido smart account signs with a
 				passkey; classic wallets sign normally.
 			</p>
 
@@ -45,11 +45,11 @@ const Home: React.FC = () => (
 				</li>
 				<li>
 					The wallet selector is configured in <code>src/util/wallet.ts</code>,
-					which registers the <code>@g2c/stellar-wallets-kit-module</code>{" "}
+					which registers the <code>@nidohq/stellar-wallets-kit-module</code>{" "}
 					alongside the standard wallets.
 				</li>
 				<li>
-					Set <code>PUBLIC_G2C_BASE</code> in <code>.env</code> to the g2c
+					Set <code>PUBLIC_NIDO_BASE</code> in <code>.env</code> to the Nido
 					deployment you want the passkey ceremony to use.
 				</li>
 				<li>

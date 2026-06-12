@@ -26,7 +26,7 @@ const DUMMY_SOURCE = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 /**
  * Resolve a contract NAME via the on-chain registry, with a hardcoded fallback.
  * Inlined here (rather than importing `fetchRegistryAddress` from
- * `@g2c/passkey-sdk`) because the SDK's index barrel transitively imports the
+ * `@nidohq/passkey-sdk`) because the SDK's index barrel transitively imports the
  * `smart-account` contract binding, whose untranspiled `export * as` namespace
  * trips Playwright's TS transform in the Node test process. This mirrors the
  * SDK's `registryLookup` + fallback exactly (it only needs @stellar/stellar-sdk).
@@ -64,7 +64,7 @@ async function fetchRegistryAddress(name: string): Promise<string> {
  * auth, simulates on testnet, signs the smart account's auth entry with the
  * primary passkey (shim, via walletSign.signTransactionXdr → computeAuthDigest),
  * and on success full-page-redirects (no opener) to
- * `return?g2c_signed=<signed-xdr>&kind=tx`.
+ * `return?nido_signed=<signed-xdr>&kind=tx`.
  *
  * We EXPECT SUCCESS: the Phase-2 status-message guard already proves
  * `udpate_message` authorizes on-chain under the account's Default rule. So
@@ -75,7 +75,7 @@ async function fetchRegistryAddress(name: string): Promise<string> {
 test.describe('@testnet dapp tx signing (udpate_message)', () => {
   test.describe.configure({ timeout: 240_000 });
 
-  test('signs an update_message tx via /sign/?kind=tx and redirects g2c_signed', async ({
+  test('signs an update_message tx via /sign/?kind=tx and redirects nido_signed', async ({
     page,
     context,
   }) => {
@@ -128,7 +128,7 @@ test.describe('@testnet dapp tx signing (udpate_message)', () => {
     // Tx source / fee payer: reuse the funded bank if present, else friendbot a
     // fresh keypair. The smart account authorizes via its passkey; this source
     // is only the fee payer (never the signer of the smart-account auth entry).
-    const bankSecret = process.env.G2C_TEST_BANK_SECRET;
+    const bankSecret = process.env.NIDO_TEST_BANK_SECRET;
     let sourceKp: Keypair;
     if (bankSecret) {
       sourceKp = Keypair.fromSecret(bankSecret);
@@ -183,7 +183,7 @@ test.describe('@testnet dapp tx signing (udpate_message)', () => {
     await expect(page.locator('#approve')).toBeEnabled({ timeout: 30_000 });
 
     // -----------------------------------------------------------------
-    // PART D — approve → shim signs → redirect to return?g2c_signed=…&kind=tx
+    // PART D — approve → shim signs → redirect to return?nido_signed=…&kind=tx
     // -----------------------------------------------------------------
 
     await page.locator('#approve').click();
@@ -192,7 +192,7 @@ test.describe('@testnet dapp tx signing (udpate_message)', () => {
     // failure surfaces verbatim instead of timing out blind.
     const outcome = await Promise.race([
       page
-        .waitForURL('**/cb?g2c_signed=**', { timeout: 180_000 })
+        .waitForURL('**/cb?nido_signed=**', { timeout: 180_000 })
         .then(() => 'signed' as const),
       page
         .locator('#error-box')
@@ -211,7 +211,7 @@ test.describe('@testnet dapp tx signing (udpate_message)', () => {
       const errText = (await page.locator('#error-box').textContent().catch(() => null))?.trim();
       const statusText = (await page.locator('#status').textContent().catch(() => null))?.trim();
       throw new Error(
-        `tx signing did not produce a g2c_signed redirect (outcome=${outcome}). ` +
+        `tx signing did not produce a nido_signed redirect (outcome=${outcome}). ` +
           `error-box="${errText ?? '<none>'}" status="${statusText ?? '<none>'}". ` +
           `account=${cAddress} statusContract=${statusId}. ` +
           `EXPECTED SUCCESS — udpate_message should authorize under the Default rule.`,
@@ -222,7 +222,7 @@ test.describe('@testnet dapp tx signing (udpate_message)', () => {
     // Assert the redirect query: kind=tx and a non-empty signed XDR.
     const u = new URL(page.url());
     expect(u.searchParams.get('kind')).toBe('tx');
-    const signedXdr = u.searchParams.get('g2c_signed');
+    const signedXdr = u.searchParams.get('nido_signed');
     expect(signedXdr).toBeTruthy();
     expect((signedXdr ?? '').length).toBeGreaterThan(0);
 

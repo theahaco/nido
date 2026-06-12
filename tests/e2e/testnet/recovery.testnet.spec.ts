@@ -19,7 +19,7 @@ const DUMMY_SOURCE = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 /**
  * Node-side mirror of `findRuleForPubkey` (copied verbatim from
  * session-key.testnet.spec.ts). Uses ONLY `@stellar/stellar-sdk` — NOT the
- * `@g2c/passkey-sdk` barrel (its untranspiled `export * as` namespace trips
+ * `@nidohq/passkey-sdk` barrel (its untranspiled `export * as` namespace trips
  * Playwright's TS transform in the Node test process).
  *
  * Simulates `get_context_rules_count` then `get_context_rule(i)` on the account,

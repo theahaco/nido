@@ -14,7 +14,7 @@
 
 ## Problem
 
-g2c is a passkey-authenticated Soroban smart-account wallet. Every meaningful
+Nido is a passkey-authenticated Soroban smart-account wallet. Every meaningful
 user flow — account creation/deploy, name claim, dapp connect + SEP-7 signing,
 multisig recovery, session-key delegation — depends on WebAuthn
 (`navigator.credentials.create` / `.get`), which requires real authenticator
@@ -195,7 +195,7 @@ chain. Testnet tests run the real round-trips.
 
 ### Component 5 — testnet reliability
 
-- **Funded "bank" account.** A pre-funded G-address secret (`G2C_TEST_BANK_SECRET`
+- **Funded "bank" account.** A pre-funded G-address secret (`NIDO_TEST_BANK_SECRET`
   env) injected into `localStorage['g2c:name-keypair']` before tests, so the
   submitter/fee-payer is reused instead of minting a fresh friendbot account per
   test. `primaryPasskeySigner.ts::getSubmitter()` reads this key (the
@@ -245,7 +245,7 @@ actor sharing the context-wide vault.
    signing round-trip.
 3. **Dapp connect + sign (SEP-7)** — a tiny test "dapp" page opens the wallet
    `/connect/` popup (`?dapp=&return=`), reads the `postMessage`
-   `{source:'g2c-wallet', search:'?g2c_address=…'}` (or redirect fallback),
+   `{source:'nido-wallet', search:'?nido_address=…'}` (or redirect fallback),
    then opens `https://<caddr>.localhost/sign/?kind=tx|message|authEntry&…` and
    approves. Uses Playwright `waitForEvent('popup')`. All three kinds go through
    the same `get()` seam.

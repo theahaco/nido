@@ -1,6 +1,6 @@
 /**
  * On-chain reads needed to sign a target-contract call with a delegated session
- * passkey. Trimmed port of the g2c frontend's `policyChainFetch.ts` — just the
+ * passkey. Trimmed port of the Nido frontend's `policyChainFetch.ts` — just the
  * two lookups the in-page signer needs:
  *
  *   - `findRuleForPubkey`   — which context-rule id holds our session key.
@@ -10,7 +10,7 @@
  * `PUBLIC_STELLAR_*` (testnet for the hosted demo, local for `npm start`).
  */
 
-import { fetchRegistryAddress as sdkFetchRegistryAddress } from "@g2c/passkey-sdk"
+import { fetchRegistryAddress as sdkFetchRegistryAddress } from "@nidohq/passkey-sdk"
 import {
 	rpc,
 	Contract,
@@ -54,6 +54,16 @@ async function simulateView(
 	return result.retval
 }
 
+/** OZ's SmartAccountError::ContextRuleNotFound surfaces from a failed
+ *  simulation as `Error(Contract, #3000)`. Rule ids are MONOTONIC and never
+ *  reused, while `get_context_rules_count` only counts live rules — so any
+ *  revoke that isn't the newest rule leaves an id gap that panics
+ *  `get_context_rule`. Enumerators must treat this error as "skip". */
+function isRuleNotFound(err: unknown): boolean {
+	const msg = err instanceof Error ? err.message : String(err)
+	return /Error\(Contract, #3000\)|ContextRuleNotFound/.test(msg)
+}
+
 /**
  * Find the context-rule id on `account` whose External signer carries the given
  * public key (hex). Returns `null` if no such rule exists — e.g. the delegation
@@ -71,23 +81,42 @@ export async function findRuleForPubkey(
 	const countRv = await simulateView(server, new Contract(account), "get_context_rules_count")
 	const count = scValToNative(countRv) as number
 	const lowerHex = pubkeyHex.toLowerCase()
-	for (let i = 0; i < count; i++) {
-		const ruleRv = await simulateView(
-			server,
-			new Contract(account),
-			"get_context_rule",
-			nativeToScVal(i, { type: "u32" }),
-		)
+	// Gap-tolerant id scan — revoking any non-newest rule leaves an id gap
+	// (see isRuleNotFound). The bound only stops a pathological account from
+	// looping forever.
+	let found = 0
+	for (let id = 0; found < count && id < count + 100; id++) {
+		let ruleRv: xdr.ScVal
+		try {
+			ruleRv = await simulateView(
+				server,
+				new Contract(account),
+				"get_context_rule",
+				nativeToScVal(id, { type: "u32" }),
+			)
+		} catch (err) {
+			if (isRuleNotFound(err)) continue
+			throw err
+		}
+		found++
 		const native = scValToNative(ruleRv) as { id?: number; signers?: unknown[] }
 		for (const s of native.signers ?? []) {
 			// ["External", verifier, pubkey_bytes_as_array_or_buffer]
 			if (Array.isArray(s) && s[0] === "External") {
 				const candidateHex = bytesToHex(s[2])
 				if (candidateHex && candidateHex === lowerHex) {
-					return native.id ?? i
+					return native.id ?? id
 				}
 			}
 		}
+	}
+	// A truncated scan must be LOUD: a silent null here makes the caller wipe
+	// the session material and re-delegate at an even higher id — once an
+	// account crosses the bound it could never scan back under it.
+	if (found < count) {
+		throw new Error(
+			`context-rule scan exhausted: found ${found} of ${count} live rules within ids 0..${count + 99}`,
+		)
 	}
 	return null
 }
@@ -136,8 +165,10 @@ function bytesToHex(raw: unknown): string | null {
 		// Sometimes handed back as an object with numeric keys; rebuild as bytes.
 		const obj = raw as Record<string, number>
 		const ordered: number[] = []
-		for (let j = 0; obj[j as unknown as string] !== undefined; j++) {
-			ordered.push(obj[j as unknown as string])
+		for (let j = 0; ; j++) {
+			const b = obj[j as unknown as string]
+			if (b === undefined) break
+			ordered.push(b)
 		}
 		if (ordered.length > 0) {
 			return ordered.map((b) => b.toString(16).padStart(2, "0")).join("")

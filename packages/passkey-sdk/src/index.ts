@@ -19,7 +19,10 @@ export {
   getAuthEntry,
   parseAssertionResponse,
   injectPasskeySignature,
+  injectSignedAuthPayload,
 } from "./auth.js";
+
+export { identifyAssertionSigner } from "./assertionMatch.js";
 
 export { buildAuthPayloadScVal } from "./multiSigner.js";
 export type { SignerSignature, AuthPayloadSpec } from "./multiSigner.js";
@@ -54,6 +57,15 @@ export { resolveName, resolveNameCached, lookupName } from "./resolve.js";
 export { fetchRegistryAddress, REGISTRY_FALLBACKS } from "./registry.js";
 export type { FetchRegistryAddressOptions } from "./registry.js";
 
+export {
+  RelayerError,
+  submitSorobanTransaction,
+  getRelayerTransaction,
+  waitForConfirmation,
+  extractFuncAndAuth,
+} from "./relayer.js";
+export type { RelayerStatus, RelayerTxResponse } from "./relayer.js";
+
 export type { PendingAccount, SessionKeyMaterial } from "./storage.js";
 
 export {
@@ -87,12 +99,3 @@ export * from './sessionKey.js';
 export * from './syntheticAssertion.js';
 
 export * from './friendSigning.js';
-
-export {
-  RelayerError,
-  submitSorobanTransaction,
-  getRelayerTransaction,
-  waitForConfirmation,
-  extractFuncAndAuth,
-} from './relayer.js';
-export type { RelayerStatus, RelayerTxResponse } from './relayer.js';

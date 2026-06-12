@@ -8,13 +8,13 @@ import {
   accountOrigin,
 } from './urls.js';
 
-const BASE = 'g2c.example.xyz';
+const BASE = 'nido.example.xyz';
 const C = 'CCV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XMCW';
 const DAPP = 'https://dapp.example.com';
 
 describe('apexOrigin', () => {
   it('prefixes https by default', () => {
-    expect(apexOrigin(BASE)).toBe('https://g2c.example.xyz');
+    expect(apexOrigin(BASE)).toBe('https://nido.example.xyz');
   });
   it('keeps an explicit scheme', () => {
     expect(apexOrigin('http://localhost:4321')).toBe('http://localhost:4321');
@@ -23,7 +23,7 @@ describe('apexOrigin', () => {
 
 describe('accountOrigin', () => {
   it('puts the lowercased C-address as a subdomain of the base', () => {
-    expect(accountOrigin(BASE, C)).toBe(`https://${C.toLowerCase()}.g2c.example.xyz`);
+    expect(accountOrigin(BASE, C)).toBe(`https://${C.toLowerCase()}.nido.example.xyz`);
   });
   it('throws on an invalid contract id', () => {
     expect(() => accountOrigin(BASE, 'not-a-contract')).toThrow();
@@ -46,10 +46,17 @@ describe('accountOrigin', () => {
 describe('connectUrl', () => {
   it('targets /connect/ at the apex with dapp + return params', () => {
     const u = new URL(connectUrl({ base: BASE, dappOrigin: DAPP, returnUrl: `${DAPP}/cb` }));
-    expect(u.origin).toBe('https://g2c.example.xyz');
+    expect(u.origin).toBe('https://nido.example.xyz');
     expect(u.pathname).toBe('/connect/');
     expect(u.searchParams.get('dapp')).toBe(DAPP);
     expect(u.searchParams.get('return')).toBe(`${DAPP}/cb`);
+    expect(u.searchParams.get('previous')).toBeNull();
+  });
+  it('carries the previously connected address when provided', () => {
+    const u = new URL(
+      connectUrl({ base: BASE, dappOrigin: DAPP, returnUrl: `${DAPP}/cb`, previous: C }),
+    );
+    expect(u.searchParams.get('previous')).toBe(C);
   });
 });
 
@@ -65,7 +72,7 @@ describe('signTransactionUrl', () => {
         returnUrl: `${DAPP}/cb`,
       }),
     );
-    expect(u.host).toBe(`${C.toLowerCase()}.g2c.example.xyz`);
+    expect(u.host).toBe(`${C.toLowerCase()}.nido.example.xyz`);
     expect(u.pathname).toBe('/sign/');
     expect(u.searchParams.get('kind')).toBe('tx');
     expect(u.searchParams.get('xdr')).toBe('AAAA');
@@ -80,7 +87,7 @@ describe('signMessageUrl', () => {
     const u = new URL(
       signMessageUrl({ base: BASE, account: C, message: 'hello', dappOrigin: DAPP, returnUrl: `${DAPP}/cb` }),
     );
-    expect(u.host).toBe(`${C.toLowerCase()}.g2c.example.xyz`);
+    expect(u.host).toBe(`${C.toLowerCase()}.nido.example.xyz`);
     expect(u.searchParams.get('kind')).toBe('message');
     expect(u.searchParams.get('message')).toBe('hello');
   });

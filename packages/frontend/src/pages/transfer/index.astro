@@ -22,11 +22,11 @@ import Icon from "../../components/Icon.astro";
       <a href="/account/" class="btn ghost sm" style="width:40px;height:40px;padding:0;border-radius:12px;" aria-label="Back to your Nido">
         <Icon name="back" size={18} />
       </a>
-      <div class="disp" style="font-weight:800;font-size:19px;">Send</div>
+      <h1 class="disp" style="font-weight:800;font-size:19px;">Send</h1>
       <span style="width:40px;"></span>
     </div>
 
-    <div id="error-box" class="alert danger" style="display:none;margin:8px 22px;"></div>
+    <div id="error-box" role="alert" class="alert danger" style="display:none;margin:8px 22px;"></div>
 
     <!-- ===================== STEP 1 · FORM ===================== -->
     <section id="form-step" class="pad" style="padding-top:8px;">
@@ -81,7 +81,7 @@ import Icon from "../../components/Icon.astro";
           <Icon name="faceid" size={18} color="#fff" /> <span class="js-confirm-label">Confirm &amp; send</span>
         </button>
       </div>
-      <div id="review-status" class="mut mono" style="font-size:12.5px;margin-top:12px;text-align:center;line-height:1.5;"></div>
+      <div id="review-status" role="status" aria-live="polite" class="mut mono" style="font-size:12.5px;margin-top:12px;text-align:center;line-height:1.5;"></div>
     </section>
 
     <!-- ===================== STEP 3 · RESULT ===================== -->
@@ -89,7 +89,7 @@ import Icon from "../../components/Icon.astro";
       <div style="width:72px;height:72px;border-radius:20px;background:var(--good-soft);display:grid;place-items:center;margin:0 auto 14px;">
         <Icon name="check" size={36} color="var(--good)" />
       </div>
-      <div class="disp" style="font-weight:800;font-size:26px;">Sent</div>
+      <h1 class="disp" style="font-weight:800;font-size:26px;">Sent</h1>
       <p id="result-detail" class="mut" style="font-size:14px;line-height:1.5;max-width:320px;margin:8px auto 0;"></p>
       <a id="result-explorer" class="link" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;font-size:13.5px;">View on Stellar Expert →</a>
       <div style="margin-top:24px;display:flex;flex-direction:column;gap:10px;">
@@ -159,7 +159,7 @@ import Icon from "../../components/Icon.astro";
     resolveName,
     lookupName,
     type ResolvedFriend,
-  } from "@g2c/passkey-sdk";
+  } from "@nidohq/passkey-sdk";
   import { loadAssets } from "../../lib/assets/assets.js";
   import type { AssetHolding } from "../../lib/assets/types.js";
   import { decimalToRaw, rawToDecimal } from "../../lib/money.js";
@@ -509,6 +509,10 @@ import Icon from "../../components/Icon.astro";
     document.getElementById("back-btn")!.addEventListener("click", () => {
       pending = null; // discard the previewed op; the next Review rebuilds it fresh
       $reviewStatus.textContent = "";
+      // The WAIT_TIMEOUT lock is scoped to the timed-out attempt: going Back
+      // discards it, and the next Review→Confirm signs a fresh nonce well past
+      // the 60s channel-tx validity window — safe to confirm again.
+      $confirmBtn.disabled = false;
       showStep("form");
     });
     $confirmBtn.addEventListener("click", onConfirm);
@@ -621,7 +625,11 @@ import Icon from "../../components/Icon.astro";
   async function onConfirm() {
     if (!pending || !contractId) return;
     clearError();
+    const $backBtn = document.getElementById("back-btn") as HTMLButtonElement;
     $confirmBtn.disabled = true;
+    // Lock Back too: leaving the review step mid-flight would hide the status
+    // line (and the explorer link a timeout writes there).
+    $backBtn.disabled = true;
     $reviewStatus.textContent = `Confirm with ${passkey.label} to send ${pending.amountLabel} to ${pending.toLabel}…`;
     try {
       const sent = await withPasskeySheet(
@@ -629,16 +637,28 @@ import Icon from "../../components/Icon.astro";
         { title: confirmLabel, sub: `Sending ${pending.amountLabel} to ${pending.toLabel}.` },
       );
 
-      toast({ msg: "Sent", icon: "check" });
       document.getElementById("result-detail")!.textContent =
         `${pending.amountLabel} to ${pending.toLabel}.`;
       const explorer = document.getElementById("result-explorer") as HTMLAnchorElement;
       explorer.href = `${EXPLORER_BASE}/tx/${sent.hash}`;
+      $backBtn.disabled = false;
       showStep("result");
     } catch (err) {
-      const e = err as { name?: string; message?: string };
+      const e = err as { name?: string; message?: string; code?: string; details?: { hash?: string | null } };
+      $backBtn.disabled = false;
       if (e?.name === "NotAllowedError") {
         showError(passkeyBlockedHint());
+      } else if (e?.name === "RelayerError" && e?.code === "WAIT_TIMEOUT") {
+        // The relayer stopped answering (or we out-polled it) but the tx may
+        // STILL land — re-enabling Confirm here is a double-send invitation.
+        // Keep THIS attempt's Confirm disabled (Back resets it for the next
+        // one) and point at the explorer instead.
+        showError("Still waiting for the network — this transfer may yet go through. Check the result before sending again.");
+        const hash = e.details?.hash;
+        $reviewStatus.innerHTML = hash && /^[0-9a-f]{64}$/i.test(hash)
+          ? `<a href="${EXPLORER_BASE}/tx/${hash}" target="_blank" rel="noopener">Check status on Stellar Expert →</a>`
+          : "";
+        return;
       } else {
         showError(`Couldn't send: ${e?.message ?? String(err)}`);
       }

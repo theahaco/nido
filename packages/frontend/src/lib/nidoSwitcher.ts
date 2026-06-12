@@ -10,7 +10,7 @@ import {
   activateAccount,
   lookupName,
   fetchRegistryAddress,
-} from "@g2c/passkey-sdk";
+} from "@nidohq/passkey-sdk";
 import { rpc, xdr } from "@stellar/stellar-sdk";
 import { buildMyNidoModel, type MyNidoRow } from "./myNidoModel";
 import { nidoRowHref, accountShareUrl } from "./accountLinks";
@@ -20,6 +20,7 @@ import { avatarBackground } from "./avatarStyle";
 import { shortAddr } from "./address";
 import { formatXlm } from "./money";
 import { createNido } from "./createNido";
+import { syncNidoStorageViaBridge } from "./nidoSharedStorage";
 
 const RPC_URL = "https://soroban-testnet.stellar.org";
 const NAME_NETWORK = "Test SDF Network ; September 2015";
@@ -58,9 +59,6 @@ function nestSvg(size: number): string {
     <circle cx="60" cy="60" r="11" fill="var(--teal)"/></svg>`;
 }
 
-// verifyPending hits the RPC; with several triggers on one page, run it once.
-let verifiedPending = false;
-
 // Every mounted switcher registers here so ONE set of document-level listeners
 // (outside-click, Escape) serves all instances, opening one closes the others,
 // and a background promotion can refresh whichever panel happens to be open.
@@ -73,6 +71,74 @@ interface SwitcherInstance {
 const instances: SwitcherInstance[] = [];
 let globalListenersAttached = false;
 let panelIdSeq = 0;
+let sharedStorageSyncPromise: Promise<boolean> | null = null;
+let sharedStorageSynced = false;
+let verifiedPending = false;
+let pendingVerificationPromise: Promise<boolean> | null = null;
+let rerunPendingVerification = false;
+
+function refreshOpenSwitchers() {
+  for (const inst of instances) inst.refreshIfOpen();
+}
+
+// Promote any pending account that has since deployed.
+async function verifyPendingAccounts(): Promise<boolean> {
+  const pending = loadPendingAccounts();
+  if (pending.length === 0) return false;
+  const active = new Set(loadAccounts());
+  let changed = false;
+  const server = new rpc.Server(RPC_URL);
+  for (const { contractId } of pending) {
+    if (active.has(contractId)) continue;
+    try {
+      await server.getContractData(contractId, xdr.ScVal.scvLedgerKeyContractInstance());
+      activateAccount(contractId);
+      changed = true;
+    } catch {
+      /* not deployed yet */
+    }
+  }
+  return changed;
+}
+
+function queuePendingVerification(force = false) {
+  if (pendingVerificationPromise) {
+    if (force) rerunPendingVerification = true;
+    return;
+  }
+  if (verifiedPending && !force) return;
+  verifiedPending = true;
+  pendingVerificationPromise = verifyPendingAccounts()
+    .then((changed) => {
+      if (!changed) return false;
+      refreshOpenSwitchers();
+      void syncNidoStorageViaBridge();
+      return true;
+    })
+    .finally(() => {
+      pendingVerificationPromise = null;
+      if (rerunPendingVerification) {
+        rerunPendingVerification = false;
+        queuePendingVerification(true);
+      }
+    });
+}
+
+function queueSharedStorageSync() {
+  if (sharedStorageSynced || sharedStorageSyncPromise) return;
+  sharedStorageSyncPromise = syncNidoStorageViaBridge()
+    .then((changed) => {
+      sharedStorageSynced = true;
+      if (changed) {
+        refreshOpenSwitchers();
+        queuePendingVerification(true);
+      }
+      return changed;
+    })
+    .finally(() => {
+      sharedStorageSyncPromise = null;
+    });
+}
 
 function attachGlobalListeners() {
   if (globalListenersAttached) return;
@@ -170,22 +236,11 @@ export function mountNidoSwitcher(root: HTMLElement, opts: MountOptions = {}): v
   function wireCreate() {
     const cbtn = panel!.querySelector<HTMLButtonElement>(".mn-create-btn");
     if (!cbtn) return;
-    cbtn.addEventListener("click", async () => {
-      const errEl = panel!.querySelector<HTMLElement>(".mn-err")!;
-      errEl.style.display = "none";
+    cbtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       cbtn.disabled = true;
-      const label = cbtn.textContent ?? "";
-      cbtn.textContent = "Reserving your Nido…";
-      try {
-        const url = await createNido(window.location.host);
-        cbtn.textContent = "Taking you in…";
-        window.location.href = url;
-      } catch (err: any) {
-        errEl.textContent = err?.message || String(err);
-        errEl.style.display = "block";
-        cbtn.disabled = false;
-        cbtn.textContent = label;
-      }
+      cbtn.textContent = "Opening setup…";
+      window.location.href = createNido(window.location.host);
     });
   }
 
@@ -201,28 +256,6 @@ export function mountNidoSwitcher(root: HTMLElement, opts: MountOptions = {}): v
         balEl.innerHTML = `<small>—</small>`;
       }
     });
-  }
-
-  // Promote any pending account that has since deployed, then re-render if needed.
-  async function verifyPending() {
-    const pending = loadPendingAccounts();
-    if (pending.length === 0) return;
-    const active = new Set(loadAccounts());
-    let changed = false;
-    const server = new rpc.Server(RPC_URL);
-    for (const { contractId } of pending) {
-      if (active.has(contractId)) continue;
-      try {
-        await server.getContractData(contractId, xdr.ScVal.scvLedgerKeyContractInstance());
-        activateAccount(contractId);
-        changed = true;
-      } catch {
-        /* not deployed yet */
-      }
-    }
-    // The scan runs once (on the first-mounted instance) but the open panel may
-    // belong to a DIFFERENT instance, so refresh every open switcher.
-    if (changed) for (const inst of instances) inst.refreshIfOpen();
   }
 
   function refreshIfOpen() {
@@ -259,8 +292,41 @@ export function mountNidoSwitcher(root: HTMLElement, opts: MountOptions = {}): v
     toggle();
   });
 
+  // Arrow-key navigation inside the open menu (ARIA menu pattern).
+  panel.addEventListener("keydown", (e) => {
+    const menuEl = panel;
+    switch (e.key) {
+      case "ArrowDown": {
+        e.preventDefault();
+        const items = [...menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+        const idx = items.indexOf(document.activeElement as HTMLElement);
+        items[(idx + 1) % items.length]?.focus();
+        break;
+      }
+      case "ArrowUp": {
+        e.preventDefault();
+        const items = [...menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+        const idx = items.indexOf(document.activeElement as HTMLElement);
+        items[(idx - 1 + items.length) % items.length]?.focus();
+        break;
+      }
+      case "Home": {
+        e.preventDefault();
+        menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')[0]?.focus();
+        break;
+      }
+      case "End": {
+        e.preventDefault();
+        const items = [...menuEl.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+        items[items.length - 1]?.focus();
+        break;
+      }
+    }
+  });
+
   instances.push({ root, btn, close, refreshIfOpen });
   attachGlobalListeners();
+  queueSharedStorageSync();
 
   // Hero / CTA-band buttons dispatch `nido:open-menu` on the landing page only;
   // the primary (landing) instance handles it. Defer to the next tick so the
@@ -272,8 +338,5 @@ export function mountNidoSwitcher(root: HTMLElement, opts: MountOptions = {}): v
     });
   }
 
-  if (!verifiedPending) {
-    verifiedPending = true;
-    void verifyPending();
-  }
+  queuePendingVerification();
 }

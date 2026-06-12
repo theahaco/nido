@@ -1,5 +1,5 @@
 [package]
-name = "g2c-integration-tests"
+name = "nido-integration-tests"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

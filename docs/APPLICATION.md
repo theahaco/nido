@@ -16,7 +16,7 @@ Delivers smart contracts, a passkey wallet web app, and an onboarding SDK to mig
 > Enter the URL of the relevant github page.
 
 ## Code URL
-https://github.com/theahaco/g2c
+https://github.com/nidohq/nido
 
 > This is your elevator pitch: keep it short (<3 min), powerful, and clearly demonstrate the project's features and functionality. Upload your demo video on Youtube or Vimeo with a 16:9 aspect ratio (ideally 1920px by 1080px).
 
@@ -30,13 +30,13 @@ https://github.com/theahaco/g2c
 
 ## Product and Services
 
-**1. g2c Smart Contracts (Soroban)**
+**1. Nido Smart Contracts (Soroban)**
 Three Soroban contracts that handle the full lifecycle of C-address creation and passkey-based authentication:
-- **Factory** (`g2c-factory`): Deterministic deployment of Smart Accounts. A single `create_account(funder, key)` call deploys the account and registers the user's passkey as the initial signer, while lazy-deploying a shared WebAuthn verifier. `get_c_address(funder)` lets wallets pre-compute the C-address before deployment, enabling pre-funding flows. Built on Stellar's `deployer_with_address` for deterministic addresses.
-- **Smart Account** (`g2c-smart-account`): Implements OpenZeppelin's `CustomAccountInterface`, `SmartAccount`, and `ExecutionEntryPoint` traits. Handles passkey-authenticated transaction execution, context rules for scoped session keys, and policy enforcement — all on-chain. Uses Stellar's native `__check_auth` hook for account abstraction.
-- **WebAuthn Verifier** (`g2c-webauthn-verifier`): Stateless secp256r1/P-256 signature verifier implementing OZ's `Verifier` trait. Deployed once and shared across all smart accounts, keeping per-account deployment costs low.
+- **Factory** (`nido-factory`): Deterministic deployment of Smart Accounts. A single `create_account(funder, key)` call deploys the account and registers the user's passkey as the initial signer, while lazy-deploying a shared WebAuthn verifier. `get_c_address(funder)` lets wallets pre-compute the C-address before deployment, enabling pre-funding flows. Built on Stellar's `deployer_with_address` for deterministic addresses.
+- **Smart Account** (`nido-smart-account`): Implements OpenZeppelin's `CustomAccountInterface`, `SmartAccount`, and `ExecutionEntryPoint` traits. Handles passkey-authenticated transaction execution, context rules for scoped session keys, and policy enforcement — all on-chain. Uses Stellar's native `__check_auth` hook for account abstraction.
+- **WebAuthn Verifier** (`nido-webauthn-verifier`): Stateless secp256r1/P-256 signature verifier implementing OZ's `Verifier` trait. Deployed once and shared across all smart accounts, keeping per-account deployment costs low.
 
-**2. g2c Wallet (Web App)**
+**2. Nido Wallet (Web App)**
 A standalone browser-based wallet for managing Soroban Smart Accounts with passkey authentication. Key capabilities:
 - Passkey-based account creation and transaction signing via the WebAuthn browser API.
 - G→C onboarding flow: generate ephemeral G-address, detect funding, create passkey, deploy C-address — all in one atomic transaction on Stellar.
@@ -188,7 +188,7 @@ $150,000
 
 ## Success Criteria
 - **C-Address Adoption:** Meaningful number of C-addresses created via the factory contract on mainnet within the first months after launch, demonstrating that the G→C migration path works for real users.
-- **Wallet Integrations:** At least one ecosystem wallet (beyond the g2c wallet itself) integrates the onboarding SDK, validating the kit's utility for the broader Stellar ecosystem.
+- **Wallet Integrations:** At least one ecosystem wallet (beyond the Nido wallet itself) integrates the onboarding SDK, validating the kit's utility for the broader Stellar ecosystem.
 - **Developer Adoption:** SDK downloads and GitHub engagement (stars, forks, issues) indicate active developer interest in building on C-address infrastructure.
 - **Transaction Flow Validation:** dApps successfully use the refractor.space and URL-embedding protocols to request transaction signatures from C-address wallets, proving the cross-app interaction model works in practice.
 - **Gas Abstraction Usage:** Transactions submitted via OZ Relayer on mainnet, demonstrating that users can interact with Soroban contracts without holding XLM — lowering a key barrier to Stellar adoption.

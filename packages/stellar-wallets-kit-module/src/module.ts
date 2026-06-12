@@ -1,7 +1,7 @@
 /**
- * `G2cModule` — a `@creit.tech/stellar-wallets-kit` module that surfaces a
- * g2c passkey smart-account in the kit's wallet picker, so any dApp using the
- * kit can use g2c with no g2c-specific code.
+ * `NidoModule` — a `@creit.tech/stellar-wallets-kit` module that surfaces a
+ * Nido passkey smart account in the kit's wallet picker, so any dApp using the
+ * kit can use Nido with no Nido-specific code.
  *
  * Architecture (mirrors the existing delegate handover): the wallet lives at
  * `<c-address>.<base>`, the dApp lives at its own origin, and every privileged
@@ -14,13 +14,14 @@
  * URL building and result parsing are pure (`urls.ts` / `handover.ts`).
  *
  * The chosen address is cached in the dApp origin's localStorage (it's a
- * non-secret identifier), so repeat `getAddress` calls don't re-prompt the
- * picker unless `skipRequestAccess` is false and nothing is cached.
+ * non-secret identifier). `getAddress` still opens the picker on every call
+ * (passing the cached address as `previous` so it's highlighted, and so the
+ * picker can fast-path single-account devices) — the cache exists for
+ * `skipRequestAccess: true` reads and to resolve the account for signing.
  */
 
 import {
   type ModuleInterface,
-  type IOnChangeEvent,
   ModuleType,
 } from '@creit.tech/stellar-wallets-kit';
 
@@ -41,22 +42,44 @@ import {
 } from './handover.js';
 import { openCeremonyPopup } from './redirect.js';
 
-export const G2C_ID = 'g2c';
+export const NIDO_ID = 'nido';
+
+/**
+ * `error.name` of the rejection thrown when the user hits "Use a different
+ * account" on the sign page. The sign ceremony is structurally bound to one
+ * account (the WebAuthn rpId is its subdomain), so switching mid-sign is
+ * impossible; the module clears the cached address and rejects with this
+ * error so the dApp can react: re-run connect (`kit.getAddress()` /
+ * `requestAccess`) to let the user pick another account, then rebuild the
+ * transaction for the new holder.
+ */
+export const ACCOUNT_SWITCH_REQUESTED = 'ACCOUNT_SWITCH_REQUESTED';
+
+/** Thrown by sign methods when the user asks to switch accounts mid-ceremony. */
+export class AccountSwitchRequestedError extends Error {
+  constructor() {
+    super(
+      'Nido: the user wants to sign with a different account. ' +
+        'Re-run connect to let them pick one, then retry.',
+    );
+    this.name = ACCOUNT_SWITCH_REQUESTED;
+  }
+}
 
 const DEFAULT_NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 
 /**
  * Nido Nest-Ring mark. Inline data-URI so the module has no asset dependency.
  */
-const G2C_ICON =
+const NIDO_ICON =
   'data:image/svg+xml;base64,' +
   btoa(
     '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><rect width="120" height="120" rx="26" fill="#FFF8F0"/><circle cx="60" cy="60" r="34" fill="none" stroke="#F25C2A" stroke-width="6" stroke-dasharray="14 9" stroke-linecap="round"/><circle cx="60" cy="60" r="23" fill="none" stroke="#F5A623" stroke-width="6" stroke-dasharray="11 8" stroke-linecap="round"/><circle cx="60" cy="60" r="9" fill="#0E9AA8"/></svg>',
   );
 
-export interface G2cModuleParams {
+export interface NidoModuleParams {
   /**
-   * The g2c deployment base domain, e.g. `g2c.example.xyz`. May carry an
+   * The Nido deployment base domain, e.g. `nido.example.xyz`. May carry an
    * explicit scheme for local dev (`http://localhost:4321`). Required: the
    * module runs at the dApp origin and can't infer it.
    */
@@ -73,21 +96,21 @@ export interface G2cModuleParams {
   returnUrl?: string;
 }
 
-export class G2cModule implements ModuleInterface {
+export class NidoModule implements ModuleInterface {
   moduleType: ModuleType = ModuleType.HOT_WALLET;
-  productId: string = G2C_ID;
-  productName: string = 'Nido (passkey)';
+  productId: string = NIDO_ID;
+  productName: string = 'Nido';
   productUrl: string;
-  productIcon: string = G2C_ICON;
+  productIcon: string = NIDO_ICON;
 
   private base: string;
   private networkPassphrase: string;
   private dappOriginOverride?: string;
   private returnUrlOverride?: string;
 
-  constructor(params: G2cModuleParams) {
+  constructor(params: NidoModuleParams) {
     if (!params?.base) {
-      throw new Error('G2cModule requires a `base` domain (e.g. "g2c.example.xyz").');
+      throw new Error('NidoModule requires a `base` domain (e.g. "nido.example.xyz").');
     }
     this.base = params.base;
     this.networkPassphrase = params.networkPassphrase ?? DEFAULT_NETWORK_PASSPHRASE;
@@ -96,7 +119,7 @@ export class G2cModule implements ModuleInterface {
     this.productUrl = apexOrigin(this.base);
   }
 
-  /** g2c is a hosted wallet — always available; no extension to install. */
+  /** Nido is a hosted wallet — always available; no extension to install. */
   async isAvailable(): Promise<boolean> {
     return true;
   }
@@ -109,28 +132,34 @@ export class G2cModule implements ModuleInterface {
   }
 
   /**
-   * Return the user's selected smart-account C-address. Uses the dApp-origin
-   * cache when present; otherwise opens the apex `/connect/` picker. Pass
+   * Return the user's selected smart-account C-address.
+   *
+   * Always opens the apex `/connect/` picker (so users with several accounts
+   * can switch on every reconnect), passing the cached address as `previous`
+   * so the picker highlights it — and, when the device has exactly one
+   * account and it matches, auto-confirms without showing UI. Pass
    * `skipRequestAccess: true` to read the cache only (throws if empty rather
-   * than prompting).
+   * than prompting). The SEP-43 `path` param is accepted but unused — there
+   * is no derivation path to select; the picker is always shown instead.
    */
   async getAddress(params?: { path?: string; skipRequestAccess?: boolean }): Promise<{ address: string }> {
     const cached = loadCachedAddress();
-    if (cached) return { address: cached };
     if (params?.skipRequestAccess) {
-      throw new Error('g2c: no account connected. Call getAddress without skipRequestAccess to pick one.');
+      if (cached) return { address: cached };
+      throw new Error('Nido: no account connected. Call getAddress without skipRequestAccess to pick one.');
     }
 
     const url = connectUrl({
       base: this.base,
       dappOrigin: this.dappOrigin(),
       returnUrl: this.returnUrl(),
+      previous: cached ?? undefined,
     });
     const { search } = await openCeremonyPopup(url, apexOrigin(this.base));
     const result = parseConnectReturn(search);
-    if (!result) throw new Error('g2c: the connect window returned no result.');
-    if (result.status === 'cancelled') throw new Error('g2c: account selection was cancelled.');
-    if (result.status === 'error') throw new Error(`g2c: ${result.error}`);
+    if (!result) throw new Error('Nido: the connect window returned no result.');
+    if (result.status === 'cancelled') throw new Error('Nido: account selection was cancelled.');
+    if (result.status === 'error') throw new Error(`Nido: ${result.error}`);
 
     saveCachedAddress(result.address);
     return { address: result.address };
@@ -215,9 +244,16 @@ export class G2cModule implements ModuleInterface {
   private async runSign(url: string, account: string): Promise<string> {
     const { search } = await openCeremonyPopup(url, accountOrigin(this.base, account));
     const result = parseSignReturn(search);
-    if (!result) throw new Error('g2c: the sign window returned no result.');
-    if (result.status === 'cancelled') throw new Error('g2c: signing was cancelled.');
-    if (result.status === 'error') throw new Error(`g2c: ${result.error}`);
+    if (!result) throw new Error('Nido: the sign window returned no result.');
+    if (result.status === 'cancelled') throw new Error('Nido: signing was cancelled.');
+    if (result.status === 'switch-account') {
+      // The user wants another account. Forget the bound one so the next
+      // connect doesn't fast-path back to it, and reject with a distinct,
+      // documented error the dApp can catch (re-run connect, rebuild the tx).
+      clearCachedAddress();
+      throw new AccountSwitchRequestedError();
+    }
+    if (result.status === 'error') throw new Error(`Nido: ${result.error}`);
     return result.result;
   }
 }

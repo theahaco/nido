@@ -11,8 +11,15 @@ export const EXPLORER_BASE = `https://stellar.expert/explorer/${NETWORK_NAME}`;
 /** Native-XLM Stellar Asset Contract id for this network. */
 export const NATIVE_SAC_ID = Asset.native().contractId(NETWORK_PASSPHRASE);
 
-/** Optional browser-safe relayer endpoint. Empty means local classic submitter fallback. */
+/** OZ Relayer (Channels) endpoint. Empty string = relayer disabled; the wallet
+ *  falls back to ephemeral-G self-submission. Set PUBLIC_RELAYER_URL at build
+ *  time once the Fly app is live (e.g. https://nido.fly.dev).
+ *  Trailing slashes are stripped so `${RELAYER_URL}/relay` never yields
+ *  "//relay" (which Caddy's path matcher won't route). */
 export const RELAYER_URL: string = (import.meta.env.PUBLIC_RELAYER_URL ?? "").replace(/\/+$/, "");
 
-/** Existing on-chain G-address used only as a recording-mode simulation source in relayer mode. */
+/** Funded G-address used as the *simulation-only* tx source in relayer mode
+ *  (the relayer's fund account — guaranteed on-chain). Never signs, never pays.
+ *  Required because recording-mode simulateTransaction needs an existing
+ *  source account, and in relayer mode we no longer friendbot-fund one. */
 export const RELAYER_SIM_SOURCE: string = import.meta.env.PUBLIC_RELAYER_SIM_SOURCE ?? "";

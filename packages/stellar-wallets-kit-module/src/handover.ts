@@ -9,7 +9,7 @@
  * caching it at the dApp origin is fine.
  */
 
-import { isContractId } from '@g2c/passkey-sdk';
+import { isContractId } from '@nidohq/passkey-sdk';
 
 const ADDRESS_CACHE_KEY = 'g2c:wallet-kit:address';
 
@@ -31,8 +31,8 @@ export type ConnectReturn =
  */
 export function parseConnectReturn(search: string): ConnectReturn | null {
   const p = new URLSearchParams(search);
-  const addr = p.get('g2c_address');
-  const connect = p.get('g2c_connect');
+  const addr = p.get('nido_address');
+  const connect = p.get('nido_connect');
   if (addr) {
     const upper = addr.toUpperCase();
     if (!isContractId(upper)) {
@@ -42,7 +42,7 @@ export function parseConnectReturn(search: string): ConnectReturn | null {
   }
   if (connect === 'cancelled') return { status: 'cancelled' };
   if (connect === 'error') {
-    return { status: 'error', error: p.get('g2c_error') ?? 'Unknown connect error' };
+    return { status: 'error', error: p.get('nido_error') ?? 'Unknown connect error' };
   }
   return null;
 }
@@ -52,24 +52,29 @@ export type SignKind = 'tx' | 'message' | 'authEntry';
 export type SignReturn =
   | { status: 'ok'; kind: SignKind; result: string }
   | { status: 'cancelled' }
+  | { status: 'switch-account' }
   | { status: 'error'; error: string };
 
 /**
  * Read the result of a `/sign/` ceremony off a query string. `result` is the
- * signed XDR / message / auth-entry depending on `kind`. Returns `null` if the
- * query carries none of the sign params.
+ * signed XDR / message / auth-entry depending on `kind`. `switch-account`
+ * means the user asked to sign with a different account — the sign page is
+ * structurally bound to one account (WebAuthn rpId = its subdomain), so the
+ * only way out is back through connect. Returns `null` if the query carries
+ * none of the sign params.
  */
 export function parseSignReturn(search: string): SignReturn | null {
   const p = new URLSearchParams(search);
-  const signed = p.get('g2c_signed');
-  const sign = p.get('g2c_sign');
+  const signed = p.get('nido_signed');
+  const sign = p.get('nido_sign');
   if (signed) {
     const kind = (p.get('kind') as SignKind) ?? 'tx';
     return { status: 'ok', kind, result: signed };
   }
   if (sign === 'cancelled') return { status: 'cancelled' };
+  if (sign === 'switch-account') return { status: 'switch-account' };
   if (sign === 'error') {
-    return { status: 'error', error: p.get('g2c_error') ?? 'Unknown signing error' };
+    return { status: 'error', error: p.get('nido_error') ?? 'Unknown signing error' };
   }
   return null;
 }

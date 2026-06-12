@@ -4,10 +4,10 @@ import {
   writeSession,
   clearSession,
   warningsFor,
-  isG2cWallet,
+  isNidoWallet,
   connectWith,
   restoreWith,
-  G2C_ID,
+  NIDO_ID,
   type SessionStorage,
   type KitLike,
   type WalletSession,
@@ -46,25 +46,36 @@ describe('session store', () => {
     expect(readSession(store)).toBeNull();
   });
 
+  it('normalizes the legacy stored Nido wallet id', () => {
+    const store = fakeStorage({
+      'g2c:walletSession': JSON.stringify({ walletId: 'g2c', walletAddress: 'CABC' }),
+    });
+    expect(readSession(store)).toEqual({ walletId: NIDO_ID, walletAddress: 'CABC' });
+  });
+
   it('clear removes the session', () => {
     const store = fakeStorage();
-    writeSession({ walletId: G2C_ID, walletAddress: 'CABC' }, store);
+    writeSession({ walletId: NIDO_ID, walletAddress: 'CABC' }, store);
     clearSession(store);
     expect(readSession(store)).toBeNull();
   });
 
   it('tolerates a null store (SSR / no localStorage)', () => {
     expect(readSession(null)).toBeNull();
-    expect(() => writeSession({ walletId: 'g2c', walletAddress: 'C' }, null)).not.toThrow();
+    expect(() => writeSession({ walletId: NIDO_ID, walletAddress: 'C' }, null)).not.toThrow();
     expect(() => clearSession(null)).not.toThrow();
   });
 });
 
 describe('warningsFor', () => {
-  it('flags g2c as popup-always with a warning', () => {
-    const b = warningsFor(G2C_ID);
+  it('flags Nido as popup-always with a warning', () => {
+    const b = warningsFor(NIDO_ID);
     expect(b.kind).toBe('popup-always');
     expect(b.warning).toMatch(/popup/i);
+  });
+
+  it('normalizes the legacy Nido wallet id', () => {
+    expect(warningsFor('g2c').kind).toBe('popup-always');
   });
 
   it('is case-insensitive', () => {
@@ -83,11 +94,12 @@ describe('warningsFor', () => {
   });
 });
 
-describe('isG2cWallet', () => {
-  it('is true only for the g2c id', () => {
-    expect(isG2cWallet(G2C_ID)).toBe(true);
-    expect(isG2cWallet('freighter')).toBe(false);
-    expect(isG2cWallet(null)).toBe(false);
+describe('isNidoWallet', () => {
+  it('is true for the current and legacy Nido ids', () => {
+    expect(isNidoWallet(NIDO_ID)).toBe(true);
+    expect(isNidoWallet('g2c')).toBe(true);
+    expect(isNidoWallet('freighter')).toBe(false);
+    expect(isNidoWallet(null)).toBe(false);
   });
 });
 
@@ -110,24 +122,24 @@ function mockKit(address: string, productId: string): KitLike & { authModal: Ret
 describe('connectWith', () => {
   it('opens the modal, reads the active module, and persists the session', async () => {
     const store = fakeStorage();
-    const kit = mockKit('CABCADDRESS', G2C_ID);
+    const kit = mockKit('CABCADDRESS', NIDO_ID);
     const session = await connectWith(kit, store);
     expect(kit.authModal).toHaveBeenCalledOnce();
-    expect(session).toEqual({ walletId: G2C_ID, walletAddress: 'CABCADDRESS' });
+    expect(session).toEqual({ walletId: NIDO_ID, walletAddress: 'CABCADDRESS' });
     expect(readSession(store)).toEqual(session);
   });
 
-  it('records a non-g2c wallet when one is selected', async () => {
+  it('records a non-Nido wallet when one is selected', async () => {
     const store = fakeStorage();
     const kit = mockKit('GCLASSICADDR', 'freighter');
     const session = await connectWith(kit, store);
     expect(session.walletId).toBe('freighter');
-    expect(isG2cWallet(session.walletId)).toBe(false);
+    expect(isNidoWallet(session.walletId)).toBe(false);
   });
 
   it('does not persist when the modal rejects (user cancel)', async () => {
     const store = fakeStorage();
-    const kit = mockKit('C', G2C_ID);
+    const kit = mockKit('C', NIDO_ID);
     kit.authModal.mockRejectedValueOnce({ code: -1, message: 'The user closed the modal.' });
     await expect(connectWith(kit, store)).rejects.toBeTruthy();
     expect(readSession(store)).toBeNull();
@@ -137,11 +149,21 @@ describe('connectWith', () => {
 describe('restoreWith', () => {
   it('re-selects the stored module and returns the session', () => {
     const store = fakeStorage();
-    writeSession({ walletId: G2C_ID, walletAddress: 'CABC' }, store);
+    writeSession({ walletId: NIDO_ID, walletAddress: 'CABC' }, store);
     const setWallet = vi.fn();
     const session = restoreWith({ setWallet }, store);
-    expect(setWallet).toHaveBeenCalledWith(G2C_ID);
-    expect(session).toEqual({ walletId: G2C_ID, walletAddress: 'CABC' });
+    expect(setWallet).toHaveBeenCalledWith(NIDO_ID);
+    expect(session).toEqual({ walletId: NIDO_ID, walletAddress: 'CABC' });
+  });
+
+  it('re-selects Nido for a legacy stored wallet id', () => {
+    const store = fakeStorage({
+      'g2c:walletSession': JSON.stringify({ walletId: 'g2c', walletAddress: 'CABC' }),
+    });
+    const setWallet = vi.fn();
+    const session = restoreWith({ setWallet }, store);
+    expect(setWallet).toHaveBeenCalledWith(NIDO_ID);
+    expect(session).toEqual({ walletId: NIDO_ID, walletAddress: 'CABC' });
   });
 
   it('returns null and clears the session when the module is gone', () => {

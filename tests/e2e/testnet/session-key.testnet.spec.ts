@@ -26,7 +26,7 @@ const enc = encodeURIComponent;
 /**
  * Node-side mirror of `findRuleForPubkey` (packages/frontend/src/lib/
  * policyChainFetch.ts). Inlined here using ONLY `@stellar/stellar-sdk` — we do
- * NOT import the `@g2c/passkey-sdk` barrel (its untranspiled `export * as`
+ * NOT import the `@nidohq/passkey-sdk` barrel (its untranspiled `export * as`
  * namespace trips Playwright's TS transform in the Node test process; see the
  * Phase-3a dapp-sign-tx spec).
  *

@@ -47,7 +47,7 @@ const DUMMY_SOURCE =
  * always preferred and these only paper over a transient registry outage.
  */
 export const REGISTRY_FALLBACKS: Record<string, string> = {
-  factory: "CDQDNOT4RWQKAIJIZYJE5HK7DMIVTYBJ4QXHIERNOZPPYMUNBT2JZ2SK",
+  factory: "CBQKB6GYPO7P2CGDKN7KYLEFEBBN6FY5NXZJ7HNR43ZK2DDOU5N7NCV5",
   "name-registry": "CDVVRZAVXTUQLS5LCGUP3H26RGOIUFKNE2UEJ6CAWYMBWY5LNORF6POX",
   "status-message": "CD5FK6CQ7QIZ5ONARG36Y53ERI5PIBGELSJUTD7OXYLK6EQAS4N3TFBV",
   // The verifier registered under `unverified/verifier` on testnet by
@@ -142,7 +142,7 @@ export async function fetchRegistryAddress(
   const fallback = REGISTRY_FALLBACKS[name];
   if (fallback) {
     console.warn(
-      `[g2c] registry lookup for "${name}" ${
+      `[nido] registry lookup for "${name}" ${
         lookupError ? `failed (${String(lookupError)})` : "returned no mapping"
       }; falling back to hardcoded address ${fallback}. ` +
         "This address may be stale — check the registry deployment.",
@@ -151,7 +151,7 @@ export async function fetchRegistryAddress(
   }
 
   throw new Error(
-    `[g2c] could not resolve "${name}" via the registry and no fallback exists` +
+    `[nido] could not resolve "${name}" via the registry and no fallback exists` +
       (lookupError ? `: ${String(lookupError)}` : ""),
   );
 }

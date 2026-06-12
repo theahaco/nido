@@ -6,7 +6,7 @@
 //!   - successful rotation when M friends sign,
 //!   - scope enforcement: same M signatures cannot move funds.
 
-use g2c_integration_tests::{
+use nido_integration_tests::{
     build_contract_assertion, compute_auth_digest, deploy_multisig_policy, deploy_smart_account,
     multisig_install_map, test_key,
 };
@@ -42,7 +42,7 @@ fn signature_for(
 
 fn install_two_of_three_recovery(
     env: &Env,
-    client: &g2c_integration_tests::SmartAccountClient<'_>,
+    client: &nido_integration_tests::SmartAccountClient<'_>,
     account_addr: &Address,
     verifier: &Address,
     friend_keys: [&SigningKey; 3],

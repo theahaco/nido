@@ -9,6 +9,7 @@ import { Account, Address, Networks, Operation, TransactionBuilder, nativeToScVa
 
 const BASE = "https://relayer.test";
 
+/** Stub global fetch with a canned response (answers every call, not just one). */
 function stubFetch(status: number, body: unknown) {
   const fn = vi.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
@@ -30,9 +31,7 @@ describe("submitSorobanTransaction", () => {
       data: { transactionId: "tx_1", hash: null, status: "pending" },
       error: null,
     });
-
     const res = await submitSorobanTransaction({ func: "AAA=", auth: ["BBB="] }, BASE);
-
     expect(fetchMock).toHaveBeenCalledWith(`${BASE}/relay`, expect.objectContaining({ method: "POST" }));
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.headers).toMatchObject({ "Content-Type": "application/json" });
@@ -48,9 +47,7 @@ describe("submitSorobanTransaction", () => {
       data: { result: { transactionId: "tx_2", hash: "abc", status: "confirmed" } },
       error: null,
     });
-
     const res = await submitSorobanTransaction({ func: "AAA=", auth: [] }, BASE);
-
     expect(res.transactionId).toBe("tx_2");
     expect(res.status).toBe("confirmed");
   });
@@ -61,7 +58,6 @@ describe("submitSorobanTransaction", () => {
       data: { code: "AUTH_EXPIRY_TOO_SHORT", details: { margin: 1 } },
       error: "Auth expiry too short",
     });
-
     await expect(submitSorobanTransaction({ func: "AAA=", auth: [] }, BASE)).rejects.toBeInstanceOf(RelayerError);
     await expect(submitSorobanTransaction({ func: "AAA=", auth: [] }, BASE)).rejects.toMatchObject({
       name: "RelayerError",
@@ -79,7 +75,6 @@ describe("submitSorobanTransaction", () => {
       },
     });
     vi.stubGlobal("fetch", fn);
-
     await expect(submitSorobanTransaction({ func: "AAA=", auth: [] }, BASE)).rejects.toMatchObject({
       name: "RelayerError",
     });
@@ -87,17 +82,15 @@ describe("submitSorobanTransaction", () => {
 
   it("throws on an unrecognized payload shape instead of degrading silently", async () => {
     stubFetch(200, { success: true, data: { somethingElse: true }, error: null });
-
     await expect(submitSorobanTransaction({ func: "AAA=", auth: [] }, BASE)).rejects.toMatchObject({
       name: "RelayerError",
       message: "Unrecognized relayer payload",
     });
   });
 
-  it("throws when the relayer base URL is empty without fetching", async () => {
+  it("throws 'Relayer not configured' on an empty baseUrl without fetching", async () => {
     const fn = vi.fn();
     vi.stubGlobal("fetch", fn);
-
     await expect(submitSorobanTransaction({ func: "AAA=", auth: [] }, "")).rejects.toMatchObject({
       name: "RelayerError",
       message: "Relayer not configured (PUBLIC_RELAYER_URL is empty)",
@@ -118,9 +111,7 @@ describe("waitForConfirmation", () => {
       json: async () => responses.shift(),
     }));
     vi.stubGlobal("fetch", fn);
-
     const res = await waitForConfirmation("tx_3", BASE, { intervalMs: 1, maxAttempts: 5 });
-
     expect(res.hash).toBe("deadbeef");
     expect(fn).toHaveBeenCalledTimes(2);
     const firstInit = fn.mock.calls[0][1] as RequestInit;
@@ -129,7 +120,6 @@ describe("waitForConfirmation", () => {
 
   it("throws ONCHAIN_FAILED on terminal failed status", async () => {
     stubFetch(200, { success: true, data: { transactionId: "tx_4", hash: null, status: "failed" }, error: null });
-
     await expect(waitForConfirmation("tx_4", BASE, { intervalMs: 1, maxAttempts: 2 })).rejects.toMatchObject({
       code: "ONCHAIN_FAILED",
     });
@@ -137,7 +127,6 @@ describe("waitForConfirmation", () => {
 
   it("throws ONCHAIN_FAILED on terminal expired status", async () => {
     stubFetch(200, { success: true, data: { transactionId: "tx_6", hash: null, status: "expired" }, error: null });
-
     await expect(waitForConfirmation("tx_6", BASE, { intervalMs: 1, maxAttempts: 2 })).rejects.toMatchObject({
       code: "ONCHAIN_FAILED",
     });
@@ -145,7 +134,6 @@ describe("waitForConfirmation", () => {
 
   it("throws WAIT_TIMEOUT when attempts are exhausted", async () => {
     stubFetch(200, { success: true, data: { transactionId: "tx_5", hash: null, status: "pending" }, error: null });
-
     await expect(waitForConfirmation("tx_5", BASE, { intervalMs: 1, maxAttempts: 2 })).rejects.toMatchObject({
       code: "WAIT_TIMEOUT",
     });
@@ -157,14 +145,13 @@ describe("waitForConfirmation", () => {
       data: { transactionId: "tx_7", hash: "feedface", status: "submitted" },
       error: null,
     });
-
     await expect(waitForConfirmation("tx_7", BASE, { intervalMs: 1, maxAttempts: 2 })).rejects.toMatchObject({
       code: "WAIT_TIMEOUT",
       details: { transactionId: "tx_7", hash: "feedface", status: "submitted" },
     });
   });
 
-  it("rides out transient poll failures and resumes", async () => {
+  it("rides out transient poll failures and resumes (tx already in flight)", async () => {
     let calls = 0;
     const fn = vi.fn().mockImplementation(async () => {
       calls++;
@@ -180,9 +167,7 @@ describe("waitForConfirmation", () => {
       };
     });
     vi.stubGlobal("fetch", fn);
-
     const res = await waitForConfirmation("tx_8", BASE, { intervalMs: 1, maxAttempts: 10 });
-
     expect(res.hash).toBe("cafebabe");
     expect(fn).toHaveBeenCalledTimes(5);
   });
@@ -192,7 +177,6 @@ describe("waitForConfirmation", () => {
       throw new TypeError("fetch failed");
     });
     vi.stubGlobal("fetch", fn);
-
     await expect(waitForConfirmation("tx_9", BASE, { intervalMs: 1, maxAttempts: 50 })).rejects.toMatchObject({
       code: "WAIT_TIMEOUT",
       message: expect.stringMatching(/Lost contact/),
@@ -213,9 +197,7 @@ describe("extractFuncAndAuth", () => {
       .addOperation(op)
       .setTimeout(0)
       .build();
-
     const { func, auth } = extractFuncAndAuth(tx);
-
     expect(typeof func).toBe("string");
     expect(func.length).toBeGreaterThan(0);
     expect(auth).toEqual([]);

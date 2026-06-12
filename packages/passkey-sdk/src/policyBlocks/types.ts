@@ -34,6 +34,16 @@ export interface ScopedSessionKeyBlock {
   /** Optional expiry ledger sequence. */
   validUntil?: number;
   label?: string;
+  /** Spending limit in stroops, when a spending-limit policy is attached.
+   *  Populated from the PolicyState the loader provides (the fetch itself
+   *  lives in the frontend — the SDK only carries the value). */
+  limitStroops?: bigint;
+  /** Rolling-window length of the spending limit, in ledgers. */
+  limitPeriodLedgers?: number;
+  /** True when the rule carries a policy whose limit could not be read
+   *  (registry blip, archived params entry, redeployed policy address).
+   *  The block must still render — hiding it would hide the Revoke path. */
+  limitUnreadable?: boolean;
 }
 
 /** Parsed chain payload for one rule: the ContextRule plus any policy state. */

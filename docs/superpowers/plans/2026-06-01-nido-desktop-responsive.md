@@ -429,14 +429,14 @@ echo "data:image/svg+xml;base64,$(base64 -w0 /tmp/nido-mark.svg)"
 ```
 Copy the full `data:image/svg+xml;base64,…` string.
 
-- [ ] **Step 3: Replace `G2C_ICON`.** In `../stellar-wallets-kit-module/src/module.ts` (around line 53) replace the `G2C_ICON` value with the new data URI from Step 2. Leave `productName` and everything else unchanged (the wallet is still named `g2c`).
+- [ ] **Step 3: Replace `NIDO_ICON`.** In `../stellar-wallets-kit-module/src/module.ts` (around line 53) replace the `NIDO_ICON` value with the new data URI from Step 2. Leave `productName` and everything else unchanged (the wallet is still named `Nido`).
 
 - [ ] **Step 4: Rebuild dist.**
 
 ```bash
 cd ../stellar-wallets-kit-module && npm run build && cd ../frontend
 ```
-(Check the package's `build` script first; if none, run `npx tsc` per its tsconfig. The committed `dist/module.js` must contain the new `G2C_ICON`.)
+(Check the package's `build` script first; if none, run `npx tsc` per its tsconfig. The committed `dist/module.js` must contain the new `NIDO_ICON`.)
 
 - [ ] **Step 5: Verify.** Confirm the new data URI is present in both src and dist:
 

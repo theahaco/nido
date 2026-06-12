@@ -2,7 +2,7 @@
 //! invocation `scopedSessionKey.buildInstall` produces in the SDK and
 //! verifies the in-scope / out-of-scope / expired / revoked paths.
 
-use g2c_integration_tests::{
+use nido_integration_tests::{
     build_contract_assertion, compute_auth_digest, deploy_smart_account, test_key,
 };
 use p256::ecdsa::SigningKey;
