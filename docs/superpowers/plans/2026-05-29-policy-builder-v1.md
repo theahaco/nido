@@ -34,7 +34,7 @@
 
 ```toml
 [package]
-name = "g2c-multisig-policy"
+name = "nido-multisig-policy"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -75,7 +75,7 @@ Strictly what's needed to compile clean. Task 2 replaces the file with the full 
 
 - [ ] **Step 4: Verify the crate is picked up by the workspace and builds the skeleton**
 
-Run: `cargo build -p g2c-multisig-policy`
+Run: `cargo build -p nido-multisig-policy`
 Expected: builds successfully (the workspace `members = ["crates/integration-tests", "contracts/*"]` glob picks it up automatically).
 
 - [ ] **Step 5: Commit**
@@ -147,7 +147,7 @@ mod test {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cargo test -p g2c-multisig-policy install_stores_threshold_per_account_rule`
+Run: `cargo test -p nido-multisig-policy install_stores_threshold_per_account_rule`
 Expected: FAIL with "no method named `install` found" / "no method named `get_threshold` found".
 
 - [ ] **Step 3: Add the `#[contractimpl]` block above the test module**
@@ -233,13 +233,13 @@ impl Policy for MultisigPolicy {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cargo test -p g2c-multisig-policy`
+Run: `cargo test -p nido-multisig-policy`
 Expected: 1 test, PASS.
 
 - [ ] **Step 5: Build the optimized wasm**
 
 Run: `just build-contracts`
-Expected: builds successfully; produces `target/wasm32v1-none/contract/g2c_multisig_policy.wasm` of a few KB.
+Expected: builds successfully; produces `target/wasm32v1-none/contract/nido_multisig_policy.wasm` of a few KB.
 
 - [ ] **Step 6: Commit**
 
@@ -275,7 +275,7 @@ In `contracts/factory/src/contract.rs`, remove:
 
 Also drop any imports that become unused once those are gone (likely `BytesN` stays — `ACCOUNT_HASH` still needs it inside `deploy_account_contract`; check `cargo build` warnings).
 
-`cargo build -p g2c-factory` will fail because `deploy_account_contract` still calls `Self::verifier_address(e)` — that's expected; Step 3 fixes it.
+`cargo build -p nido-factory` will fail because `deploy_account_contract` still calls `Self::verifier_address(e)` — that's expected; Step 3 fixes it.
 
 - [ ] **Step 2: Add the registry client module + constant**
 
@@ -383,7 +383,7 @@ If `env.register_at(addr, contract, args)` is named differently in soroban-sdk 2
 
 - [ ] **Step 5: Run the test**
 
-Run: `just build-contracts` then `cargo test -p g2c-factory`
+Run: `just build-contracts` then `cargo test -p nido-factory`
 Expected: all tests pass.
 
 - [ ] **Step 6: Commit**
@@ -407,11 +407,11 @@ With architecture C, the factory no longer carries the multisig-policy's wasm ha
 
 ```bash
 stellar registry publish \
-  --wasm target/wasm32v1-none/contract/g2c_multisig_policy.wasm \
+  --wasm target/wasm32v1-none/contract/nido_multisig_policy.wasm \
   --name multisig-policy --version 0.1.0 \
   --network testnet --source <your-alias>
 ```
-Expected: returns the wasm hash (should match `sha256sum target/wasm32v1-none/contract/g2c_multisig_policy.wasm`).
+Expected: returns the wasm hash (should match `sha256sum target/wasm32v1-none/contract/nido_multisig_policy.wasm`).
 
 - [ ] **Step 2: Deploy a named instance**
 
@@ -434,7 +434,7 @@ If it returns a C-address, you're done. If it errors (not registered), publish +
 
 ```bash
 stellar registry publish \
-  --wasm target/wasm32v1-none/contract/g2c_webauthn_verifier.wasm \
+  --wasm target/wasm32v1-none/contract/nido_webauthn_verifier.wasm \
   --name verifier --version 0.1.0 \
   --network testnet --source <your-alias>
 stellar registry deploy \
@@ -481,7 +481,7 @@ stellar registry register-contract \
 
 ```bash
 stellar registry publish \
-  --wasm target/wasm32v1-none/contract/g2c_factory.wasm \
+  --wasm target/wasm32v1-none/contract/nido_factory.wasm \
   --name factory --version 0.2.0 \
   --network testnet --source <your-alias>
 ```
@@ -534,7 +534,7 @@ In `crates/integration-tests/src/lib.rs`, add near the existing `WEBAUTHN_VERIFI
 
 ```rust
 pub const MULTISIG_POLICY_WASM: &[u8] =
-    include_bytes!("../../../target/wasm32v1-none/contract/g2c_multisig_policy.wasm");
+    include_bytes!("../../../target/wasm32v1-none/contract/nido_multisig_policy.wasm");
 ```
 
 - [ ] **Step 2: Extend the `SmartAccountInterface` trait with the methods recovery needs**
@@ -600,7 +600,7 @@ pub fn multisig_install_map(
 
 - [ ] **Step 4: Verify the crate still builds**
 
-Run: `cargo build -p g2c-integration-tests --tests`
+Run: `cargo build -p nido-integration-tests --tests`
 Expected: builds clean (no test changes yet, just trait + helper additions).
 
 - [ ] **Step 5: Commit**
@@ -642,7 +642,7 @@ mod smart_account_setup;
 //!   - successful rotation when M friends sign,
 //!   - scope enforcement: same M signatures cannot move funds.
 
-use g2c_integration_tests::{
+use nido_integration_tests::{
     build_contract_assertion, deploy_multisig_policy, deploy_smart_account,
     multisig_install_map, test_key,
 };
@@ -678,7 +678,7 @@ fn signature_for(
 
 fn install_two_of_three_recovery(
     env: &Env,
-    client: &g2c_integration_tests::SmartAccountClient<'_>,
+    client: &nido_integration_tests::SmartAccountClient<'_>,
     account_addr: &Address,
     verifier: &Address,
     friend_keys: [&SigningKey; 3],
@@ -801,7 +801,7 @@ fn two_friend_signatures_rejected_for_other_contract() {
 - [ ] **Step 3: Run the tests to verify they fail or pass appropriately**
 
 Run: `just build-contracts` (the integration tests `include_bytes!` the policy wasm).
-Run: `cargo test -p g2c-integration-tests multisig_recovery`
+Run: `cargo test -p nido-integration-tests multisig_recovery`
 Expected: all 3 tests PASS (the trait additions in Task 5 already make this compile; the policy wasm now exists; the OZ library does the work).
 
 - [ ] **Step 4: Commit**
@@ -838,7 +838,7 @@ mod smart_account_setup;
 //! invocation `scopedSessionKey.buildInstall` produces in the SDK and
 //! verifies the in-scope / out-of-scope / expired / revoked paths.
 
-use g2c_integration_tests::{build_contract_assertion, deploy_smart_account, test_key};
+use nido_integration_tests::{build_contract_assertion, deploy_smart_account, test_key};
 use p256::ecdsa::SigningKey;
 use soroban_sdk::auth::{Context, ContractContext};
 use soroban_sdk::testutils::{Address as _, Ledger as _};
@@ -997,7 +997,7 @@ fn session_key_rejected_after_revoke() {
 
 - [ ] **Step 3: Run the tests**
 
-Run: `cargo test -p g2c-integration-tests scoped_session_key`
+Run: `cargo test -p nido-integration-tests scoped_session_key`
 Expected: 4 tests PASS.
 
 - [ ] **Step 4: Commit**
@@ -1195,7 +1195,7 @@ const fakeResolve = vi.fn(async (name: string) =>
 );
 
 describe('resolveFriendInput', () => {
-  it('accepts a g2c name and resolves via the registry', async () => {
+  it('accepts a Nido name and resolves via the registry', async () => {
     const r = await resolveFriendInput('alice', { resolveName: fakeResolve });
     expect(r).toEqual({
       kind: 'name',
@@ -1248,7 +1248,7 @@ export interface ResolveFriendOptions {
   resolveName: (name: string) => Promise<string | null>;
 }
 
-const G2C_NAME_RE = /^[a-z][a-z0-9]{0,14}$/;
+const NIDO_NAME_RE = /^[a-z][a-z0-9]{0,14}$/;
 
 export async function resolveFriendInput(
   input: string,
@@ -1263,7 +1263,7 @@ export async function resolveFriendInput(
   if (StrKey.isValidEd25519PublicKey(trimmed)) {
     return { kind: 'account', address: trimmed, input: trimmed };
   }
-  if (G2C_NAME_RE.test(trimmed)) {
+  if (NIDO_NAME_RE.test(trimmed)) {
     const resolved = await opts.resolveName(trimmed);
     if (!resolved) return null;
     return { kind: 'name', address: resolved, input: trimmed };
@@ -1607,7 +1607,7 @@ This task therefore folds in what was Task 14 — no separate "wire the injected
 - Create: `packages/passkey-sdk/src/policyBlocks/multisigRecovery.ts`
 - Create: `packages/passkey-sdk/src/policyBlocks/multisigRecovery.test.ts`
 - Modify: `packages/passkey-sdk/src/policyBlocks/index.ts`
-- Modify: `packages/passkey-sdk/package.json` — add `"smart-account": "*"` (workspace dep).
+- Modify: `packages/passkey-sdk/package.json` — add `"@nidohq/smart-account": "*"` (workspace dep).
 
 **Test-fixture note:** the test fixtures below use synthetic `'C' + 'S'.repeat(55)` strings — those won't pass `StrKey` validation. Replace them in the test with `StrKey.encodeContract(new Uint8Array(32).fill(N))` (same pattern Task 10 used), since `fromChain` doesn't validate addresses but the strings still need to be plausible.
 
@@ -1616,7 +1616,7 @@ This task therefore folds in what was Task 14 — no separate "wire the injected
 In `packages/passkey-sdk/package.json` `dependencies`, add:
 
 ```json
-"smart-account": "*"
+"@nidohq/smart-account": "*"
 ```
 
 Run `npm install` to refresh the lockfile.
@@ -2317,8 +2317,8 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 </BaseLayout>
 
 <script>
-import { loadPolicyBlocks } from '@g2c/passkey-sdk/policyBlocks/loadBlocks';
-import { loadFriendNicknames, loadBlockLabels, loadSessionKeyMaterial } from '@g2c/passkey-sdk/storage';
+import { loadPolicyBlocks } from '@nidohq/passkey-sdk/policyBlocks/loadBlocks';
+import { loadFriendNicknames, loadBlockLabels, loadSessionKeyMaterial } from '@nidohq/passkey-sdk/storage';
 import { fetchAllChainRules, fetchPolicyState } from '../../lib/policyChainFetch';
 import { renderRecoveryCard } from '../../components/MultisigRecoveryCard';
 import { renderSessionKeyCard } from '../../components/SessionKeyCard';
@@ -2421,8 +2421,8 @@ These are plain TS modules (not `.astro`) because they're rendered into the page
 - [ ] **Step 1: Create `MultisigRecoveryCard.ts`**
 
 ```ts
-import type { MultisigRecoveryBlock } from '@g2c/passkey-sdk/policyBlocks/types';
-import { multisigRecoveryModule } from '@g2c/passkey-sdk/policyBlocks/multisigRecovery';
+import type { MultisigRecoveryBlock } from '@nidohq/passkey-sdk/policyBlocks/types';
+import { multisigRecoveryModule } from '@nidohq/passkey-sdk/policyBlocks/multisigRecovery';
 
 export function renderRecoveryCard(block: MultisigRecoveryBlock): HTMLElement {
   const div = document.createElement('div');
@@ -2464,8 +2464,8 @@ function escape(s: string): string {
 - [ ] **Step 2: Create `SessionKeyCard.ts`**
 
 ```ts
-import type { ScopedSessionKeyBlock } from '@g2c/passkey-sdk/policyBlocks/types';
-import { scopedSessionKeyModule } from '@g2c/passkey-sdk/policyBlocks/scopedSessionKey';
+import type { ScopedSessionKeyBlock } from '@nidohq/passkey-sdk/policyBlocks/types';
+import { scopedSessionKeyModule } from '@nidohq/passkey-sdk/policyBlocks/scopedSessionKey';
 
 export function renderSessionKeyCard(block: ScopedSessionKeyBlock): HTMLElement {
   const div = document.createElement('div');
@@ -2519,7 +2519,7 @@ git commit -m "feat(frontend): rule card components for recovery and session key
 
 ```ts
 import { rpc, Contract, scValToNative, xdr, nativeToScVal, Networks } from '@stellar/stellar-sdk';
-import type { ChainRule, PolicyState } from '@g2c/passkey-sdk/policyBlocks/types';
+import type { ChainRule, PolicyState } from '@nidohq/passkey-sdk/policyBlocks/types';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 
@@ -2641,10 +2641,10 @@ git commit -m "feat(frontend): chain fetchers for rules and policy state"
 - [ ] **Step 1: Create `recoveryForm.ts` that mounts the form into a container**
 
 ```ts
-import type { Friend, MultisigRecoveryBlock } from '@g2c/passkey-sdk/policyBlocks/types';
-import { multisigRecoveryModule } from '@g2c/passkey-sdk/policyBlocks/multisigRecovery';
-import { resolveFriendInput } from '@g2c/passkey-sdk/resolveFriendInput';
-import { resolveName } from '@g2c/passkey-sdk/resolve';
+import type { Friend, MultisigRecoveryBlock } from '@nidohq/passkey-sdk/policyBlocks/types';
+import { multisigRecoveryModule } from '@nidohq/passkey-sdk/policyBlocks/multisigRecovery';
+import { resolveFriendInput } from '@nidohq/passkey-sdk/resolveFriendInput';
+import { resolveName } from '@nidohq/passkey-sdk/resolve';
 import { installRecovery } from './recoveryActions';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
@@ -2714,7 +2714,7 @@ export function mountRecoveryForm(container: HTMLElement, account: string): void
       const row = document.createElement('div');
       row.className = 'friend-row';
       row.innerHTML = `
-        <input value="${f.inputAs}" placeholder="g2c name, C…, or G…"/>
+        <input value="${f.inputAs}" placeholder="Nido name, C…, or G…"/>
         <span class="resolve-status"></span>
         <button class="remove">×</button>
       `;
@@ -2762,9 +2762,9 @@ function emptyFriend(): Friend { return { address: '', inputAs: '' }; }
 
 ```ts
 import { rpc, Contract, TransactionBuilder, Networks, Account } from '@stellar/stellar-sdk';
-import type { MultisigRecoveryBlock } from '@g2c/passkey-sdk/policyBlocks/types';
-import { multisigRecoveryModule } from '@g2c/passkey-sdk/policyBlocks/multisigRecovery';
-import { saveFriendNickname, saveBlockLabel } from '@g2c/passkey-sdk/storage';
+import type { MultisigRecoveryBlock } from '@nidohq/passkey-sdk/policyBlocks/types';
+import { multisigRecoveryModule } from '@nidohq/passkey-sdk/policyBlocks/multisigRecovery';
+import { saveFriendNickname, saveBlockLabel } from '@nidohq/passkey-sdk/storage';
 import { signWithPrimaryPasskey } from './primaryPasskeySigner';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
@@ -2857,9 +2857,9 @@ git commit -m "feat(frontend): inline recovery setup form + install/revoke actio
 - [ ] **Step 1: Create `delegationForm.ts`**
 
 ```ts
-import { scopedSessionKeyModule } from '@g2c/passkey-sdk/policyBlocks/scopedSessionKey';
-import { generateSessionKey } from '@g2c/passkey-sdk/sessionKey';
-import { saveSessionKeyMaterial } from '@g2c/passkey-sdk/storage';
+import { scopedSessionKeyModule } from '@nidohq/passkey-sdk/policyBlocks/scopedSessionKey';
+import { generateSessionKey } from '@nidohq/passkey-sdk/sessionKey';
+import { saveSessionKeyMaterial } from '@nidohq/passkey-sdk/storage';
 import { delegateSessionKey } from './sessionKeyActions';
 
 const DURATIONS: Record<string, number | null> = {
@@ -2920,8 +2920,8 @@ export function mountDelegationForm(container: HTMLElement, account: string): vo
 
 ```ts
 import { rpc, TransactionBuilder, Account, Networks } from '@stellar/stellar-sdk';
-import { scopedSessionKeyModule } from '@g2c/passkey-sdk/policyBlocks/scopedSessionKey';
-import { forgetSessionKeyMaterial } from '@g2c/passkey-sdk/storage';
+import { scopedSessionKeyModule } from '@nidohq/passkey-sdk/policyBlocks/scopedSessionKey';
+import { forgetSessionKeyMaterial } from '@nidohq/passkey-sdk/storage';
 import { signWithPrimaryPasskey } from './primaryPasskeySigner';
 import { fetchVerifierAddress } from './policyChainFetch';
 
@@ -3033,9 +3033,9 @@ The in-page signing code (Task 24) and the cross-origin handover code (Task 25) 
 Locate the existing flow in `status-message/index.astro` that builds the auth hash and redirects to the wallet (`buildAuthHash(...)` + `?sign=&callback=`). Wrap it with a check:
 
 ```ts
-import { loadSessionKeyMaterial } from '@g2c/passkey-sdk/storage';
-import { buildSyntheticAssertion } from '@g2c/passkey-sdk/syntheticAssertion';
-import { injectPasskeySignature } from '@g2c/passkey-sdk/auth';
+import { loadSessionKeyMaterial } from '@nidohq/passkey-sdk/storage';
+import { buildSyntheticAssertion } from '@nidohq/passkey-sdk/syntheticAssertion';
+import { injectPasskeySignature } from '@nidohq/passkey-sdk/auth';
 // ... existing imports ...
 
 async function signAndSubmit(account: string, tx: Transaction, sim: rpc.Api.SimulateTransactionResponse) {
@@ -3129,7 +3129,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 </BaseLayout>
 
 <script>
-import { generateSessionKey } from '@g2c/passkey-sdk/sessionKey';
+import { generateSessionKey } from '@nidohq/passkey-sdk/sessionKey';
 import { delegateSessionKey } from '../../../lib/sessionKeyActions';
 
 const params = new URLSearchParams(window.location.search);
@@ -3160,7 +3160,7 @@ document.getElementById('approve')!.onclick = async () => {
   // postMessage the bundle back to the opener.
   if (window.opener) {
     window.opener.postMessage(
-      { type: 'g2c-session-key', payload: {
+      { type: 'nido-session-key', payload: {
           account, target, ruleId, origin,
           verifier: /* fetch via simulate */ '',
           sessionPubkey: Array.from(k.publicKey),
@@ -3204,7 +3204,7 @@ export async function openDelegationPopup(args: {
       if (ev.origin !== args.walletOrigin) return;
       if (ev.source !== popup) return;
       const m = ev.data;
-      if (!m || m.type !== 'g2c-session-key') return;
+      if (!m || m.type !== 'nido-session-key') return;
       const p = m.payload;
       if (p.origin !== window.location.origin) return reject(new Error('origin mismatch'));
       if (p.target !== args.targetContract) return reject(new Error('target mismatch'));
@@ -3404,7 +3404,7 @@ Expected: no errors.
 
 - [ ] **Step 5: Rust fmt + clippy on the new crate**
 
-Run: `cargo fmt --all -- --check && cargo clippy -p g2c-multisig-policy --tests -- -Dclippy::pedantic`
+Run: `cargo fmt --all -- --check && cargo clippy -p nido-multisig-policy --tests -- -Dclippy::pedantic`
 Expected: clean. (Workspace-wide clippy with `-Dclippy::pedantic` was already red on `main` for unrelated crates per PR #23; do not block on those.)
 
 - [ ] **Step 6: Open a PR**

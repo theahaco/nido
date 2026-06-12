@@ -9,9 +9,9 @@ import {
   scValToNative,
   xdr,
 } from '@stellar/stellar-sdk';
-import type { ChainRule, ChainSigner, PolicyState } from '@g2c/passkey-sdk';
-import { fetchRegistryAddress as sdkFetchRegistryAddress } from '@g2c/passkey-sdk';
-import { Client as SpendingLimitPolicyClient } from 'spending-limit-policy';
+import type { ChainRule, ChainSigner, PolicyState } from '@nidohq/passkey-sdk';
+import { fetchRegistryAddress as sdkFetchRegistryAddress } from '@nidohq/passkey-sdk';
+import { Client as SpendingLimitPolicyClient } from '@nidohq/spending-limit-policy';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = Networks.TESTNET;

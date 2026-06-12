@@ -1,7 +1,7 @@
 /**
  * dApp-side delegation flow ("log in with Nido = create a passkey for THIS dApp").
  *
- * Ported from the g2c frontend (`packages/frontend/src/lib/delegationHandover.ts`)
+ * Ported from the Nido frontend (`packages/frontend/src/lib/delegationHandover.ts`)
  * so this example is self-contained — a dApp dev can copy this file as-is.
  *
  * Design: the dApp creates a fresh WebAuthn passkey at its OWN origin to act as
@@ -16,7 +16,7 @@
  * redirect to the wallet.
  */
 
-import { createSessionPasskey, saveSessionKeyMaterial, buf2hex } from "@g2c/passkey-sdk"
+import { createSessionPasskey, saveSessionKeyMaterial, buf2hex } from "@nidohq/passkey-sdk"
 
 // ---------------------------------------------------------------------------
 // Pending-delegation persistence.

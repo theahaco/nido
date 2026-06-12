@@ -1,4 +1,4 @@
-import { buf2hex, stripSubdomain } from "@g2c/passkey-sdk";
+import { buf2hex, stripSubdomain } from "@nidohq/passkey-sdk";
 
 function setupHost(host: string): string {
   const hostname = host.split(":")[0];

@@ -1,5 +1,5 @@
-import type { MultisigRecoveryBlock } from '@g2c/passkey-sdk';
-import { multisigRecoveryModule } from '@g2c/passkey-sdk';
+import type { MultisigRecoveryBlock } from '@nidohq/passkey-sdk';
+import { multisigRecoveryModule } from '@nidohq/passkey-sdk';
 
 export function renderRecoveryCard(block: MultisigRecoveryBlock): HTMLElement {
   const div = document.createElement('div');

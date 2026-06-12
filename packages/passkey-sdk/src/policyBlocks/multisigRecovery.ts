@@ -1,4 +1,4 @@
-import { Client as SmartAccountClient } from 'smart-account';
+import { Client as SmartAccountClient } from '@nidohq/smart-account';
 import { extractXdrOperations } from '../assembledTx.js';
 import type {
   ChainRule, LocalOverlay, MultisigRecoveryBlock,

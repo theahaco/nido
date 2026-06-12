@@ -2,21 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Land the `examples/status-message-dapp/` scaffold (PR #43) on `main` and deploy it as a live testnet dApp on GitHub Pages at `https://theahaco.github.io/g2c/`, then add a footer link from the Nido wallet frontend to it.
+**Goal:** Land the `examples/status-message-dapp/` scaffold (PR #43) on `main` and deploy it as a live testnet dApp on GitHub Pages at `https://nidohq.github.io/nido/`, then add a footer link from the Nido wallet frontend to it.
 
-**Architecture:** The example is a stellar-scaffold React+Vite app whose contract TS client is normally generated at build time and gitignored. We bind the already-deployed testnet contract by id, generate the client **once**, and **commit** it so CI can do a pure `npm ci && vite build` with no Rust/scaffold/live-RPC. A new GitHub Actions workflow builds the example with `--base=/g2c/` against testnet env and deploys to the `github-pages` environment. The Nido footer link ships as a separate PR off `main`.
+**Architecture:** The example is a stellar-scaffold React+Vite app whose contract TS client is normally generated at build time and gitignored. We bind the already-deployed testnet contract by id, generate the client **once**, and **commit** it so CI can do a pure `npm ci && vite build` with no Rust/scaffold/live-RPC. A new GitHub Actions workflow builds the example with `--base=/nido/` against testnet env and deploys to the `github-pages` environment. The Nido footer link ships as a separate PR off `main`.
 
-**Tech Stack:** React 19, Vite 7, react-router-dom 7, `@creit.tech/stellar-wallets-kit` v2, `@g2c/stellar-wallets-kit-module`, `@g2c/passkey-sdk`, stellar-scaffold/stellar CLI v26, GitHub Actions Pages, Astro (Nido frontend).
+**Tech Stack:** React 19, Vite 7, react-router-dom 7, `@creit.tech/stellar-wallets-kit` v2, `@nidohq/stellar-wallets-kit-module`, `@nidohq/passkey-sdk`, stellar-scaffold/stellar CLI v26, GitHub Actions Pages, Astro (Nido frontend).
 
 **Key facts established during research:**
 - Contract deployed to testnet: `CBXVJXHPSYORSAHPX4I6NYPQMDJWK2STQCE6JTIM7FNV4OZSIDJFGNDM`.
 - Network config is read from `import.meta.env.PUBLIC_STELLAR_*` in `examples/status-message-dapp/src/contracts/util.ts` (zod-validated, LOCAL fallback) → build-time env drives the runtime network.
 - `src/util/friendbot.ts` already maps `TESTNET → https://friendbot.stellar.org` (no change needed).
 - `src/main.tsx` uses `<BrowserRouter>` with **no** basename; `src/components/StatusMessage.tsx` does `import statusMessage from "../contracts/status_message"` (default export = configured client).
-- Build chain for the example: `@g2c/passkey-sdk` (tsc) → `@g2c/stellar-wallets-kit-module` (tsc) → generated client → vite. Both `@g2c/*` packages publish `dist/` via `exports`, so they MUST be built before `vite build` can resolve them.
+- Build chain for the example: `@nidohq/passkey-sdk` (tsc) → `@nidohq/stellar-wallets-kit-module` (tsc) → generated client → vite. Both `@nidohq/*` packages publish `dist/` via `exports`, so they MUST be built before `vite build` can resolve them.
 - `packages/frontend/src/layouts/BaseLayout.astro` has no footer.
 - `stellar` + `stellar scaffold` CLI v26 available locally; node 22 / npm 10.
-- Repo `theahaco/g2c` is **public**, admin access confirmed → free GitHub Pages project site.
+- Repo `nidohq/nido` is **public**, admin access confirmed → free GitHub Pages project site.
 
 ---
 
@@ -29,7 +29,7 @@
 - [ ] **Step 1: Confirm what's dirty**
 
 Run: `git status --short`
-Expected: modifications under `contracts/`, `crates/integration-tests/`, `packages/frontend/`, plus untracked `app/`, `g2c.zip`, `crates/.../auth_entry_guards.rs`, `docs/auth-entry-review.html`, `packages/frontend/src/lib/delegationHandover.test.ts`, `.gitignore`, `CLAUDE.md`.
+Expected: modifications under `contracts/`, `crates/integration-tests/`, `packages/frontend/`, plus untracked `app/`, `nido.zip`, `crates/.../auth_entry_guards.rs`, `docs/auth-entry-review.html`, `packages/frontend/src/lib/delegationHandover.test.ts`, `.gitignore`, `CLAUDE.md`.
 
 - [ ] **Step 2: Stash everything (tracked + untracked), preserving it for the user**
 
@@ -53,7 +53,7 @@ Expected: empty output. (The spec commit `5abd290` remains in history.)
 ```bash
 gh pr edit 43 --base main
 ```
-Expected: `https://github.com/theahaco/g2c/pull/43` printed.
+Expected: `https://github.com/nidohq/nido/pull/43` printed.
 
 - [ ] **Step 2: Fetch and rebase onto main**
 
@@ -187,7 +187,7 @@ git check-ignore examples/status-message-dapp/src/contracts/status_message.ts ex
 ```
 Expected: no output, `exit: 1` (meaning NOT ignored).
 
-### Task B3: Add a router basename so routes work under `/g2c/`
+### Task B3: Add a router basename so routes work under `/nido/`
 
 **Files:** Modify `examples/status-message-dapp/src/main.tsx`
 
@@ -205,7 +205,7 @@ to:
 						<App />
 					</BrowserRouter>
 ```
-(`import.meta.env.BASE_URL` is `/` in dev and `/g2c/` when built with `--base=/g2c/`; React Router normalizes the trailing slash.)
+(`import.meta.env.BASE_URL` is `/` in dev and `/nido/` when built with `--base=/nido/`; React Router normalizes the trailing slash.)
 
 ### Task B4: Make index.html asset paths base-relative
 
@@ -232,8 +232,8 @@ to:
 ```bash
 cd <repo-root>
 npm ci
-npm run build -w @g2c/passkey-sdk
-npm run build -w @g2c/stellar-wallets-kit-module
+npm run build -w @nidohq/passkey-sdk
+npm run build -w @nidohq/stellar-wallets-kit-module
 # If Task B1/Step 4 showed the client package has a dist-pointing build, also:
 # npm run build -w <generated-client-name>
 ```
@@ -247,30 +247,30 @@ PUBLIC_STELLAR_NETWORK=TESTNET \
 PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015" \
 PUBLIC_STELLAR_RPC_URL="https://soroban-testnet.stellar.org" \
 PUBLIC_STELLAR_HORIZON_URL="https://horizon-testnet.stellar.org" \
-PUBLIC_G2C_BASE="https://mysoroban.xyz" \
-npx vite build --base=/g2c/
+PUBLIC_NIDO_BASE="https://mysoroban.xyz" \
+npx vite build --base=/nido/
 ```
 Expected: build succeeds, `dist/` written.
 
 - [ ] **Step 3: Confirm assets are base-prefixed and no stray absolute `/assets` leaked**
 
 ```bash
-grep -o '/g2c/[^"]*' dist/index.html | head
+grep -o '/nido/[^"]*' dist/index.html | head
 grep -rEo '(src|href)="/(assets|favicon)[^"]*"' dist/index.html || echo "no unprefixed absolute asset paths — good"
 ```
-Expected: asset URLs begin `/g2c/`; the second grep prints the "good" message.
+Expected: asset URLs begin `/nido/`; the second grep prints the "good" message.
 
 - [ ] **Step 4: Smoke the built app**
 
 ```bash
-npx vite preview --base=/g2c/ --host 0.0.0.0 --port 4173 &
+npx vite preview --base=/nido/ --host 0.0.0.0 --port 4173 &
 ```
-Load `http://moss:4173/g2c/` in a browser (or use the `verify`/`run` skill / Playwright). Expected: app mounts at `/g2c/` with zero console errors; wallet picker opens with **g2c listed first**; entering a C-address reads its on-chain status from testnet. Kill the preview after.
+Load `http://moss:4173/nido/` in a browser (or use the `verify`/`run` skill / Playwright). Expected: app mounts at `/nido/` with zero console errors; wallet picker opens with **Nido listed first**; entering a C-address reads its on-chain status from testnet. Kill the preview after.
 
 - [ ] **Step 5: Unit tests + lint + types still green**
 
 ```bash
-npm test            # vitest — 2/2 (g2c-first ordering)
+npm test            # vitest — 2/2 (nido-first ordering)
 npm run typecheck
 npm run lint
 ```
@@ -298,7 +298,7 @@ git commit -m "feat(example): commit testnet client + base-path for GitHub Pages
 
 Bind status-message by deployed testnet id and commit the generated TS
 client so the Pages build needs no Rust/scaffold/live-RPC. Router basename
-+ %BASE_URL% favicon let the app serve under /g2c/.
++ %BASE_URL% favicon let the app serve under /nido/.
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -348,7 +348,7 @@ env:
   PUBLIC_STELLAR_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
   PUBLIC_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org"
   PUBLIC_STELLAR_HORIZON_URL: "https://horizon-testnet.stellar.org"
-  PUBLIC_G2C_BASE: "https://mysoroban.xyz"
+  PUBLIC_NIDO_BASE: "https://mysoroban.xyz"
 
 jobs:
   build:
@@ -362,12 +362,12 @@ jobs:
         run: npm ci
       - name: Build workspace deps
         run: |
-          npm run build -w @g2c/passkey-sdk
-          npm run build -w @g2c/stellar-wallets-kit-module
+          npm run build -w @nidohq/passkey-sdk
+          npm run build -w @nidohq/stellar-wallets-kit-module
           # If Task B1/Step 4 recorded a dist-built client package, add:
           # npm run build -w <generated-client-name>
-      - name: Build example (base=/g2c/)
-        run: npx vite build --base=/g2c/
+      - name: Build example (base=/nido/)
+        run: npx vite build --base=/nido/
         working-directory: examples/status-message-dapp
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -411,15 +411,15 @@ git push --force-with-lease origin feat/status-message-scaffold-template
 - [ ] **Step 1: Create the Pages site with the workflow build type**
 
 ```bash
-gh api --method POST repos/theahaco/g2c/pages -f build_type=workflow 2>&1 \
-  || gh api --method PUT repos/theahaco/g2c/pages -f build_type=workflow
+gh api --method POST repos/nidohq/nido/pages -f build_type=workflow 2>&1 \
+  || gh api --method PUT repos/nidohq/nido/pages -f build_type=workflow
 ```
 Expected: JSON with `"build_type": "workflow"` (or 409 "already exists" → then the PUT updates it).
 
 - [ ] **Step 2: Confirm**
 
-Run: `gh api repos/theahaco/g2c/pages -q '{url: .html_url, build_type: .build_type}'`
-Expected: `build_type: workflow`, `url` ≈ `https://theahaco.github.io/g2c/`.
+Run: `gh api repos/nidohq/nido/pages -q '{url: .html_url, build_type: .build_type}'`
+Expected: `build_type: workflow`, `url` ≈ `https://nidohq.github.io/nido/`.
 
 ### Task C3: Merge PR #43 and deploy
 
@@ -448,13 +448,13 @@ Expected: `build` then `deploy` succeed; deploy step outputs the page URL.
 - [ ] **Step 1: Fetch the live page**
 
 ```bash
-curl -sSI https://theahaco.github.io/g2c/ | head -5
+curl -sSI https://nidohq.github.io/nido/ | head -5
 ```
 Expected: `HTTP/2 200`.
 
 - [ ] **Step 2: Browser smoke (verify skill / Playwright)**
 
-Load `https://theahaco.github.io/g2c/`. Expected: app mounts, zero console errors, picker shows **g2c first**, reading a C-address returns its testnet status, "Connect" redirects to `mysoroban.xyz`. Passkey **write** → manual QA (real WebAuthn at mysoroban.xyz).
+Load `https://nidohq.github.io/nido/`. Expected: app mounts, zero console errors, picker shows **Nido first**, reading a C-address returns its testnet status, "Connect" redirects to `mysoroban.xyz`. Passkey **write** → manual QA (real WebAuthn at mysoroban.xyz).
 
 ---
 
@@ -476,7 +476,7 @@ git checkout -b chore/link-example-dapp
 Insert before the closing `</body>`:
 ```html
     <footer class="site-footer">
-      <a href="https://theahaco.github.io/g2c/" target="_blank" rel="noopener">
+      <a href="https://nidohq.github.io/nido/" target="_blank" rel="noopener">
         Example dApp
       </a>
     </footer>
@@ -511,7 +511,7 @@ Expected: build succeeds; check shows the same 2 pre-existing errors, no new one
 
 - [ ] **Step 4: Visual smoke**
 
-Load a frontend page locally (bind `0.0.0.0`, use `moss` host). Expected: "Example dApp" link renders in the footer and opens `https://theahaco.github.io/g2c/` in a new tab.
+Load a frontend page locally (bind `0.0.0.0`, use `moss` host). Expected: "Example dApp" link renders in the footer and opens `https://nidohq.github.io/nido/` in a new tab.
 
 - [ ] **Step 5: Commit + PR**
 
@@ -522,7 +522,7 @@ git commit -m "feat(frontend): link to the live example dApp in the footer
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 git push -u origin chore/link-example-dapp
 gh pr create --base main --title "Link to the live example dApp in the footer" \
-  --body "Adds a global footer link to the live status-message example at https://theahaco.github.io/g2c/ (deployed from examples/status-message-dapp via the Pages workflow).
+  --body "Adds a global footer link to the live status-message example at https://nidohq.github.io/nido/ (deployed from examples/status-message-dapp via the Pages workflow).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)"
 ```

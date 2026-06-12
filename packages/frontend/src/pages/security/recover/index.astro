@@ -151,7 +151,13 @@ import Icon from '../../../components/Icon.astro';
 </NidoLayout>
 
 <script>
-  import { contractIdFromHostname, createSessionPasskey, buf2hex } from '@g2c/passkey-sdk';
+  import {
+    accountUrl,
+    contractIdFromHostname,
+    createSessionPasskey,
+    decodeRotationHandoff,
+    buf2hex,
+  } from '@nidohq/passkey-sdk';
   import { fetchVerifierAddress } from '../../../lib/policyChainFetch.js';
   import {
     findRecoveryRules,

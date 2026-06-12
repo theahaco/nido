@@ -1,5 +1,5 @@
 [package]
-name = "g2c-webauthn-verifier"
+name = "nido-webauthn-verifier"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

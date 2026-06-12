@@ -17,14 +17,14 @@ use stellar_accounts::smart_account::{
 };
 
 #[contract]
-pub struct G2CSmartAccount;
+pub struct NidoSmartAccount;
 
 #[contractimpl]
-impl G2CSmartAccount {
+impl NidoSmartAccount {
     /// Initialize the smart account with a default context rule.
     ///
     /// Typically called with a single `WebAuthn` passkey signer during
-    /// the G-to-C migration flow.
+    /// the Nido account creation flow.
     ///
     /// # Arguments
     ///
@@ -86,7 +86,7 @@ impl G2CSmartAccount {
 }
 
 #[contractimpl]
-impl CustomAccountInterface for G2CSmartAccount {
+impl CustomAccountInterface for NidoSmartAccount {
     type Error = SmartAccountError;
     // OZ v0.7+ replaced the `Signatures` struct with `AuthPayload`
     // (which adds `context_rule_ids` aligned by index with `auth_contexts`).
@@ -103,7 +103,7 @@ impl CustomAccountInterface for G2CSmartAccount {
 }
 
 #[contractimpl]
-impl SmartAccount for G2CSmartAccount {
+impl SmartAccount for NidoSmartAccount {
     fn get_context_rule(e: &Env, context_rule_id: u32) -> ContextRule {
         get_context_rule(e, context_rule_id)
     }
@@ -165,7 +165,7 @@ impl SmartAccount for G2CSmartAccount {
 }
 
 #[contractimpl]
-impl ExecutionEntryPoint for G2CSmartAccount {
+impl ExecutionEntryPoint for NidoSmartAccount {
     fn execute(e: &Env, target: Address, target_fn: Symbol, target_args: Vec<Val>) {
         e.current_contract_address().require_auth();
         e.invoke_contract::<Val>(&target, &target_fn, target_args);

@@ -102,8 +102,8 @@ import Icon from '../../../components/Icon.astro';
 </NidoLayout>
 
 <script>
-  import { contractIdFromHostname, extractXdrOperations, hex2buf } from '@g2c/passkey-sdk';
-  import { Client as SmartAccountClient } from 'smart-account';
+  import { contractIdFromHostname, extractXdrOperations, hex2buf } from '@nidohq/passkey-sdk';
+  import { Client as SmartAccountClient } from '@nidohq/smart-account';
   import { Networks } from '@stellar/stellar-sdk';
   import { fetchRegistryAddress, fetchVerifierAddress } from '../../../lib/policyChainFetch.js';
   import { signAndSubmit } from '../../../lib/primaryPasskeySigner.js';

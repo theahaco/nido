@@ -18,21 +18,21 @@ async function gotoSign(page: import('@playwright/test').Page, query: string) {
 }
 
 test.describe('@fast dapp sign (message)', () => {
-  test('signs a message and returns g2c_signed', async ({ page }) => {
+  test('signs a message and returns nido_signed', async ({ page }) => {
     await gotoSign(page, 'kind=message&message=' + encodeURIComponent('hello world'));
     await expect(page.locator('#needs-register')).toBeHidden();
     await expect(page.locator('#approve')).toBeEnabled();
     await page.locator('#approve').click();
-    await page.waitForURL('**/cb?g2c_signed=**', { timeout: 15_000 });
+    await page.waitForURL('**/cb?nido_signed=**', { timeout: 15_000 });
     const u = new URL(page.url());
     expect(u.searchParams.get('kind')).toBe('message');
-    expect(u.searchParams.get('g2c_signed')).toBeTruthy();
+    expect(u.searchParams.get('nido_signed')).toBeTruthy();
   });
 
-  test('cancel returns g2c_sign=cancelled', async ({ page }) => {
+  test('cancel returns nido_sign=cancelled', async ({ page }) => {
     await gotoSign(page, 'kind=message&message=hi');
     await page.locator('#cancel').click();
-    await page.waitForURL('**/cb?g2c_sign=cancelled**', { timeout: 10_000 });
+    await page.waitForURL('**/cb?nido_sign=cancelled**', { timeout: 10_000 });
   });
 
   // #89: the ceremony is bound to one account; the page must say WHICH and
@@ -43,9 +43,9 @@ test.describe('@fast dapp sign (message)', () => {
     await expect(page.locator('#id-name')).toContainText('CDLZFC');
   });
 
-  test('"Use a different account" returns g2c_sign=switch-account', async ({ page }) => {
+  test('"Use a different account" returns nido_sign=switch-account', async ({ page }) => {
     await gotoSign(page, 'kind=message&message=hi');
     await page.locator('#switch-account').click();
-    await page.waitForURL('**/cb?g2c_sign=switch-account**', { timeout: 10_000 });
+    await page.waitForURL('**/cb?nido_sign=switch-account**', { timeout: 10_000 });
   });
 });

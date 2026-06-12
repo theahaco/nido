@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { createRequire } from "node:module";
 import { xdr, nativeToScVal, scValToNative, Networks } from "@stellar/stellar-sdk";
-import { Client as SmartAccountClient } from "smart-account";
-import { Client as SpendingLimitPolicyClient } from "spending-limit-policy";
+import { Client as SmartAccountClient } from "@nidohq/smart-account";
+import { Client as SpendingLimitPolicyClient } from "@nidohq/spending-limit-policy";
 import {
   PERIOD_LEDGERS,
   PERIOD_LABEL,

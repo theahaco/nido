@@ -3,7 +3,7 @@ import {
   saveSessionKeyMaterial,
   forgetSessionKeyMaterial,
   buf2hex,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import { delegateSessionKey } from './sessionKeyActions.js';
 
 /** Approximate stroop blocks per duration. Soroban testnet has ~5s ledger

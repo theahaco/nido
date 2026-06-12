@@ -11,7 +11,7 @@ import {
   loadBlockLabels,
   loadSessionKeyMaterial,
   loadCredential,
-} from "@g2c/passkey-sdk";
+} from "@nidohq/passkey-sdk";
 import { fetchAllChainRules, fetchPolicyState } from "./policyChainFetch.js";
 
 export interface SecuritySummary {

@@ -17,7 +17,7 @@ import type { MyNidoRow } from "./myNidoModel.js";
  */
 
 // What the registry contract's validate_name can actually issue (same rule as
-// the SDK's G2C_NAME_RE and the claim form's pattern attribute). The resolved
+// the SDK's NIDO_NAME_RE and the claim form's pattern attribute). The resolved
 // name becomes a subdomain href and a localStorage entry, so a name from a
 // repointed registry or a lying RPC must not carry dots, slashes, or anything
 // else that could escape the apex domain.

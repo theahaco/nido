@@ -1,5 +1,5 @@
 [package]
-name = "g2c-spending-limit-policy"
+name = "nido-spending-limit-policy"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

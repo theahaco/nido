@@ -23,7 +23,7 @@ import {
 const PORT = Number(process.env.E2E_PORT || 4399);
 const DAPP = `http://dapp.localhost:${PORT}`;
 const RPC_URL = 'https://soroban-testnet.stellar.org';
-const RELAYER_URL = process.env.G2C_RELAYER_URL || 'https://nido.fly.dev';
+const RELAYER_URL = process.env.NIDO_RELAYER_URL || 'https://nido.fly.dev';
 const DUMMY_SOURCE = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF';
 
 /** Deployed spending-limit policy wrapper (DEPLOYED.md; registered as
@@ -105,7 +105,7 @@ function bytesToHex(raw: unknown): string | null {
 /**
  * Node-side mirror of the frontend's `findRuleForPubkey` (see
  * session-key.testnet.spec.ts for why this is inlined rather than importing
- * the `@g2c/passkey-sdk` barrel). Extended for this spec to also return the
+ * the `@nidohq/passkey-sdk` barrel). Extended for this spec to also return the
  * rule's `policies` (Vec<Address> on the OZ ContextRule) so we can prove the
  * spending-limit policy is attached to the installed rule.
  */

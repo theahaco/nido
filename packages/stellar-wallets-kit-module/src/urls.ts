@@ -1,9 +1,9 @@
 /**
- * Pure URL construction for the g2c stellar-wallets-kit module.
+ * Pure URL construction for the Nido stellar-wallets-kit module.
  *
  * The module runs at the *dApp* origin, so — unlike the wallet's own pages —
- * it can't derive the g2c base domain from `window.location`. The base is
- * supplied as configuration (e.g. `g2c.example.xyz` or `http://localhost:4321`)
+ * it can't derive the Nido base domain from `window.location`. The base is
+ * supplied as configuration (e.g. `nido.example.xyz` or `http://localhost:4321`)
  * and these helpers turn it into the apex `/connect/` picker URL and the
  * per-account `<c-address>.<base>/sign/` ceremony URL.
  *
@@ -13,7 +13,7 @@
  * the origin it expects.
  */
 
-import { isContractId } from '@g2c/passkey-sdk';
+import { isContractId } from '@nidohq/passkey-sdk';
 
 /** Strip a leading scheme if present; returns `[scheme | null, host]`. */
 function splitScheme(base: string): [string | null, string] {
@@ -23,10 +23,10 @@ function splitScheme(base: string): [string | null, string] {
 }
 
 /**
- * If `host` is a g2c PR-preview base (`pr-<N>.<apex>`), return `["<N>", apex]`;
+ * If `host` is a Nido PR-preview base (`pr-<N>.<apex>`), return `["<N>", apex]`;
  * otherwise `[null, host]`.
  *
- * g2c encodes preview deployments into a single subdomain level so wildcard
+ * Nido encodes preview deployments into a single subdomain level so wildcard
  * TLS still matches: the account page in a preview lives at
  * `<c-address>--pr-<N>.<apex>`, NOT `<c-address>.pr-<N>.<apex>`. The base this
  * module is configured with (derived from the dApp's own host via
@@ -42,7 +42,7 @@ function splitPreview(host: string): [string | null, string] {
 }
 
 /**
- * The apex origin for the g2c deployment, e.g. `https://g2c.example.xyz`.
+ * The apex origin for the Nido deployment, e.g. `https://nido.example.xyz`.
  * If `base` already carries a scheme (handy for `http://localhost:4321` in
  * dev) it's preserved; otherwise `https` is assumed.
  */
@@ -71,7 +71,7 @@ export function accountOrigin(base: string, account: string): string {
 }
 
 export interface ConnectUrlParams {
-  /** g2c base domain (optionally scheme-prefixed). */
+  /** Nido base domain (optionally scheme-prefixed). */
   base: string;
   /** The dApp's own origin, surfaced to the user at the picker. */
   dappOrigin: string;

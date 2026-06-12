@@ -1,6 +1,6 @@
 # Gas Abstraction via Self-Hosted OZ Relayer (Deliverable 4, PR 1)
 
-**Issue:** [#72](https://github.com/theahaco/g2c/issues/72) — SCF Tranche 2, Deliverable 2 ("OZ Relayer Integration + Session Keys").
+**Issue:** [#72](https://github.com/nidohq/nido/issues/72) — SCF Tranche 2, Deliverable 2 ("OZ Relayer Integration + Session Keys").
 **Scope of this spec:** the gas-abstraction half. The session-key scope UI ships as PR 2 under the same issue and is outlined at the end.
 
 ## Goal

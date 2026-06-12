@@ -1,7 +1,7 @@
 /**
  * In-page "confirming…" sheet controller, Nido-styled.
  *
- * Ported from the g2c wallet's `packages/frontend/src/lib/passkeySheet.ts` so
+ * Ported from the Nido wallet's `packages/frontend/src/lib/passkeySheet.ts` so
  * the dApp can show the SAME confirmation affordance the wallet does — but
  * in-page, wrapping the local session-key ceremony (no wallet round-trip).
  *

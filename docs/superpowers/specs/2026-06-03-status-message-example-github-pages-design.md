@@ -7,26 +7,26 @@
 ## Goal
 
 Turn the `examples/status-message-dapp/` scaffold (currently PR #43) into a
-**live, working example dApp on GitHub Pages** at `https://theahaco.github.io/g2c/`,
-running against **Stellar testnet** and connecting to the production g2c passkey
+**live, working example dApp on GitHub Pages** at `https://nidohq.github.io/nido/`,
+running against **Stellar testnet** and connecting to the production Nido passkey
 wallet at `https://mysoroban.xyz`. Then add a footer link from the Nido wallet
 frontend to that live example.
 
 The example demonstrates a third-party dApp connecting through the
-`@creit.tech/stellar-wallets-kit` selector with the g2c passkey smart account
-(`@g2c/stellar-wallets-kit-module`) registered first, reading/writing the
+`@creit.tech/stellar-wallets-kit` selector with the Nido passkey smart account
+(`@nidohq/stellar-wallets-kit-module`) registered first, reading/writing the
 `status-message` contract.
 
 ## Decisions (locked)
 
 | Decision | Choice |
 | --- | --- |
-| Hosting | Default GitHub Pages project site `https://theahaco.github.io/g2c/` (base path `/g2c/`) |
+| Hosting | Default GitHub Pages project site `https://nidohq.github.io/nido/` (base path `/nido/`) |
 | Contract client | Commit the generated TS client (bound to the deployed testnet id); CI does `npm ci && vite build` only — no Rust, no scaffold, no live RPC at build time |
 | Nido → example link | Global site footer |
 | PR split | Part A–C (example + Pages) land on **PR #43** (retargeted to `main`); Part D (Nido footer link) is a separate follow-up PR off `main` |
 | Live demo network | Testnet |
-| `PUBLIC_G2C_BASE` | `https://mysoroban.xyz` (production g2c wallet, testnet) |
+| `PUBLIC_NIDO_BASE` | `https://mysoroban.xyz` (production Nido wallet, testnet) |
 
 ## Non-goals
 
@@ -38,7 +38,7 @@ The example demonstrates a third-party dApp connecting through the
   example README).
 - The unrelated working-tree WIP present at the start of this work (contracts,
   auth-entry guards, integration-test snapshots, `packages/frontend`
-  delegationHandover/index.astro, `app/`, `g2c.zip`) is **out of scope** and
+  delegationHandover/index.astro, `app/`, `nido.zip`) is **out of scope** and
   must be left untouched.
 
 ## Part A — Bring PR #43 onto `main`
@@ -77,10 +77,10 @@ PR #43 (`feat/status-message-scaffold-template`) bases on `feat/nido-rebrand`
 
 ### B2. Base path that works for both dev and Pages
 - Keep `base: '/'` (Vite default) for local `npm start` / `npm run dev`.
-- Build for Pages with `vite build --base=/g2c/` (flag only in the Pages
+- Build for Pages with `vite build --base=/nido/` (flag only in the Pages
   workflow; local build/preview unaffected unless the flag is passed).
 - React Router uses `basename={import.meta.env.BASE_URL}` so routes resolve under
-  both `/` and `/g2c/` without code branching. (Inspect `main.tsx`/`App.tsx` for
+  both `/` and `/nido/` without code branching. (Inspect `main.tsx`/`App.tsx` for
   the actual router; set basename accordingly.)
 - `index.html` asset refs (favicon, etc.) use relative or `%BASE_URL%`-style
   paths so they resolve under the subpath.
@@ -91,7 +91,7 @@ Baked via the Pages workflow `env:` block (envPrefix `PUBLIC_`):
 - `PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"`
 - `PUBLIC_STELLAR_RPC_URL=https://soroban-testnet.stellar.org`
 - `PUBLIC_STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org`
-- `PUBLIC_G2C_BASE=https://mysoroban.xyz`
+- `PUBLIC_NIDO_BASE=https://mysoroban.xyz`
 
 Verify how `src/util/contract.ts` / the generated client reads network config so
 these env vars actually drive the runtime RPC the app talks to.
@@ -110,15 +110,15 @@ New `.github/workflows/pages.yml`:
 - **Permissions:** `pages: write`, `id-token: write`, `contents: read`.
 - **Concurrency:** group `pages`, cancel-in-progress false.
 - **Build job:** checkout → `actions/setup-node@v4` (node 20) → `npm ci` at root →
-  build the workspace `@g2c/*` deps the example imports (mirror `deploy.yml`'s
-  `tsc -p packages/passkey-sdk/...`; also build `@g2c/stellar-wallets-kit-module`
-  — confirm its build script) → `vite build --base=/g2c/` in
+  build the workspace `@nidohq/*` deps the example imports (mirror `deploy.yml`'s
+  `tsc -p packages/passkey-sdk/...`; also build `@nidohq/stellar-wallets-kit-module`
+  — confirm its build script) → `vite build --base=/nido/` in
   `examples/status-message-dapp` with the Part B3 env →
   `actions/configure-pages@v5` → `actions/upload-pages-artifact@v3` with
   `path: examples/status-message-dapp/dist`.
 - **Deploy job:** `actions/deploy-pages@v4` to the `github-pages` environment.
-- **Enable Pages** on `theahaco/g2c` with source = GitHub Actions
-  (`gh api -X POST repos/theahaco/g2c/pages` / `--method PUT` with
+- **Enable Pages** on `nidohq/nido` with source = GitHub Actions
+  (`gh api -X POST repos/nidohq/nido/pages` / `--method PUT` with
   `build_type=workflow`, or rely on first `deploy-pages` run auto-enabling).
   Admin access confirmed.
 
@@ -126,22 +126,22 @@ New `.github/workflows/pages.yml`:
 
 - New branch off `main`, separate PR.
 - Locate the Nido frontend global footer component in `packages/frontend/src`
-  (layout/footer). Add an "Example dApp" link → `https://theahaco.github.io/g2c/`
+  (layout/footer). Add an "Example dApp" link → `https://nidohq.github.io/nido/`
   (external, `target="_blank" rel="noopener"`).
 - Respect the existing 2-error astro-check baseline (add no new errors).
 
 ## Verification
 
 **Local (Part B/C):**
-- `npm ci` at root; build `@g2c/*` deps; `vite build --base=/g2c/` in the example → succeeds.
-- `vitest run` → 2/2 (g2c-first ordering test); `eslint .` clean; `tsc` clean.
-- `vite preview --base=/g2c/` → app mounts at `/g2c/`, zero console errors,
-  picker opens with **g2c listed first**, read path returns on-chain status from
+- `npm ci` at root; build `@nidohq/*` deps; `vite build --base=/nido/` in the example → succeeds.
+- `vitest run` → 2/2 (nido-first ordering test); `eslint .` clean; `tsc` clean.
+- `vite preview --base=/nido/` → app mounts at `/nido/`, zero console errors,
+  picker opens with **Nido listed first**, read path returns on-chain status from
   testnet (read-only simulation).
 - Optional Playwright smoke (repo already has `@playwright/test`).
 
 **Post-deploy:**
-- Load `https://theahaco.github.io/g2c/` → app loads, no console errors, read +
+- Load `https://nidohq.github.io/nido/` → app loads, no console errors, read +
   picker + connect-redirect to `mysoroban.xyz` work.
 - Passkey *write* round-trip → manual QA (real WebAuthn at `mysoroban.xyz`).
 
@@ -157,6 +157,6 @@ New `.github/workflows/pages.yml`:
 2. **Rebase conflicts** in `package-lock.json`/`package.json` — regenerate lock
    if needed.
 3. **Base-path leaks** — any hard-coded absolute path (`/assets`, `/foo`) breaks
-   under `/g2c/`. Audit during preview.
+   under `/nido/`. Audit during preview.
 4. **Network config plumbing** — confirm the committed client + util read the
    `PUBLIC_STELLAR_*` env at runtime so testnet is actually used.

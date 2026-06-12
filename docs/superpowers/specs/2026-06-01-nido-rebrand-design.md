@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-01
 **Status:** Approved (brainstorm) — pending implementation plan
-**Supersedes:** the `g2c` working name ("G-address to C-address")
+**Supersedes:** the former working name ("G-address to C-address")
 
 > This is a **brand/identity** spec — the strategy, name, and visual+verbal system. It does **not** cover the code rename/migration; that becomes its own implementation plan (see [Out of Scope](#out-of-scope)).
 
@@ -10,7 +10,7 @@
 
 ## 1. Why rebrand
 
-`g2c` names an internal mechanic (Stellar G-address → Soroban C-address). A non-crypto user has no idea what a G-address, a C-address, or Soroban is — and shouldn't need to. The product is also growing past "wallet": passkey accounts today, programmable **policies** (limits, approvals, recovery, session keys) now, and **zk proofs** (private, verifiable claims) ahead. The brand must read as a consumer product, not a crypto tool, and must have room for identity + proofs, not just money.
+The former working name described an internal mechanic (Stellar G-address → Soroban C-address). A non-crypto user has no idea what a G-address, a C-address, or Soroban is — and shouldn't need to. The product is also growing past "wallet": passkey accounts today, programmable **policies** (limits, approvals, recovery, session keys) now, and **zk proofs** (private, verifiable claims) ahead. The brand must read as a consumer product, not a crypto tool, and must have room for identity + proofs, not just money.
 
 ## 2. Positioning
 
@@ -110,7 +110,7 @@ User-facing first; internal/technical names can lag.
 
 ## 9. Out of scope (separate plans)
 
-- **Code/identifier rename** (`g2c-*` crates, contract names, deployed contract IDs, `mysoroban.xyz`): a mechanical migration with its own risk profile — separate implementation plan.
+- **Code/identifier rename** (`nido-*` crates, contract names, deployed contract IDs, `mysoroban.xyz`): a mechanical migration with its own risk profile — separate implementation plan.
 - **Production logo asset** finalization (vector refinement, icon grid, monochrome/inverse variants, favicon set).
 - **Trademark clearance** in the relevant classes before public launch.
 - **zk-proof product copy** beyond the lexicon entry above (define when that feature lands).

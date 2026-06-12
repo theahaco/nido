@@ -1,5 +1,5 @@
 {
-  "name": "g2c",
+  "name": "nido",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -8,7 +8,7 @@
     "examples/status-message-dapp/packages/*"
   ],
   "scripts": {
-    "build:packages": "npm run build -w smart-account -w multisig-policy -w spending-limit-policy -w webauthn-verifier -w factory -w status-message -w @g2c/passkey-sdk -w @g2c/stellar-wallets-kit-module",
+    "build:packages": "npm run build -w @nidohq/smart-account -w @nidohq/multisig-policy -w @nidohq/spending-limit-policy -w @nidohq/webauthn-verifier -w @nidohq/factory -w @nidohq/status-message -w @nidohq/passkey-sdk -w @nidohq/stellar-wallets-kit-module",
     "postinstall": "npm run build:packages",
     "test:support": "vitest run --config vitest.support.config.ts",
     "test:e2e": "playwright test --grep @fast",

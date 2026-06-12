@@ -1,4 +1,4 @@
-use g2c_integration_tests::deploy_smart_account;
+use nido_integration_tests::deploy_smart_account;
 use soroban_sdk::Env;
 use stellar_accounts::smart_account::{ContextRuleType, Signer};
 

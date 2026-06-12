@@ -9,7 +9,7 @@
  * caching it at the dApp origin is fine.
  */
 
-import { isContractId } from '@g2c/passkey-sdk';
+import { isContractId } from '@nidohq/passkey-sdk';
 
 const ADDRESS_CACHE_KEY = 'g2c:wallet-kit:address';
 
@@ -31,8 +31,8 @@ export type ConnectReturn =
  */
 export function parseConnectReturn(search: string): ConnectReturn | null {
   const p = new URLSearchParams(search);
-  const addr = p.get('g2c_address');
-  const connect = p.get('g2c_connect');
+  const addr = p.get('nido_address');
+  const connect = p.get('nido_connect');
   if (addr) {
     const upper = addr.toUpperCase();
     if (!isContractId(upper)) {
@@ -42,7 +42,7 @@ export function parseConnectReturn(search: string): ConnectReturn | null {
   }
   if (connect === 'cancelled') return { status: 'cancelled' };
   if (connect === 'error') {
-    return { status: 'error', error: p.get('g2c_error') ?? 'Unknown connect error' };
+    return { status: 'error', error: p.get('nido_error') ?? 'Unknown connect error' };
   }
   return null;
 }
@@ -65,8 +65,8 @@ export type SignReturn =
  */
 export function parseSignReturn(search: string): SignReturn | null {
   const p = new URLSearchParams(search);
-  const signed = p.get('g2c_signed');
-  const sign = p.get('g2c_sign');
+  const signed = p.get('nido_signed');
+  const sign = p.get('nido_sign');
   if (signed) {
     const kind = (p.get('kind') as SignKind) ?? 'tx';
     return { status: 'ok', kind, result: signed };
@@ -74,7 +74,7 @@ export function parseSignReturn(search: string): SignReturn | null {
   if (sign === 'cancelled') return { status: 'cancelled' };
   if (sign === 'switch-account') return { status: 'switch-account' };
   if (sign === 'error') {
-    return { status: 'error', error: p.get('g2c_error') ?? 'Unknown signing error' };
+    return { status: 'error', error: p.get('nido_error') ?? 'Unknown signing error' };
   }
   return null;
 }

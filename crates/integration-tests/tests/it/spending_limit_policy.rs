@@ -5,7 +5,7 @@
 //! `SpendingLimitError::SpendingLimitExceeded` (#3221), and the rolling
 //! window frees up budget once old entries age out.
 
-use g2c_integration_tests::{
+use nido_integration_tests::{
     build_contract_assertion, compute_auth_digest, deploy_smart_account,
     deploy_spending_limit_policy, spending_limit_install_map, test_key, SmartAccountClient,
 };

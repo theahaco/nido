@@ -26,7 +26,7 @@ The brand spec defines color/type/voice/logo but **says nothing about desktop la
 
 **Out of scope**
 - Send / Activity / Add-money / zk-18 / spending-limits screens — no backend (Send tracked in #40).
-- Code/identifier rename (`g2c-*`, contract IDs, RP IDs, query params) — per brand spec §9.
+- Code/identifier rename (`nido-*`, contract IDs, RP IDs, query params) — per brand spec §9.
 - Production logo asset finalization — still the sketch Nest Ring.
 - Self-hosting fonts — later hardening task (per #38).
 
@@ -70,7 +70,7 @@ A **centered card on the stage** at all widths (no sidebar) — these are single
 
 ## 9. Logos
 
-- **#3 — wallet-kit standin:** replace `G2C_ICON` (base64 `data:image/svg+xml`) in `packages/stellar-wallets-kit-module/src/module.ts:53` (wired as `productIcon`) with the Nido Nest-Ring mark; rebuild the package `dist/`. The wallet **name stays "g2c"** (identifier rename is out of scope).
+- **#3 — wallet-kit standin:** replace `NIDO_ICON` (base64 `data:image/svg+xml`) in `packages/stellar-wallets-kit-module/src/module.ts:53` (wired as `productIcon`) with the Nido Nest-Ring mark; rebuild the package `dist/`. The wallet **name stays "Nido"** (identifier rename is out of scope).
 - **#4 — top-left mark:** covered by §5 (sidebar header, desktop) and §6 (top bar, mobile) — the Nest-Ring mark replaces the seeded `<Avatar>` circle.
 
 ## 10. Account identity placement
@@ -81,7 +81,7 @@ Because the Nido mark takes the top-left, the account **nickname + avatar** move
 
 - Confine changes to: `NidoLayout.astro` (shell prop + conditional wrapper), a new `components/Sidebar.astro`, `styles/nido.css` (sidebar + grid + breakpoint rules + landing escaping `.col`), a per-page `shell="…"` prop, and light wrapper-class additions around **existing** cards.
 - **Do NOT** alter the auth / recovery / sign / connect `<script>` logic — byte-identical, per #38.
-- **No** `g2c-*` / contract-ID / RP-ID / query-param renames.
+- **No** `nido-*` / contract-ID / RP-ID / query-param renames.
 - Reuse existing components (`Logo`, `Nest`, `Avatar`, `Icon`) — no new design primitives beyond `Sidebar`.
 
 ## 12. File inventory (what changes)

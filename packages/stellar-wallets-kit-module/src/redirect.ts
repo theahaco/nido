@@ -7,7 +7,7 @@
  * resolve with a value — a full-page redirect would tear down the calling
  * page and lose the Promise. So we open the wallet ceremony in a popup and
  * wait for it to `postMessage` the result back to us, then close it. The
- * wallet's `/connect/` and `/sign/` pages post `{ source: 'g2c-wallet', search }`
+ * wallet's `/connect/` and `/sign/` pages post `{ source: 'nido-wallet', search }`
  * (the return query string) back to the opener and self-close.
  *
  * If popups are blocked, the caller can fall back to a full-page redirect via
@@ -16,10 +16,10 @@
  * popup path is the default.
  */
 
-const MESSAGE_SOURCE = 'g2c-wallet';
+const MESSAGE_SOURCE = 'nido-wallet';
 
 export interface PopupResult {
-  /** The query string the wallet posted back (e.g. "?g2c_signed=…"). */
+  /** The query string the wallet posted back (e.g. "?nido_signed=…"). */
   search: string;
 }
 
@@ -37,9 +37,9 @@ export function openCeremonyPopup(
   timeoutMs = 5 * 60 * 1000,
 ): Promise<PopupResult> {
   return new Promise((resolve, reject) => {
-    const popup = window.open(url, 'g2c-wallet', 'popup,width=460,height=720');
+    const popup = window.open(url, 'nido-wallet', 'popup,width=460,height=720');
     if (!popup) {
-      reject(new Error('g2c: popup was blocked. Allow popups for this site and retry.'));
+      reject(new Error('Nido: popup was blocked. Allow popups for this site and retry.'));
       return;
     }
 
@@ -67,7 +67,7 @@ export function openCeremonyPopup(
       if (settled) return;
       if (popup.closed) {
         cleanup();
-        reject(new Error('g2c: the wallet window was closed before completing.'));
+        reject(new Error('Nido: the wallet window was closed before completing.'));
       }
     }, 500);
 
@@ -75,7 +75,7 @@ export function openCeremonyPopup(
       if (settled) return;
       cleanup();
       try { popup.close(); } catch { /* ignore */ }
-      reject(new Error('g2c: timed out waiting for the wallet.'));
+      reject(new Error('Nido: timed out waiting for the wallet.'));
     }, timeoutMs);
   });
 }
@@ -87,12 +87,12 @@ export function redirectTopLevel(url: string): void {
 
 /**
  * Called by the wallet's `/connect/` and `/sign/` pages to hand a result back
- * to the dApp's popup opener. Posts `{ source: 'g2c-wallet', search }` to the
+ * to the dApp's popup opener. Posts `{ source: 'nido-wallet', search }` to the
  * opener (targeting `dappOrigin`) and closes the window. If there's no opener
  * (the page was reached by full-page redirect, not a popup), falls back to a
  * top-level redirect to `returnUrl` with the result query string appended.
  *
- * `search` is the result query string, e.g. `?g2c_signed=…&kind=tx`.
+ * `search` is the result query string, e.g. `?nido_signed=…&kind=tx`.
  */
 export function postResultToOpener(
   search: string,

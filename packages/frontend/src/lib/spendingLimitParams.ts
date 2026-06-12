@@ -32,7 +32,7 @@
  * `packages/passkey-sdk/src/auth.ts` — if you hand xdr objects across the
  * page↔bindings boundary, cross that boundary in the bindings' domain.
  */
-import { Client as SpendingLimitPolicyClient } from "spending-limit-policy";
+import { Client as SpendingLimitPolicyClient } from "@nidohq/spending-limit-policy";
 import type { Spec } from "@stellar/stellar-sdk/contract";
 import type { xdr } from "@stellar/stellar-sdk";
 import { xlmToStroops } from "./money";

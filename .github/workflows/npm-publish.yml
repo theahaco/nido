@@ -1,0 +1,40 @@
+name: Publish NPM Packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript packages
+        run: npm run build:packages
+
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+        run: |
+          npm publish --workspace @nidohq/smart-account --access public
+          npm publish --workspace @nidohq/multisig-policy --access public
+          npm publish --workspace @nidohq/spending-limit-policy --access public
+          npm publish --workspace @nidohq/webauthn-verifier --access public
+          npm publish --workspace @nidohq/factory --access public
+          npm publish --workspace @nidohq/status-message --access public
+          npm publish --workspace @nidohq/passkey-sdk --access public
+          npm publish --workspace @nidohq/stellar-wallets-kit-module --access public

@@ -6,7 +6,7 @@
 
 **Architecture:** Extract three shared helpers (`balance`, `avatarStyle`, `myNidoModel`, `createNido`) so the menu and the wallet page share one implementation, add a self-contained `MyNidoMenu.astro` (button + popover + controller), then restructure `index.astro` to drop the old full-page welcome-back swap and mount the menu in the nav. Account presentation moves entirely into the menu.
 
-**Tech Stack:** Astro (static build), TypeScript, `@stellar/stellar-sdk`, the `@g2c/passkey-sdk` storage/url helpers, vitest, Playwright (via `astro preview`).
+**Tech Stack:** Astro (static build), TypeScript, `@stellar/stellar-sdk`, the `@nidohq/passkey-sdk` storage/url helpers, vitest, Playwright (via `astro preview`).
 
 **Spec:** `docs/superpowers/specs/2026-06-03-nido-landing-redesign-design.md`
 
@@ -467,7 +467,7 @@ Create `src/lib/createNido.ts` (lifts the reservation half of `index.astro`'s
 ```ts
 import { Keypair, Networks } from "@stellar/stellar-sdk";
 import { Client } from "factory";
-import { savePendingAccount, accountUrl, fetchRegistryAddress } from "@g2c/passkey-sdk";
+import { savePendingAccount, accountUrl, fetchRegistryAddress } from "@nidohq/passkey-sdk";
 
 const RPC_URL = "https://soroban-testnet.stellar.org";
 const FRIENDBOT_URL = "https://friendbot.stellar.org";
@@ -631,7 +631,7 @@ import Nest from "./Nest.astro";
     loadAccountName,
     accountUrl,
     activateAccount,
-  } from "@g2c/passkey-sdk";
+  } from "@nidohq/passkey-sdk";
   import { rpc, xdr } from "@stellar/stellar-sdk";
   import { buildMyNidoModel, type MyNidoRow } from "../lib/myNidoModel";
   import { fetchXlmBalance } from "../lib/balance";
@@ -847,7 +847,7 @@ and `<MyNidoMenu />`:
         <Logo size={22} mark markSize={28} />
         <a
           class="lp-navlink"
-          href="https://github.com/theahaco/g2c"
+          href="https://github.com/nidohq/nido"
           target="_blank"
           rel="noopener"
           title="View on GitHub"
@@ -909,7 +909,7 @@ create / welcome-back logic — that now lives in `MyNidoMenu`):
     nameFromHostname,
     resolveNameCached,
     fetchRegistryAddress,
-  } from "@g2c/passkey-sdk";
+  } from "@nidohq/passkey-sdk";
 
   const RPC_URL = "https://soroban-testnet.stellar.org";
 

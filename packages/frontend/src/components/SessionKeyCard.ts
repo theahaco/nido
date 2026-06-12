@@ -1,5 +1,5 @@
-import type { ScopedSessionKeyBlock } from '@g2c/passkey-sdk';
-import { formatSpendingLimit } from '@g2c/passkey-sdk';
+import type { ScopedSessionKeyBlock } from '@nidohq/passkey-sdk';
+import { formatSpendingLimit } from '@nidohq/passkey-sdk';
 import { revokeSessionKey } from '../lib/sessionKeyActions';
 import { toast } from '../lib/toast';
 import { shortAddr } from '../lib/address';

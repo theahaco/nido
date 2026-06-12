@@ -1,5 +1,5 @@
 {
-  "name": "@g2c/passkey-sdk",
+  "name": "@nidohq/passkey-sdk",
   "version": "0.1.0",
   "description": "WebAuthn/passkey authentication SDK for Soroban smart accounts",
   "type": "module",
@@ -19,9 +19,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@noble/curves": "^2.2.0",
-    "smart-account": "*",
-    "multisig-policy": "*"
+    "@nidohq/multisig-policy": "^0.1.0",
+    "@nidohq/smart-account": "^0.1.0",
+    "@noble/curves": "^2.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "peerDependencies": {
     "@stellar/stellar-sdk": "^15.1.0"

@@ -6,7 +6,7 @@
 
 ## Why
 
-The G2C smart account already supports OpenZeppelin's full context-rule machinery — scoped signers, attached policy contracts, expiry — but the wallet only ever installs the constructor-seeded default rule. Users can't take advantage of multisig recovery or scoped session keys, and the existing scoping tests in `crates/integration-tests/tests/it/smart_account_scoping.rs` exercise synthetic configurations that nothing in the product actually uses.
+The Nido smart account already supports OpenZeppelin's full context-rule machinery — scoped signers, attached policy contracts, expiry — but the wallet only ever installs the constructor-seeded default rule. Users can't take advantage of multisig recovery or scoped session keys, and the existing scoping tests in `crates/integration-tests/tests/it/smart_account_scoping.rs` exercise synthetic configurations that nothing in the product actually uses.
 
 v1 closes both gaps by shipping two concrete, user-facing policies — social recovery and scoped session keys — plus the SDK and UI scaffolding that future policy types plug into without changing existing code. Tests are rewritten to drive the same builder helpers the UI uses, so the test suite documents real product flows rather than test-only plumbing.
 
@@ -110,7 +110,7 @@ type PolicyBlock =
 
 interface Friend {
   address: string;        // resolved C-address or G-address (authoritative)
-  inputAs: string;        // what the user typed (g2c name | C… | G…)
+  inputAs: string;        // what the user typed (Nido name | C… | G…)
   nickname?: string;      // local overlay
 }
 ```
@@ -137,7 +137,7 @@ v1 ships two modules:
 
 ### Shared helpers
 
-- `resolveFriendInput(input)` — accepts `alice` (g2c name lookup via the existing name registry), `C…` (validate strkey), or `G…` (validate strkey); returns `{ address, kind: 'name'|'contract'|'account', hint }`.
+- `resolveFriendInput(input)` — accepts `alice` (Nido name lookup via the existing name registry), `C…` (validate strkey), or `G…` (validate strkey); returns `{ address, kind: 'name'|'contract'|'account', hint }`.
 - `loadPolicyBlocks(account, rpc)` — fetches all context rules and per-policy state, joins with local overlay, returns `PolicyBlock[]`. This is the SDK function the page and the integration tests both call.
 - `generateSessionKey(account, target, validUntil)` — generates a P-256 keypair, stores the private bytes in IndexedDB keyed by `(account, target)`, returns the public key bytes ready for `add_context_rule`.
 
@@ -165,7 +165,7 @@ Per-block rendering is delegated to small components (`<MultisigRecoveryCard.ast
 
 Inline form expanded under the Recovery section card (matches the approved mockup):
 
-1. Friends list — each row is an input that accepts a g2c name, `C…`, or `G…`. Live resolution via `resolveFriendInput`; green ✓ on success. `+ Add another friend`, `×` to remove.
+1. Friends list — each row is an input that accepts a Nido name, `C…`, or `G…`. Live resolution via `resolveFriendInput`; green ✓ on success. `+ Add another friend`, `×` to remove.
 2. Threshold stepper — "Require [−][M][+] of N friends to approve" with a one-liner explaining the trade-off.
 3. Optional rule name (defaults to "Recovery").
 4. Plain-English summary box restating the effect, including the *cannot move funds* reassurance.
@@ -206,7 +206,7 @@ To make the value prop visible and realistic, the existing `packages/frontend/sr
 2. dApp opens `https://<account>.<base>/security/delegate/?origin=<dapp_origin>&target=<contract>&duration=24h&return=<callback_url>` in a popup.
 3. Wallet runs the normal scoped-session-key flow. After the `add_context_rule` tx confirms, instead of just closing, the wallet `postMessage`s the bundle to the popup opener:
    ```ts
-   { type: 'g2c-session-key', payload: {
+   { type: 'nido-session-key', payload: {
        account, target, ruleId, validUntil,
        verifier, sessionPubkey,
        privateKey, credentialId,  // the session key material

@@ -41,7 +41,7 @@
 **Modified files:**
 - `playwright.config.ts` — scope `@fast`/CDP projects to `tests/e2e/ui/`; add `testnet-chromium` + `testnet-webkit` projects (`testMatch` `testnet/`, `retries: 2`).
 - `justfile` — add `test-e2e-testnet` (depends on `build-astro`).
-- `tests/README.md` — document the testnet tier, the `G2C_TEST_BANK_SECRET` env, and quarantine.
+- `tests/README.md` — document the testnet tier, the `NIDO_TEST_BANK_SECRET` env, and quarantine.
 
 ---
 
@@ -111,11 +111,11 @@ export function uniqueName(prefix: string, nowMs: number): string {
 
 /**
  * Pre-seed a funded "bank" submitter so name txs skip friendbot. If
- * G2C_TEST_BANK_SECRET is unset, the app falls back to its own friendbot
+ * NIDO_TEST_BANK_SECRET is unset, the app falls back to its own friendbot
  * funding (slower, flakier). Sets the key on every origin in the context.
  */
 export async function seedBank(context: BrowserContext): Promise<void> {
-  const secret = process.env.G2C_TEST_BANK_SECRET;
+  const secret = process.env.NIDO_TEST_BANK_SECRET;
   if (!secret) return; // no bank → app friendbots its own submitter
   await context.addInitScript(
     ([k, v]) => {
@@ -386,7 +386,7 @@ git commit -m "test(e2e): testnet full name-claim passkey round-trip"
 Append to `justfile` (builds first; runs only the testnet projects):
 ```make
 # Quarantined real-testnet e2e tier (create+deploy, name claim); builds first.
-# Optional: set G2C_TEST_BANK_SECRET to a funded testnet G-account secret to
+# Optional: set NIDO_TEST_BANK_SECRET to a funded testnet G-account secret to
 # skip friendbot for the name submitter.
 test-e2e-testnet: build-astro
     npx playwright test --project=testnet-chromium --project=testnet-webkit
@@ -405,7 +405,7 @@ P-256 signature is accepted on-chain). Runs under the `testnet-chromium` /
 never blocks routine runs.
 
 - Slow (~2–3 min/test) and dependent on testnet + friendbot availability.
-- Optional `G2C_TEST_BANK_SECRET=<funded testnet G-account secret>` pre-seeds
+- Optional `NIDO_TEST_BANK_SECRET=<funded testnet G-account secret>` pre-seeds
   the name-tx fee-payer (`localStorage['g2c:name-keypair']`) to skip friendbot.
   Without it, the app funds its own submitter via friendbot (slower/flakier).
 - Names are unique per run (timestamped). On-chain **release** is not exposed

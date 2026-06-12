@@ -96,8 +96,8 @@ import Toast from '../../components/Toast.astro';
 </style>
 
 <script>
-  import { loadAccounts, loadAccountName, isContractId } from '@g2c/passkey-sdk';
-  import { postResultToOpener } from '@g2c/stellar-wallets-kit-module';
+  import { loadAccounts, loadAccountName, isContractId } from '@nidohq/passkey-sdk';
+  import { postResultToOpener } from '@nidohq/stellar-wallets-kit-module';
   import { shortAddr } from '../../lib/address';
   import { avatarBackground } from '../../lib/avatarStyle';
 
@@ -163,7 +163,7 @@ import Toast from '../../components/Toast.astro';
 
   document.getElementById('cancel')!.addEventListener('click', () => {
     if (!ret) { window.location.href = '/account/'; return; }
-    finish('?g2c_connect=cancelled');
+    finish('?nido_connect=cancelled');
   });
 
   // Render the device's accounts as pick buttons.
@@ -182,7 +182,7 @@ import Toast from '../../components/Toast.astro';
   // only ever visible if that handover fails. Multi-account devices always
   // see the full picker — that's the #89 switch opportunity.
   if (ret && current && accounts.length === 1) {
-    finish(`?g2c_address=${current}`);
+    finish(`?nido_address=${current}`);
   }
 
   for (const cAddress of accounts) {
@@ -224,7 +224,7 @@ import Toast from '../../components/Toast.astro';
     btn.appendChild(chev);
 
     btn.addEventListener('click', () => {
-      finish(`?g2c_address=${cAddress}`);
+      finish(`?nido_address=${cAddress}`);
     });
     $list.appendChild(btn);
   }

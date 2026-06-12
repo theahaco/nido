@@ -1,6 +1,6 @@
 # Session-Key Scope UI (Deliverable 4, PR 2 — #72)
 
-**Issue:** [#72](https://github.com/theahaco/g2c/issues/72), second half. PR 1 (relayer gas abstraction, #73) is this branch's base.
+**Issue:** [#72](https://github.com/nidohq/nido/issues/72), second half. PR 1 (relayer gas abstraction, #73) is this branch's base.
 **Deliverable text:** "Session key UI: users can grant dApps scoped signing permissions (contract restrictions, spending limits, time windows) via context rules." Proof: "Session key can be created with scope restrictions and used by a dApp to execute a scoped transaction."
 
 ## Goal
@@ -43,7 +43,7 @@ Users approving a dApp delegation can attach a **spending limit** (amount + roll
 - "Enable tipping" → existing `startDelegation` with `targetContract = XLM SAC id`, `duration` (reuse selector), plus `limit=5`, `limit_period=day` suggestion.
 - "Tip 1 XLM" button per message author: in-page session signing (generalize `nidoSign`'s flow) of a **direct `SAC.transfer(smartAccount → author, amount)`** call; submit via the relayer (`{func, auth}` to `POST /relay`) so tipping is gasless; surface the explorer link.
 - Over-limit attempt surfaces the on-chain rejection (relayer returns the enforce failure) in the dApp UI.
-- Relayer client reuse: lift the pure fetch client from `packages/frontend/src/lib/relayerClient.ts` into `@g2c/passkey-sdk` (it is env-free — every function takes `baseUrl`); `relayerClient.ts` becomes the env-defaulting shim; `network.ts` holds only RELAYER_URL. Frontend tests move with it.
+- Relayer client reuse: lift the pure fetch client from `packages/frontend/src/lib/relayerClient.ts` into `@nidohq/passkey-sdk` (it is env-free — every function takes `baseUrl`); `relayerClient.ts` becomes the env-defaulting shim; `network.ts` holds only RELAYER_URL. Frontend tests move with it.
 
 ### 5. Proofs
 

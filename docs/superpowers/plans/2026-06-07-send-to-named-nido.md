@@ -6,7 +6,7 @@
 
 **Architecture:** Frontend-only. Normalize the typed string (strip cosmetic suffix), resolve it to an address via the read-only name-registry (`resolveFriendInput`), display the resolved address (anti-spoof), and feed the **resolved address** into the existing `sendXlm` so the passkey signs over the concrete address (TOCTOU-safe). No contract change.
 
-**Tech Stack:** TypeScript, Astro (inline client script), `@stellar/stellar-sdk`, `@g2c/passkey-sdk`, Vitest, Playwright.
+**Tech Stack:** TypeScript, Astro (inline client script), `@stellar/stellar-sdk`, `@nidohq/passkey-sdk`, Vitest, Playwright.
 
 **Spec:** `docs/superpowers/specs/2026-06-07-send-to-named-nido-design.md`
 
@@ -109,7 +109,7 @@ import {
   resolveFriendInput,
   type ResolvedFriend,
   type ResolveFriendOptions,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 
 // Cosmetic suffixes a user might append to a nido name. Longest first so
 // `alice.nido.fyi` strips the whole suffix, not just `.fyi`. These are pure
@@ -223,7 +223,7 @@ export { resolveName, resolveNameCached, lookupName } from "./resolve.js";
 
 - [ ] **Step 3: Build the SDK so the frontend can import it**
 
-Run: `npm run build -w @g2c/passkey-sdk`
+Run: `npm run build -w @nidohq/passkey-sdk`
 Expected: `tsc` completes with no errors.
 
 - [ ] **Step 4: Commit**
@@ -269,7 +269,7 @@ to:
   import { resolveSendRecipient } from "../../lib/recipientInput";
 ```
 
-- Add `resolveName` and `lookupName` to the existing `@g2c/passkey-sdk` import (the block around line 255-277 that already imports `fetchRegistryAddress`). Add these two named imports to that block:
+- Add `resolveName` and `lookupName` to the existing `@nidohq/passkey-sdk` import (the block around line 255-277 that already imports `fetchRegistryAddress`). Add these two named imports to that block:
 
 ```ts
     resolveName,
@@ -525,7 +525,7 @@ Expected: `[build] Complete!`
 
 - [ ] **Step 3: Run the testnet test (manual; needs funding)**
 
-Run: `G2C_TEST_BANK_SECRET=<funded-secret> npx playwright test tests/e2e/testnet/send-to-name.testnet.spec.ts --project=testnet-chromium`
+Run: `NIDO_TEST_BANK_SECRET=<funded-secret> npx playwright test tests/e2e/testnet/send-to-name.testnet.spec.ts --project=testnet-chromium`
 Expected: PASS — the recipient's name resolves, the send confirms, and the recipient balance shows a non-zero value.
 
 > If a selector (`#balance`, `#send-section`, `#create-btn`, `#setup-link`) differs at run time, fix the selector to match the live markup and re-run; do not weaken the balance assertion.
@@ -551,4 +551,4 @@ git commit -m "test(e2e): testnet send-to-named-nido round-trip"
 
 - **Spec coverage:** name format accept-both (Task 1 normalize), frontend resolution (Tasks 1-3), confirmation/anti-spoof display incl. reverse name (Tasks 2-3), cache bypass for send (`resolveNameFresh`, Task 3), error handling for unresolvable/RPC failure (Task 3 steps 3-4), unit tests (Task 1), testnet e2e (Task 5). No contract change (none planned). ✓
 - **Type consistency:** `resolveSendRecipient(input, {resolveName})` returns `ResolvedFriend | null`; `ResolvedFriend.kind` ∈ {name,contract,account}; `.address`/`.input` used consistently in Task 3. `lookupName(rpcUrl, registryId, address, passphrase)` signature matches its call sites. ✓
-- **No placeholders:** every code step is complete. The only run-time `<…>` is the operator-supplied `G2C_TEST_BANK_SECRET`. ✓
+- **No placeholders:** every code step is complete. The only run-time `<…>` is the operator-supplied `NIDO_TEST_BANK_SECRET`. ✓

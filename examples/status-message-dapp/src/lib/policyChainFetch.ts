@@ -1,6 +1,6 @@
 /**
  * On-chain reads needed to sign a target-contract call with a delegated session
- * passkey. Trimmed port of the g2c frontend's `policyChainFetch.ts` — just the
+ * passkey. Trimmed port of the Nido frontend's `policyChainFetch.ts` — just the
  * two lookups the in-page signer needs:
  *
  *   - `findRuleForPubkey`   — which context-rule id holds our session key.
@@ -10,7 +10,7 @@
  * `PUBLIC_STELLAR_*` (testnet for the hosted demo, local for `npm start`).
  */
 
-import { fetchRegistryAddress as sdkFetchRegistryAddress } from "@g2c/passkey-sdk"
+import { fetchRegistryAddress as sdkFetchRegistryAddress } from "@nidohq/passkey-sdk"
 import {
 	rpc,
 	Contract,

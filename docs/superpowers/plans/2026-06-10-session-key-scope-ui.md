@@ -10,7 +10,7 @@
 
 **Tech Stack:** soroban-sdk 26 / stellar-accounts 637c53a (no_std), stellar-cli deploy + registry, generated TS bindings, Astro frontend + vitest, status-message dApp (React), relayer protocol from PR 1.
 
-**Spec:** `docs/superpowers/specs/2026-06-10-session-key-scope-ui-design.md`. Branch `feat/72-session-key-scope-ui` (worktree `/home/willem/c/s/g2c/.claude/worktrees/session-key-scope-ui`), stacked on PR 1. NOTE: the harness shell may reset cwd to another worktree between commands — `cd /home/willem/c/s/g2c/.claude/worktrees/session-key-scope-ui` at the start of every Bash block.
+**Spec:** `docs/superpowers/specs/2026-06-10-session-key-scope-ui-design.md`. Branch `feat/72-session-key-scope-ui` (worktree `/home/willem/c/s/nido/.claude/worktrees/session-key-scope-ui`), stacked on PR 1. NOTE: the harness shell may reset cwd to another worktree between commands — `cd /home/willem/c/s/nido/.claude/worktrees/session-key-scope-ui` at the start of every Bash block.
 
 **Verified facts (do not re-derive):**
 - Workspace `members = ["crates/integration-tests", "contracts/*"]` — a new contract dir is auto-included. `just build-contracts` uses stellar-scaffold + wasm-opt; smart-account wasm must build before factory (recipe handles ordering).
@@ -21,7 +21,7 @@
 - Delegate page (security/delegate/index.astro): `DURATIONS = {'24h':17280,'7d':120960,'30d':518400,'none':null}`; calls `client.add_context_rule({... policies: new Map()})` then signs via `signAndSubmit`.
 - dApp: `startDelegation(opts)` builds the wallet URL with `origin/target/pubkey/duration/return`; `nidoSign.ts:signUpdateMessageInPage` is the session-signing template (loadSessionKeyMaterial → build+simulate → getAuthEntry → findRuleForPubkey → computeAuthDigest → signWithSessionPasskey → injectPasskeySignature → self-submit with own fee payer). XLM SAC id = `Asset.native().contractId(networkPassphrase)`.
 - Integration tests: `deploy_multisig_policy(env) = env.register(MULTISIG_POLICY_WASM, ())`; `multisig_install_map(env, addr, threshold)` builds `Map<Address, Val>` via `params.into_val(env)`; helpers `test_key`, `external_signer`, `build_contract_assertion`, `compute_auth_digest`; SAC in tests via `env.register_stellar_asset_contract_v2(admin)` (testutils; verify exact sdk-26 name with `cargo doc`/source if it differs).
-- Deploy/registry CLI (DEPLOYED.md): `stellar contract deploy --wasm target/wasm32v1-none/contract/g2c_spending_limit_policy.wasm --source-account <alias> --network testnet`; then registry `update_contract_address --contract_name spending-limit-policy --new_address <C…>` on `CDBL7MNO7UI5OAAIC67UIWKQ4P3S6RVQSFCQXUHUW6TOFCXSYRPNHY4S`. Check `stellar keys ls` for an alias; if none usable, STOP and ask the operator (Willem) — registering may also need `register_contract_name` if the name is new (try update first; on "name not found" error use the registry's register/add entry point — inspect `stellar contract invoke --id <registry> -- --help`).
+- Deploy/registry CLI (DEPLOYED.md): `stellar contract deploy --wasm target/wasm32v1-none/contract/nido_spending_limit_policy.wasm --source-account <alias> --network testnet`; then registry `update_contract_address --contract_name spending-limit-policy --new_address <C…>` on `CDBL7MNO7UI5OAAIC67UIWKQ4P3S6RVQSFCQXUHUW6TOFCXSYRPNHY4S`. Check `stellar keys ls` for an alias; if none usable, STOP and ask the operator (Willem) — registering may also need `register_contract_name` if the name is new (try update first; on "name not found" error use the registry's register/add entry point — inspect `stellar contract invoke --id <registry> -- --help`).
 
 ## File structure
 
@@ -48,7 +48,7 @@ DEPLOYED.md                                                                 # ne
 
 **Files:** Create the three files below, byte-mirroring the multisig template.
 
-- [x] **Step 1.1** `contracts/spending-limit-policy/Cargo.toml` — copy `contracts/multisig-policy/Cargo.toml` verbatim, change only `name = "g2c-spending-limit-policy"`. Check whether multisig's Cargo.toml has `[package.metadata.stellar] contract = true` (scaffold build ordering) — replicate whatever it has exactly.
+- [x] **Step 1.1** `contracts/spending-limit-policy/Cargo.toml` — copy `contracts/multisig-policy/Cargo.toml` verbatim, change only `name = "nido-spending-limit-policy"`. Check whether multisig's Cargo.toml has `[package.metadata.stellar] contract = true` (scaffold build ordering) — replicate whatever it has exactly.
 - [x] **Step 1.2** `contracts/spending-limit-policy/src/lib.rs`:
 ```rust
 #![no_std]
@@ -123,7 +123,7 @@ impl Policy for SpendingLimitPolicy {
 }
 ```
 (`spending_limit_params_for` is yours to write per the comment — read `/home/willem/.cargo/git/checkouts/stellar-contracts-23b9f8e80f2c4738/637c53a/packages/accounts/src/policies/spending_limit.rs` first; prefer reading the lib's storage; the parallel-map fallback is acceptable and must then also be cleaned in `uninstall`.)
-- [x] **Step 1.4** Build: `cd <worktree> && just build-contracts` → expect `g2c_spending_limit_policy.wasm` optimized in `target/wasm32v1-none/contract/`. Then `just test` (workspace must stay green).
+- [x] **Step 1.4** Build: `cd <worktree> && just build-contracts` → expect `nido_spending_limit_policy.wasm` optimized in `target/wasm32v1-none/contract/`. Then `just test` (workspace must stay green).
 - [x] **Step 1.5** Commit: `feat(contracts): spending-limit policy wrapper over OZ spending_limit (#72)`.
 
 ### Task 2: Integration tests (TDD — write before relying on the contract)
@@ -155,17 +155,17 @@ pub fn spending_limit_install_map(
   2. `over_limit_rejected`: same rule; first a 4 XLM transfer succeeds, then a second 2 XLM transfer (cumulative 6 > 5) panics (`std::panic::catch_unwind`, mirroring test 2 of scoped_session_key).
   3. `window_roll_allows_again`: limit 5 XLM/100 ledgers; spend 5; advance `env.ledger().set_sequence_number(current + 101)`; spending 5 again succeeds.
   4. `raised_limit_mid_window_keeps_spent_total`: raise the limit mid-window and verify the running spent total is preserved (added during review).
-- [x] **Step 2.3** Run: `cargo test -p g2c-integration-tests spending_limit` → 4 pass (first run will fail until Step 1's wasm exists — Tasks 1 and 2 land together; run after both). Full `just test` green.
+- [x] **Step 2.3** Run: `cargo test -p nido-integration-tests spending_limit` → 4 pass (first run will fail until Step 1's wasm exists — Tasks 1 and 2 land together; run after both). Full `just test` green.
 - [x] **Step 2.4** Commit: `test(integration): spending-limit policy enforcement (#72)`.
 
 ### Task 3: Bindings + testnet deploy + registry (operator-assisted)
 
 - [x] **Step 3.1** `just bindings spending-limit-policy` → `packages/contract-bindings/spending-limit-policy/` generated; `npm install` at repo root so the workspace links it; commit the package (mirror how other bindings packages are committed — check git status of an existing one first).
-- [x] **Step 3.2** Deploy: `stellar keys ls` — pick the alias used for prior deploys (DEPLOYED.md says `<alias>`; if unclear, STOP and ask Willem which alias/key to use). `stellar contract deploy --wasm target/wasm32v1-none/contract/g2c_spending_limit_policy.wasm --source-account <alias> --network testnet` → record C-address.
+- [x] **Step 3.2** Deploy: `stellar keys ls` — pick the alias used for prior deploys (DEPLOYED.md says `<alias>`; if unclear, STOP and ask Willem which alias/key to use). `stellar contract deploy --wasm target/wasm32v1-none/contract/nido_spending_limit_policy.wasm --source-account <alias> --network testnet` → record C-address.
 - [x] **Step 3.3** Register: `stellar contract invoke --id CDBL7MNO7UI5OAAIC67UIWKQ4P3S6RVQSFCQXUHUW6TOFCXSYRPNHY4S --source-account <alias> --network testnet -- update_contract_address --contract_name spending-limit-policy --new_address <C…>`. If the registry rejects an unknown name, inspect `-- --help` for the add/register entry point and use it. Verify: frontend-style fetch (`stellar contract invoke … -- fetch_contract_id --contract_name spending-limit-policy` or the registry's getter — check its spec).
 - [x] **Step 3.4** Add a DEPLOYED.md row (address + "registered as unverified/spending-limit-policy" + soroban-sdk 26/OZ rev note). Commit: `feat(contracts): deploy + register spending-limit-policy on testnet (#72)`.
 
-### Task 4: Lift the relayer client into `@g2c/passkey-sdk`
+### Task 4: Lift the relayer client into `@nidohq/passkey-sdk`
 
 **Files:** Create `packages/passkey-sdk/src/relayer.ts` + `relayer.test.ts` (move from `packages/frontend/src/lib/relayerClient{,.test}.ts`); modify frontend `relayerClient.ts` to a shim.
 
@@ -178,12 +178,12 @@ export {
   type RelayerStatus,
   type RelayerTxResponse,
   extractFuncAndAuth,
-} from "@g2c/passkey-sdk";
+} from "@nidohq/passkey-sdk";
 import {
   submitSorobanTransaction as sdkSubmit,
   getRelayerTransaction as sdkGet,
   waitForConfirmation as sdkWait,
-} from "@g2c/passkey-sdk";
+} from "@nidohq/passkey-sdk";
 
 export function relayerEnabled(): boolean {
   return RELAYER_URL.length > 0;

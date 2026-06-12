@@ -17,7 +17,7 @@
 //! bug #3 was a contract-side `UnvalidatedContext`. (The real cause was the
 //! frontend finalize step; see `tests/e2e/testnet/account-lifecycle.testnet.spec.ts`.)
 
-use g2c_integration_tests::{build_contract_assertion, compute_auth_digest, deploy_smart_account};
+use nido_integration_tests::{build_contract_assertion, compute_auth_digest, deploy_smart_account};
 use soroban_sdk::xdr::{
     Hash, HashIdPreimage, HashIdPreimageSorobanAuthorization, InvokeContractArgs, Limits, ScAddress,
     ScSymbol, ScVal, SorobanAddressCredentials, SorobanAuthorizationEntry,
@@ -29,7 +29,7 @@ use stellar_accounts::smart_account::{AuthPayload, Signer};
 use stellar_accounts::verifiers::webauthn::WebAuthnSigData;
 
 const NAME_REGISTRY_WASM: &[u8] =
-    include_bytes!("../../../../target/wasm32v1-none/contract/g2c_name_registry.wasm");
+    include_bytes!("../../../../target/wasm32v1-none/contract/nido_name_registry.wasm");
 
 #[allow(dead_code)]
 #[soroban_sdk::contractclient(name = "NameRegistryClient")]

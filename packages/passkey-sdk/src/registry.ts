@@ -142,7 +142,7 @@ export async function fetchRegistryAddress(
   const fallback = REGISTRY_FALLBACKS[name];
   if (fallback) {
     console.warn(
-      `[g2c] registry lookup for "${name}" ${
+      `[nido] registry lookup for "${name}" ${
         lookupError ? `failed (${String(lookupError)})` : "returned no mapping"
       }; falling back to hardcoded address ${fallback}. ` +
         "This address may be stale — check the registry deployment.",
@@ -151,7 +151,7 @@ export async function fetchRegistryAddress(
   }
 
   throw new Error(
-    `[g2c] could not resolve "${name}" via the registry and no fallback exists` +
+    `[nido] could not resolve "${name}" via the registry and no fallback exists` +
       (lookupError ? `: ${String(lookupError)}` : ""),
   );
 }

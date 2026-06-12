@@ -15,7 +15,7 @@ const VALID_CONTRACT = 'CCV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XMCW
 const VALID_ACCOUNT = 'GDG43TONZXG43TONZXG43TONZXG43TONZXG43TONZXG43TONZXG43AQY';
 
 describe('resolveFriendInput', () => {
-  it('accepts a g2c name and resolves via the registry', async () => {
+  it('accepts a Nido name and resolves via the registry', async () => {
     const r = await resolveFriendInput('alice', { resolveName: fakeResolve });
     expect(r).toEqual({
       kind: 'name',

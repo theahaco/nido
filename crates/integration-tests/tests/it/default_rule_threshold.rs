@@ -15,7 +15,7 @@
 //!   - rotation ordering: installing the 1-of-1 policy BEFORE `add_signer`
 //!     (the order `planRotation` emits) never passes through a bricked state.
 
-use g2c_integration_tests::{
+use nido_integration_tests::{
     build_contract_assertion, compute_auth_digest, deploy_multisig_policy, deploy_smart_account,
     test_key, SmartAccountClient,
 };

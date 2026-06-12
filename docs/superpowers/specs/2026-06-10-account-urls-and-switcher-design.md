@@ -123,7 +123,7 @@ as a best-effort fallback on Activity/Security.
 
 | Unit | Responsibility | Depends on |
 | --- | --- | --- |
-| `lib/nidoSwitcher.ts` (new) | Render + wire one switcher panel for a given root; bare row links | `myNidoModel`, `balance`, `avatarStyle`, `createNido`, `@g2c/passkey-sdk` |
+| `lib/nidoSwitcher.ts` (new) | Render + wire one switcher panel for a given root; bare row links | `myNidoModel`, `balance`, `avatarStyle`, `createNido`, `@nidohq/passkey-sdk` |
 | `MyNidoMenu.astro` (refactor) | Root + panel + trigger slot + placement; mount all instances; styles | `nidoSwitcher.ts` |
 | `Sidebar.astro` (edit) | Brand→apex; account chip as switcher trigger (placement `up`) | `MyNidoMenu` parts |
 | `account/index.astro` (edit) | Topbar chip as switcher trigger; bare share + claim links | `MyNidoMenu` parts, `accountUrl` |

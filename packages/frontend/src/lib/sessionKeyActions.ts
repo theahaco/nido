@@ -1,7 +1,7 @@
 import { rpc, Contract, nativeToScVal } from '@stellar/stellar-sdk';
 import {
   scopedSessionKeyModule, forgetSessionKeyMaterial, loadSessionKeyMaterial,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import { fetchVerifierAddress, simulateView, isRuleNotFound } from './policyChainFetch.js';
 import { signAndSubmit } from './primaryPasskeySigner.js';
 

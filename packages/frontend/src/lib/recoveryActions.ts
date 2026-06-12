@@ -3,7 +3,7 @@ import type {
   RotationRequest,
   FriendSignature,
   SignerSignature,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import {
   multisigRecoveryModule,
   saveFriendNickname,
@@ -24,7 +24,7 @@ import {
   parseAssertionResponse,
   hex2buf,
   type RotationHandoff,
-} from '@g2c/passkey-sdk';
+} from '@nidohq/passkey-sdk';
 import {
   rpc,
   TransactionBuilder,

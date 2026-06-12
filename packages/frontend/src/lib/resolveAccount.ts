@@ -13,7 +13,7 @@ import {
   nameFromHostname,
   resolveNameCached,
   fetchRegistryAddress,
-} from "@g2c/passkey-sdk";
+} from "@nidohq/passkey-sdk";
 import { NETWORK_PASSPHRASE, RPC_URL } from "./network.js";
 
 type ResolveName = (name: string) => Promise<string | null>;

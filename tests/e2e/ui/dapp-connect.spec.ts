@@ -25,18 +25,18 @@ test.describe('@fast dapp connect ceremony', () => {
     await expect(page.locator('#accounts-list .account-row')).toHaveCount(1);
     await expect(page.locator('#dapp-origin')).toContainText('dapp.localhost');
     await page.locator('#accounts-list .account-row').first().click();
-    await page.waitForURL(`**/cb?g2c_address=${FAKE_CONTRACT_ID}**`, { timeout: 10_000 });
-    expect(new URL(page.url()).searchParams.get('g2c_address')).toBe(FAKE_CONTRACT_ID);
+    await page.waitForURL(`**/cb?nido_address=${FAKE_CONTRACT_ID}**`, { timeout: 10_000 });
+    expect(new URL(page.url()).searchParams.get('nido_address')).toBe(FAKE_CONTRACT_ID);
   });
 
-  test('cancel returns g2c_connect=cancelled', async ({ page }) => {
+  test('cancel returns nido_connect=cancelled', async ({ page }) => {
     const ret = `${DAPP}/cb`;
     await page.goto(
       `http://localhost:${PORT}/connect/?dapp=${encodeURIComponent(DAPP)}&return=${encodeURIComponent(ret)}`,
       { waitUntil: 'load' },
     );
     await page.locator('#cancel').click();
-    await page.waitForURL('**/cb?g2c_connect=cancelled**', { timeout: 10_000 });
+    await page.waitForURL('**/cb?nido_connect=cancelled**', { timeout: 10_000 });
   });
 
   // #89: reconnect with a previously connected account.
@@ -61,7 +61,7 @@ test.describe('@fast dapp connect ceremony', () => {
     await page
       .locator('#accounts-list .account-row:not(.current)')
       .click();
-    await page.waitForURL(`**/cb?g2c_address=${SECOND_CONTRACT_ID}**`, { timeout: 10_000 });
+    await page.waitForURL(`**/cb?nido_address=${SECOND_CONTRACT_ID}**`, { timeout: 10_000 });
   });
 
   test('single-account device matching previous= auto-confirms without a click', async ({ page }) => {
@@ -77,6 +77,6 @@ test.describe('@fast dapp connect ceremony', () => {
       { waitUntil: 'load' },
     );
     // No interaction needed: the picker fast-paths straight back to the dApp.
-    await page.waitForURL(`**/cb?g2c_address=${FAKE_CONTRACT_ID}**`, { timeout: 10_000 });
+    await page.waitForURL(`**/cb?nido_address=${FAKE_CONTRACT_ID}**`, { timeout: 10_000 });
   });
 });

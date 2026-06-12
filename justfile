@@ -74,14 +74,14 @@ bindings name:
     stellar contract bindings typescript \
         --overwrite \
         --output-dir packages/contract-bindings/{{name}} \
-        --wasm target/wasm32v1-none/contract/g2c_{{replace(name, '-', '_')}}.wasm
+        --wasm target/wasm32v1-none/contract/nido_{{replace(name, '-', '_')}}.wasm
     ./scripts/fix-bindings.sh
 
 # Regenerate ALL bindings (assumes wasms in target/) and apply post-gen
 # fixes once at the end.
 bindings-all:
     @for name in smart-account factory multisig-policy webauthn-verifier; do \
-        wasm="target/wasm32v1-none/contract/g2c_$$(echo $$name | tr - _).wasm"; \
+        wasm="target/wasm32v1-none/contract/nido_$$(echo $$name | tr - _).wasm"; \
         echo "→ $$name ($$wasm)"; \
         stellar contract bindings typescript --overwrite \
             --output-dir packages/contract-bindings/$$name \
@@ -101,7 +101,7 @@ test-e2e: build-astro
 test-e2e-cdp: build-astro
     npx playwright test --project=chromium-cdp
 
-# Sources tests/.env.testnet if present (set G2C_TEST_BANK_SECRET there to a
+# Sources tests/.env.testnet if present (set NIDO_TEST_BANK_SECRET there to a
 # funded testnet G-account secret to skip friendbot for the name submitter);
 # otherwise the app funds its own submitter via friendbot.
 # Quarantined real-testnet e2e tier (create+deploy + name-claim); builds first

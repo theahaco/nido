@@ -17,7 +17,7 @@
 - Verified: contract built + deployed to testnet
   (`CBXVJXHPSYORSAHPX4I6NYPQMDJWK2STQCE6JTIM7FNV4OZSIDJFGNDM`), client generated,
   `tsc` clean, `vitest` (2) green, `vite build` succeeds, and a browser smoke test
-  shows the picker opening with **g2c listed first** ahead of the standard wallets
+  shows the picker opening with **Nido listed first** ahead of the standard wallets
   (`docs/wallet-selector.png`).
 
 ## Goal
@@ -27,7 +27,7 @@ project (React + Vite, the scaffold default) at `examples/status-message-dapp/`
 that demonstrates a third-party dApp which:
 
 - offers the **wallet selector** (`@creit.tech/stellar-wallets-kit`) with the
-  **g2c passkey smart account** (`@g2c/stellar-wallets-kit-module`) registered
+  **Nido passkey smart account** (`@nidohq/stellar-wallets-kit-module`) registered
   alongside the standard wallets (Freighter, xBull, Albedo, LOBSTR, Rabet, Hana), and
 - reads/writes the on-chain **status message** of the connected account via the
   scaffold-generated TS contract client.
@@ -42,19 +42,19 @@ demo for manual QA.
 examples/status-message-dapp/
   Cargo.toml                 # own cargo workspace, members = ["contracts/*"]
   contracts/status-message/  # self-contained COPY of the contract (deps pinned,
-                             #   no workspace-inheritance to the g2c root)
+                             #   no workspace-inheritance to the Nido root)
   environments.toml          # development (local) + testing (testnet)
-  package.json               # npm app; @g2c/* consumed via the repo npm workspace
+  package.json               # npm app; @nidohq/* consumed via the repo npm workspace
   vite.config.ts, src/...    # scaffold React app
 ```
 
 Two couplings, deliberately different:
 
-- **npm: workspace-linked.** Consumes `@g2c/stellar-wallets-kit-module` and
-  `@g2c/passkey-sdk` from this repo's npm workspace (the example dir is added to
+- **npm: workspace-linked.** Consumes `@nidohq/stellar-wallets-kit-module` and
+  `@nidohq/passkey-sdk` from this repo's npm workspace (the example dir is added to
   the root `workspaces`).
 - **cargo: decoupled (vendored copy).** `contracts/status-message` inherits
-  `workspace = true` deps from the g2c root and cannot cleanly belong to two
+  `workspace = true` deps from the Nido root and cannot cleanly belong to two
   cargo workspaces, so the example carries a small self-contained copy with deps
   pinned directly. The copy also lets us fix the `udpate_message` → `update_message`
   typo without touching the canonical contract or its existing deployment. The
@@ -63,16 +63,16 @@ Two couplings, deliberately different:
 ## Wallet selector (the one real piece of glue)
 
 The scaffold default ships kit **v1.9.5** (`allowAllModules()` + `kit.openModal`).
-The g2c module needs kit **v2.x**. This repo already solved v2 integration in
+The Nido module needs kit **v2.x**. This repo already solved v2 integration in
 `packages/frontend/src/lib/walletConnect.ts` + `walletModules.ts`. So:
 
 - bump the example to `@creit.tech/stellar-wallets-kit@^2.2.0`,
 - rewrite `src/util/wallet.ts` to the v2 API (`StellarWalletsKit.init` /
-  `authModal`), registering `standardModules()` **+ `new G2cModule({ base })`**,
+  `authModal`), registering `standardModules()` **+ `new NidoModule({ base })`**,
   ported from the existing walletConnect pattern,
 - keep the scaffold's `WalletProvider` / `ConnectAccount` / `WalletButton` React
   structure, adapting calls to the v2 surface,
-- `base` (the g2c apex, `mysoroban.xyz`) is read from `PUBLIC_G2C_BASE`,
+- `base` (the Nido apex, `mysoroban.xyz`) is read from `PUBLIC_NIDO_BASE`,
   defaulting to `https://mysoroban.xyz`.
 
 ## Contract build/deploy from source
@@ -91,12 +91,12 @@ requirement, mirroring the repo justfile).
 - **Read:** `get_message(author)` simulated (read-only) for the connected
   address (or a typed C/G-address) → renders the current message.
 - **Write:** textarea → `update_message({ message, author })` →
-  `signAndSend({ signTransaction })`. For a g2c account the kit routes signing
+  `signAndSend({ signTransaction })`. For a Nido account the kit routes signing
   through the passkey ceremony; for classic wallets it is a normal signature.
 
 ## Testing
 
-- Unit: `wallet.test.ts` asserting the selector registers the g2c module
+- Unit: `wallet.test.ts` asserting the selector registers the Nido module
   alongside the standard set (mirrors existing `walletConnect.test.ts`),
   headless.
 - Manual QA on testnet for the full passkey round-trip (documented in the app
