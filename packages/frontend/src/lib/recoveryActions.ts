@@ -41,6 +41,18 @@ import {
   fetchPolicyState,
 } from './policyChainFetch.js';
 import { signAndSubmit } from './primaryPasskeySigner.js';
+import {
+  fetchRefractorTransaction,
+  refractorWebTxUrl,
+  storeRefractorTransaction,
+} from './refractorClient.js';
+import {
+  extractFuncAndAuth,
+  relayerEnabled,
+  submitSorobanTransaction,
+  waitForConfirmation,
+} from './relayerClient.js';
+import { RELAYER_SIM_SOURCE } from './network.js';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const FRIENDBOT_URL = 'https://friendbot.stellar.org';
@@ -104,6 +116,10 @@ const stagingKey = (account: string) => `g2c.${account}.recovery-rotation`;
 export interface StagedRotationTx {
   /** Base64 XDR of the assembled, unsigned rotation transaction. */
   txXdr: string;
+  /** Refractor transaction hash for the staged rotation tx. */
+  refractorTxHash: string;
+  /** Human-facing Refractor inspection URL for the staged tx. */
+  refractorTxUrl: string;
   /** The parent auth digest friends authorize for THIS tx, hex-encoded. */
   parentAuthDigestHex: string;
   /** Set once this tx has been submitted and confirmed (so a retried
@@ -149,11 +165,18 @@ function loadStaging(account: string): RotationStaging | null {
     }
     let txs = o.txs;
     if (!Array.isArray(txs)) {
-      // Migrate a legacy single-tx staging in place.
-      if (typeof o.txXdr !== 'string' || typeof o.parentAuthDigestHex !== 'string') {
-        return null;
-      }
-      txs = [{ txXdr: o.txXdr, parentAuthDigestHex: o.parentAuthDigestHex }];
+      // Pre-Refractor staging cannot be resumed because it has no Refractor hashes.
+      return null;
+    }
+    if (
+      !txs.every((t) =>
+        typeof t.txXdr === 'string' &&
+        typeof t.parentAuthDigestHex === 'string' &&
+        typeof t.refractorTxHash === 'string' &&
+        typeof t.refractorTxUrl === 'string'
+      )
+    ) {
+      return null;
     }
     return { ...o, txs, collected };
   } catch {
@@ -269,6 +292,75 @@ export async function findRecoveryRules(account: string): Promise<RecoveryRuleIn
   return out;
 }
 
+function encodeHandoffLink(origin: string, handoff: RotationHandoff): string {
+  return `${origin}/security/recover/?handoff=${encodeRotationHandoff(handoff)}`;
+}
+
+export function recoveryHandoffLinkFromStaging(
+  origin: string,
+  staging: RotationStaging,
+): string {
+  const refractorTxHashes = staging.txs.map((t) => t.refractorTxHash);
+  if (!refractorTxHashes.every((tx) => /^[a-f0-9]{64}$/i.test(tx))) {
+    throw new Error('This staged recovery request predates Refractor handoffs. Please stage it again.');
+  }
+  return encodeHandoffLink(origin, {
+    version: 3,
+    account: staging.account,
+    recoveryRuleId: staging.recoveryRuleId,
+    refractorTxHashes,
+    parentSignatureExpirationLedger: staging.parentSignatureExpirationLedger,
+  });
+}
+
+async function requireRecoveryRule(account: string, ruleId: number): Promise<RecoveryRuleInfo> {
+  const rules = await findRecoveryRules(account);
+  const rule = rules.find((r) => r.ruleId === ruleId);
+  if (!rule) {
+    throw new Error(`Recovery rule #${ruleId} was not found on ${account}.`);
+  }
+  return rule;
+}
+
+function describeFriendRecoveryRequest(rule: RecoveryRuleInfo, account: string): string {
+  const threshold = rule.threshold ?? Math.max(1, Math.ceil(rule.friends.length / 2));
+  return `Recovery request for ${account.slice(0, 8)}…${account.slice(-4)}: ` +
+    `${threshold} of ${rule.friends.length} friend${rule.friends.length === 1 ? '' : 's'} required`;
+}
+
+function validateRecoveryTxEnvelope(txXdr: string, account: string): xdr.SorobanAuthorizationEntry {
+  const envelope = xdr.TransactionEnvelope.fromXDR(txXdr, 'base64');
+  const tx = envelope.v1().tx();
+  const operations = tx.operations();
+  if (operations.length !== 1) {
+    throw new Error(`Recovery transaction must have one operation, got ${operations.length}.`);
+  }
+  const body = operations[0].body();
+  if (body.switch() !== xdr.OperationType.invokeHostFunction()) {
+    throw new Error('Recovery transaction is not a Soroban invocation.');
+  }
+  const ihf = body.invokeHostFunctionOp();
+  const hostFn = ihf.hostFunction();
+  if (hostFn.switch() !== xdr.HostFunctionType.hostFunctionTypeInvokeContract()) {
+    throw new Error('Recovery transaction does not invoke a contract.');
+  }
+  const invoke = hostFn.invokeContract();
+  const target = Address.fromScAddress(invoke.contractAddress()).toString();
+  if (target !== account) {
+    throw new Error('Refractor transaction targets a different account.');
+  }
+  const rootAuth = ihf.auth()[0];
+  if (!rootAuth) throw new Error('Recovery transaction has no auth entry.');
+  if (rootAuth.credentials().switch() !== xdr.SorobanCredentialsType.sorobanCredentialsAddress()) {
+    throw new Error('Recovery transaction auth is not account-scoped.');
+  }
+  const authAccount = Address.fromScAddress(rootAuth.credentials().address().address()).toString();
+  if (authAccount !== account) {
+    throw new Error('Recovery transaction auth is for a different account.');
+  }
+  return rootAuth;
+}
+
 /** State of the default rule (id 0) as far as #87 repair is concerned. */
 export interface DefaultRuleRepairState {
   /** True when rule 0 is multi-signer with no policy — the N-of-N brick:
@@ -369,11 +461,17 @@ export async function prepareRotation(args: {
   });
 
   const server = new rpc.Server(RPC_URL);
-  const submitter = await getSubmitter();
+  const useRelayer = relayerEnabled();
+  const submitter = useRelayer ? null : await getSubmitter();
+  if (useRelayer && !RELAYER_SIM_SOURCE) {
+    throw new Error('Relayer misconfigured: PUBLIC_RELAYER_URL is set but PUBLIC_RELAYER_SIM_SOURCE is not.');
+  }
   // One Account object across all builds: TransactionBuilder.build()
   // increments its sequence, so consecutive staged txs get consecutive
   // sequence numbers (submitRotation re-sources them anyway).
-  const sourceAccount = await server.getAccount(submitter.publicKey());
+  const sourceAccount = submitter
+    ? await server.getAccount(submitter.publicKey())
+    : await server.getAccount(RELAYER_SIM_SOURCE);
 
   let lastLedger = 0;
   // ONE canonical absolute expiration ledger, frozen on the first simulation
@@ -418,8 +516,14 @@ export async function prepareRotation(args: {
       parentSignatureExpirationLedger,
     );
     const parentAuthDigest = computeAuthDigest(signaturePayload, [recoveryRuleId]);
+    const refractorTx = await storeRefractorTransaction({
+      network: 'testnet',
+      xdr: txXdr,
+    });
     txs.push({
       txXdr,
+      refractorTxHash: refractorTx.hash,
+      refractorTxUrl: refractorWebTxUrl(refractorTx.hash),
       parentAuthDigestHex: Buffer.from(parentAuthDigest).toString('hex'),
     });
   }
@@ -438,16 +542,13 @@ export async function prepareRotation(args: {
   saveStaging(staging);
 
   const handoff: RotationHandoff = {
-    version: txs.length === 1 ? 1 : 2,
+    version: 3,
     account,
     recoveryRuleId,
-    description: built.description,
-    txXdrs: txs.map((t) => t.txXdr),
-    friends,
+    refractorTxHashes: txs.map((t) => t.refractorTxHash),
     parentSignatureExpirationLedger,
   };
-  const encoded = encodeRotationHandoff(handoff);
-  const handoffLink = `${window.location.origin}/security/recover/?handoff=${encoded}`;
+  const handoffLink = encodeHandoffLink(window.location.origin, handoff);
 
   return { staging, handoff, handoffLink };
 }
@@ -512,7 +613,8 @@ export async function submitRotation(account: string): Promise<string> {
   }
 
   const server = new rpc.Server(RPC_URL);
-  const submitter = await getSubmitter();
+  const useRelayer = relayerEnabled();
+  const submitter = useRelayer ? null : await getSubmitter();
 
   // Build the parent multi-signer AuthPayload (Delegated friends only — the
   // primary passkey is lost, so the recovery rule is the sole authority).
@@ -556,6 +658,31 @@ export async function submitRotation(account: string): Promise<string> {
     );
     ihfOp.auth([rootAuth, ...friendEntries]);
 
+    if (useRelayer) {
+      // The relayer rebuilds/refits/submits from host function + signed auth
+      // entries, so the staged envelope source sequence is irrelevant here.
+      const rebuilt = TransactionBuilder.fromXDR(
+        envelope.toXDR('base64'),
+        Networks.TESTNET,
+      ) as import('@stellar/stellar-sdk').Transaction;
+      const { func, auth } = extractFuncAndAuth(rebuilt);
+      const submitted = await submitSorobanTransaction({ func, auth });
+      let hash = submitted.hash;
+      if (!hash) {
+        if (!submitted.transactionId) {
+          throw new Error('Relayer accepted the recovery transaction but returned no transaction id');
+        }
+        const confirmed = await waitForConfirmation(submitted.transactionId);
+        if (!confirmed.hash) throw new Error('Relayer confirmed without a transaction hash');
+        hash = confirmed.hash;
+      }
+      staged.submittedHash = hash;
+      saveStaging(staging);
+      lastHash = hash;
+      continue;
+    }
+
+    if (!submitter) throw new Error('unreachable: classic recovery submit without submitter');
     // Rebuild the envelope around a FRESH submitter sequence: the staged
     // sequence may be stale by submit time, and a multi-tx rotation consumes
     // one sequence per submitted tx. The friend signatures bind to the auth
@@ -677,7 +804,9 @@ export async function signRotationAsFriend(
   onStatus?: (msg: string) => void,
 ): Promise<{ blob: string; description: string }> {
   const handoff = decodeRotationHandoff(handoffEncoded);
-  if (!handoff.friends.includes(friendAccount)) {
+
+  const rule = await requireRecoveryRule(handoff.account, handoff.recoveryRuleId);
+  if (!rule.friends.includes(friendAccount)) {
     throw new Error('This recovery request does not list your account as a friend.');
   }
 
@@ -692,9 +821,9 @@ export async function signRotationAsFriend(
   // passkey) needs one passkey assertion per transaction — same review, one
   // tap each.
   const entries: FriendSignature['entries'] = [];
-  for (let i = 0; i < handoff.txXdrs.length; i++) {
-    if (handoff.txXdrs.length > 1) {
-      onStatus?.(`Signing approval ${i + 1} of ${handoff.txXdrs.length}…`);
+  for (let i = 0; i < handoff.refractorTxHashes.length; i++) {
+    if (handoff.refractorTxHashes.length > 1) {
+      onStatus?.(`Signing approval ${i + 1} of ${handoff.refractorTxHashes.length}…`);
     }
 
     // Recompute the PARENT auth digest from the shared tx so the friend signs
@@ -703,9 +832,11 @@ export async function signRotationAsFriend(
     // — NOT a value derived from a live `getLatestLedger`, which would
     // diverge from the originator's stored digest and the chain's
     // recomputation.
-    const parentEnvelope = xdr.TransactionEnvelope.fromXDR(handoff.txXdrs[i], 'base64');
-    const parentIhf = parentEnvelope.v1().tx().operations()[0].body().invokeHostFunctionOp();
-    const parentRootAuth = parentIhf.auth()[0];
+    const refractorTx = await fetchRefractorTransaction(handoff.refractorTxHashes[i]);
+    if (refractorTx.network !== 'testnet') {
+      throw new Error(`Unsupported Refractor network: ${refractorTx.network}`);
+    }
+    const parentRootAuth = validateRecoveryTxEnvelope(refractorTx.xdr, handoff.account);
     const parentSignaturePayload = buildAuthHashAt(
       parentRootAuth,
       Networks.TESTNET,
@@ -766,7 +897,7 @@ export async function signRotationAsFriend(
     publicKey: hex2buf(cred.publicKey),
     entries,
   });
-  return { blob, description: handoff.description };
+  return { blob, description: describeFriendRecoveryRequest(rule, handoff.account) };
 }
 
 async function getSubmitter(): Promise<Keypair> {

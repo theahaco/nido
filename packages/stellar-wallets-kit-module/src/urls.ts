@@ -26,12 +26,10 @@ function splitScheme(base: string): [string | null, string] {
  * If `host` is a Nido PR-preview base (`pr-<N>.<apex>`), return `["<N>", apex]`;
  * otherwise `[null, host]`.
  *
- * Nido encodes preview deployments into a single subdomain level so wildcard
- * TLS still matches: the account page in a preview lives at
- * `<c-address>--pr-<N>.<apex>`, NOT `<c-address>.pr-<N>.<apex>`. The base this
- * module is configured with (derived from the dApp's own host via
- * `stripSubdomain`) collapses to the bare `pr-<N>.<apex>` form in previews, so
- * we have to re-expand it here when building the per-account origin.
+ * Nido encodes preview account URLs into a single subdomain level so wildcard
+ * TLS still matches. The base this module is configured with (derived from the
+ * dApp's own host via `stripSubdomain`) collapses to `pr-<N>.<apex>`, so
+ * per-account origins expand that to `<c-address>--<N>.<apex>`.
  */
 function splitPreview(host: string): [string | null, string] {
   const parts = host.split('.');
@@ -63,10 +61,10 @@ export function accountOrigin(base: string, account: string): string {
   const [scheme, host] = splitScheme(base);
   const acc = account.toLowerCase();
   const [preview, apex] = splitPreview(host);
-  // In a preview the account lives at `<acc>--pr-<N>.<apex>` (one subdomain
-  // level) so wildcard TLS + the WebAuthn rpId both still match; in production
-  // it's simply `<acc>.<host>`.
-  const accountHost = preview ? `${acc}--pr-${preview}.${apex}` : `${acc}.${host}`;
+  // In a preview the account lives at `<acc>--<N>.<apex>` (one subdomain
+  // level). Dropping `pr-` keeps full 56-char C-address labels under DNS's
+  // 63-character limit through PR #99999.
+  const accountHost = preview ? `${acc}--${preview}.${apex}` : `${acc}.${host}`;
   return `${scheme ?? 'https'}://${accountHost}`;
 }
 

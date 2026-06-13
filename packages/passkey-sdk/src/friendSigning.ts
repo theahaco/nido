@@ -2,21 +2,21 @@
  * Out-of-band recovery handoff between the recovering account's owner (the
  * "originator") and each friend.
  *
- * First-cut channel is copy/paste (no QR): the originator encodes a
- * `RotationHandoff` into a URL-safe string and shares a link with each friend;
- * the friend's wallet decodes it, signs with their own primary passkey, and
- * hands a `FriendSignature` blob back to the originator.
+ * The originator stores the assembled transaction(s) in Refractor, then shares
+ * a compact URL-safe handoff containing only the Refractor tx hash(es) plus
+ * stable auth metadata. The friend's wallet fetches each transaction, verifies
+ * recovery-rule membership from chain, signs with their own primary passkey,
+ * and hands a `FriendSignature` blob back to the originator.
  *
- * Why ship the whole transaction (not just a digest): a `Delegated` friend
- * does NOT verify bytes in the parent's signer map. On-chain, the recovering
- * account calls `friend.require_auth_for_args((parent_auth_digest,))`, so the
- * friend authorizes a *nested* sub-invocation. To produce a valid nested auth
- * entry the friend's wallet must see the real invocation tree (it derives the
+ * Why the friend still fetches the whole transaction: a `Delegated` friend does
+ * NOT verify bytes in the parent's signer map. On-chain, the recovering account
+ * calls `friend.require_auth_for_args((parent_auth_digest,))`, so the friend
+ * authorizes a *nested* sub-invocation. To produce a valid nested auth entry the
+ * friend's wallet must see the real invocation tree (it derives the
  * sub-invocation, computes its own `signature_payload`, then signs
  * `auth_digest = sha256(signature_payload || [0].to_xdr())` with the friend's
- * primary passkey). Sharing the assembled tx XDR lets the friend reconstruct
- * exactly that, and lets the originator splice the returned signature back
- * into the same tree before submitting.
+ * primary passkey). Refractor provides those transaction envelopes by hash
+ * without putting XDR into the share URL.
  */
 
 import { Address, hash, xdr } from '@stellar/stellar-sdk';
@@ -24,32 +24,28 @@ import { Buffer } from 'buffer';
 import { buf2hex, hex2buf, buf2base64url, base64url2buf } from './encoding.js';
 
 /**
- * Everything a friend needs to review and sign a recovery rotation. Shared by
- * the originator via a copy/paste link.
+ * Stable metadata for a recovery handoff. Chain-derived data such as friends,
+ * threshold, and display text are intentionally excluded so the URL stays small
+ * and the friend verifies current on-chain state before signing.
  *
  * A rotation may span SEVERAL sequential transactions (issue #87: e.g.
  * `add_policy` to install the 1-of-N threshold, then `add_signer` — Soroban
  * allows only one InvokeHostFunction op per transaction). Each tx has its own
  * parent auth digest, so the friend signs once PER transaction, all in one
- * handoff. Single-tx handoffs are encoded on the v1 wire (`txXdr`) so older
- * friend wallets keep working; multi-tx handoffs use the v2 wire (`txXdrs`).
+ * handoff.
  */
 export interface RotationHandoff {
-  version: 1 | 2;
+  version: 3;
   /** The smart account being recovered. */
   account: string;
   /** The on-chain recovery rule id authorizing this rotation. */
   recoveryRuleId: number;
-  /** Human-readable summary of the rotation, for the friend's review screen. */
-  description: string;
   /**
-   * Base64 XDR of each assembled, unsigned rotation transaction envelope, in
-   * submission order. The friend's wallet reconstructs each auth tree from
-   * these, derives its own sub-invocations, and signs each.
+   * Refractor transaction hashes, in submission order. The friend fetches the
+   * assembled, unsigned rotation transaction envelopes from Refractor before
+   * signing.
    */
-  txXdrs: string[];
-  /** All friend accounts being asked to sign (so each can find its own entry). */
-  friends: string[];
+  refractorTxHashes: string[];
   /**
    * The CANONICAL absolute `signatureExpirationLedger` for the PARENT
    * (recovering account) auth entries. Chosen once by the originator at
@@ -60,6 +56,18 @@ export interface RotationHandoff {
    * NOT recompute it from a live ledger.
    */
   parentSignatureExpirationLedger: number;
+}
+
+interface RotationHandoffWire {
+  v: 3;
+  /** account */
+  a: string;
+  /** recovery rule id */
+  r: number;
+  /** Refractor tx hashes, in submission order */
+  tx: string[];
+  /** parent signature expiration ledger */
+  exp: number;
 }
 
 /**
@@ -80,7 +88,7 @@ export interface FriendSignatureEntry {
 
 /**
  * A single friend's signed contribution, handed back to the originator.
- * `entries` is aligned by index with the handoff's `txXdrs`.
+ * `entries` is aligned by index with the handoff's `refractorTxHashes`.
  */
 export interface FriendSignature {
   /** The friend's smart-account address (the `Delegated` signer). */
@@ -96,25 +104,22 @@ export interface FriendSignature {
 // --- Handoff (originator -> friend) ----------------------------------------
 
 export function encodeRotationHandoff(h: RotationHandoff): string {
-  if (h.version !== 1 && h.version !== 2) {
+  if (h.version !== 3) {
     throw new Error(`encodeRotationHandoff: unsupported version ${String(h.version)}`);
   }
-  if (h.txXdrs.length === 0) {
+  if (h.refractorTxHashes.length === 0) {
     throw new Error('encodeRotationHandoff: handoff carries no transactions');
   }
-  const base = {
-    account: h.account,
-    recoveryRuleId: h.recoveryRuleId,
-    description: h.description,
-    friends: h.friends,
-    parentSignatureExpirationLedger: h.parentSignatureExpirationLedger,
+  if (!h.refractorTxHashes.every((tx) => /^[a-f0-9]{64}$/i.test(tx))) {
+    throw new Error('encodeRotationHandoff: malformed Refractor transaction hash');
+  }
+  const wire: RotationHandoffWire = {
+    v: 3,
+    a: h.account,
+    r: h.recoveryRuleId,
+    tx: h.refractorTxHashes,
+    exp: h.parentSignatureExpirationLedger,
   };
-  // Single-tx handoffs ride the v1 wire (`txXdr`) so friend wallets running
-  // older code can still sign them; multi-tx handoffs need the v2 wire.
-  const wire =
-    h.txXdrs.length === 1
-      ? { version: 1, ...base, txXdr: h.txXdrs[0] }
-      : { version: 2, ...base, txXdrs: h.txXdrs };
   return buf2base64url(new TextEncoder().encode(JSON.stringify(wire)));
 }
 
@@ -131,37 +136,28 @@ export function decodeRotationHandoff(encoded: string): RotationHandoff {
   } catch {
     throw new Error('decodeRotationHandoff: payload is not valid JSON');
   }
-  const h = parsed as Partial<RotationHandoff> & { txXdr?: string };
-  if (h.version !== 1 && h.version !== 2) {
+  const h = parsed as Partial<RotationHandoffWire>;
+  if (h.v !== 3) {
     throw new Error(
-      `decodeRotationHandoff: unsupported handoff version ${String(h.version)}`,
+      `decodeRotationHandoff: unsupported handoff version ${String(h.v)}`,
     );
   }
-  const txXdrs =
-    h.version === 1
-      ? typeof h.txXdr === 'string'
-        ? [h.txXdr]
-        : null
-      : Array.isArray(h.txXdrs) && h.txXdrs.every((t) => typeof t === 'string') && h.txXdrs.length > 0
-        ? h.txXdrs
-        : null;
   if (
-    txXdrs === null ||
-    typeof h.account !== 'string' ||
-    typeof h.recoveryRuleId !== 'number' ||
-    !Array.isArray(h.friends) ||
-    typeof h.parentSignatureExpirationLedger !== 'number'
+    typeof h.a !== 'string' ||
+    typeof h.r !== 'number' ||
+    !Array.isArray(h.tx) ||
+    h.tx.length === 0 ||
+    !h.tx.every((tx) => typeof tx === 'string' && /^[a-f0-9]{64}$/i.test(tx)) ||
+    typeof h.exp !== 'number'
   ) {
     throw new Error('decodeRotationHandoff: malformed handoff payload');
   }
   return {
-    version: h.version,
-    account: h.account,
-    recoveryRuleId: h.recoveryRuleId,
-    description: h.description ?? '',
-    txXdrs,
-    friends: h.friends,
-    parentSignatureExpirationLedger: h.parentSignatureExpirationLedger,
+    version: 3,
+    account: h.a,
+    recoveryRuleId: h.r,
+    refractorTxHashes: h.tx,
+    parentSignatureExpirationLedger: h.exp,
   };
 }
 

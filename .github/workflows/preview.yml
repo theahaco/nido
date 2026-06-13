@@ -61,7 +61,7 @@ jobs:
           script: |
             const prNum = context.payload.pull_request.number;
             const previewUrl = `https://pr-${prNum}.nido.fyi`;
-            const body = `**Preview deployed!**\n\n${previewUrl}\n\nAccount URLs: \`<contract-address>--pr-${prNum}.nido.fyi\``;
+            const body = `**Preview deployed!**\n\n${previewUrl}\n\nAccount URLs: \`<contract-address>--${prNum}.nido.fyi\``;
 
             // Find existing bot comment
             const { data: comments } = await github.rest.issues.listComments({

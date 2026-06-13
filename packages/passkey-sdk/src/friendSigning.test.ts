@@ -12,19 +12,15 @@ import {
 
 const VERIFIER = 'CDBL7MNO7UI5OAAIC67UIWKQ4P3S6RVQSFCQXUHUW6TOFCXSYRPNHY4S';
 const ACCOUNT = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH';
+const REFRACTOR_TX_HASH = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+const REFRACTOR_TX_HASH_2 = 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
 
 function sampleHandoff(): RotationHandoff {
   return {
-    version: 1,
+    version: 3,
     account: ACCOUNT,
     recoveryRuleId: 4,
-    description: 'Recovery rotation: add a new passkey',
-    // base64 XDR of the assembled, unsigned rotation transaction envelopes.
-    txXdrs: [Buffer.from('not-a-real-envelope').toString('base64')],
-    friends: [
-      'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB',
-      'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC',
-    ],
+    refractorTxHashes: [REFRACTOR_TX_HASH],
     parentSignatureExpirationLedger: 1234567,
   };
 }
@@ -43,55 +39,47 @@ describe('rotation handoff encoding', () => {
     const encoded = encodeRotationHandoff(h);
     expect(typeof encoded).toBe('string');
     expect(encoded).not.toMatch(/[+/=]/); // URL-safe
+    expect(encoded).not.toContain('not-a-real-envelope');
     const decoded = decodeRotationHandoff(encoded);
     expect(decoded).toEqual(h);
   });
 
-  it('encodes a single-tx handoff on the v1 wire (legacy decoders keep working)', () => {
-    const h = sampleHandoff();
-    const wire = JSON.parse(
-      Buffer.from(
-        encodeRotationHandoff(h).replace(/-/g, '+').replace(/_/g, '/'),
-        'base64',
-      ).toString(),
-    ) as { version: number; txXdr?: string; txXdrs?: string[] };
-    expect(wire.version).toBe(1);
-    expect(wire.txXdr).toBe(h.txXdrs[0]);
-    expect(wire.txXdrs).toBeUndefined();
+  it('does not put friends or transaction XDR in the handoff payload', () => {
+    const encoded = encodeRotationHandoff(sampleHandoff());
+    const json = new TextDecoder().decode(
+      Buffer.from(encoded.replace(/-/g, '+').replace(/_/g, '/'), 'base64'),
+    );
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    expect(parsed).toEqual({
+      v: 3,
+      a: ACCOUNT,
+      r: 4,
+      tx: [REFRACTOR_TX_HASH],
+      exp: 1234567,
+    });
+    expect(parsed).not.toHaveProperty('txXdr');
+    expect(parsed).not.toHaveProperty('txXdrs');
+    expect(parsed).not.toHaveProperty('friends');
   });
 
-  it('round-trips a multi-tx handoff on the v2 wire', () => {
+  it('round-trips a multi-tx Refractor handoff', () => {
     const h: RotationHandoff = {
       ...sampleHandoff(),
-      version: 2,
-      txXdrs: [
-        Buffer.from('add-policy-tx').toString('base64'),
-        Buffer.from('add-signer-tx').toString('base64'),
-      ],
+      refractorTxHashes: [REFRACTOR_TX_HASH, REFRACTOR_TX_HASH_2],
     };
     const decoded = decodeRotationHandoff(encodeRotationHandoff(h));
-    expect(decoded.version).toBe(2);
-    expect(decoded.txXdrs).toEqual(h.txXdrs);
-  });
-
-  it('decodes a legacy v1 wire payload (txXdr field)', () => {
-    const legacy = {
-      version: 1,
-      account: ACCOUNT,
-      recoveryRuleId: 4,
-      description: 'legacy',
-      txXdr: Buffer.from('legacy-envelope').toString('base64'),
-      friends: [ACCOUNT],
-      parentSignatureExpirationLedger: 42,
-    };
-    const decoded = decodeRotationHandoff(b64uJson(legacy));
-    expect(decoded.txXdrs).toEqual([legacy.txXdr]);
-    expect(decoded.recoveryRuleId).toBe(4);
+    expect(decoded.version).toBe(3);
+    expect(decoded.refractorTxHashes).toEqual(h.refractorTxHashes);
   });
 
   it('rejects a handoff with the wrong version', () => {
-    const { txXdrs, ...rest } = sampleHandoff();
-    const encoded = b64uJson({ ...rest, txXdr: txXdrs[0], version: 99 });
+    const encoded = b64uJson({
+      v: 99,
+      a: ACCOUNT,
+      r: 4,
+      tx: [REFRACTOR_TX_HASH],
+      exp: 123,
+    });
     expect(() => decodeRotationHandoff(encoded)).toThrow(/version/i);
   });
 
@@ -100,16 +88,25 @@ describe('rotation handoff encoding', () => {
   });
 
   it('rejects a handoff missing the canonical parent expiration ledger', () => {
-    const { parentSignatureExpirationLedger, txXdrs, ...rest } = sampleHandoff();
+    const { parentSignatureExpirationLedger, ...rest } = sampleHandoff();
     void parentSignatureExpirationLedger;
-    const encoded = b64uJson({ ...rest, txXdr: txXdrs[0] });
+    const encoded = b64uJson({
+      v: 3,
+      a: rest.account,
+      r: rest.recoveryRuleId,
+      tx: rest.refractorTxHashes,
+    });
     expect(() => decodeRotationHandoff(encoded)).toThrow(/malformed/i);
   });
 
-  it('rejects a v2 handoff with an empty tx list', () => {
-    const { txXdrs, ...rest } = sampleHandoff();
-    void txXdrs;
-    const encoded = b64uJson({ ...rest, version: 2, txXdrs: [] });
+  it('rejects a handoff with an empty Refractor tx list', () => {
+    const encoded = b64uJson({
+      v: 3,
+      a: ACCOUNT,
+      r: 4,
+      tx: [],
+      exp: 1234567,
+    });
     expect(() => decodeRotationHandoff(encoded)).toThrow(/malformed/i);
   });
 
@@ -119,6 +116,17 @@ describe('rotation handoff encoding', () => {
     expect(decoded.parentSignatureExpirationLedger).toBe(
       h.parentSignatureExpirationLedger,
     );
+  });
+
+  it('rejects malformed Refractor transaction hashes', () => {
+    const encoded = b64uJson({
+      v: 3,
+      a: ACCOUNT,
+      r: 4,
+      tx: ['not-a-hash'],
+      exp: 1234567,
+    });
+    expect(() => decodeRotationHandoff(encoded)).toThrow(/malformed/i);
   });
 });
 

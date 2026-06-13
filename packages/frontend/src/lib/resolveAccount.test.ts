@@ -23,7 +23,7 @@ describe("resolveAccountFromHostname", () => {
     const resolveName = vi.fn();
 
     const address = await resolveAccountFromHostname(
-      `${C.toLowerCase()}--pr-24.nido.fyi`,
+      `${C.toLowerCase()}--24.nido.fyi`,
       resolveName,
     );
 
@@ -44,7 +44,7 @@ describe("resolveAccountFromHostname", () => {
     const resolveName = vi.fn().mockResolvedValue(C);
 
     const address = await resolveAccountFromHostname(
-      "joe--pr-24.nido.fyi",
+      "joe--24.nido.fyi",
       resolveName,
     );
 
