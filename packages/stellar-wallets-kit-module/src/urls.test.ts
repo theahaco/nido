@@ -10,7 +10,6 @@ import {
 
 const BASE = 'nido.example.xyz';
 const C = 'CCV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XMCW';
-const PREVIEW_ALIAS = `c-${C.toLowerCase().slice(0, 32)}`;
 const DAPP = 'https://dapp.example.com';
 
 describe('apexOrigin', () => {
@@ -29,23 +28,23 @@ describe('accountOrigin', () => {
   it('throws on an invalid contract id', () => {
     expect(() => accountOrigin(BASE, 'not-a-contract')).toThrow();
   });
-  it('encodes a PR-preview base into a short single-level account alias', () => {
+  it('encodes a PR-preview base into a single numeric preview suffix', () => {
     // The dApp-derived base collapses to `pr-34.<apex>` in previews; the
-    // account origin must remain one label below the apex for wildcard TLS.
-    // Full C-address labels plus `--pr-N` exceed DNS's 63-character limit.
+    // account origin must be `<acc>--34.<apex>`, not `<acc>--pr-34.<apex>`,
+    // so full C-address labels stay inside DNS's 63-character limit.
     expect(accountOrigin('pr-34.mysoroban.xyz', C)).toBe(
-      `https://${PREVIEW_ALIAS}--pr-34.mysoroban.xyz`,
+      `https://${C.toLowerCase()}--34.mysoroban.xyz`,
     );
   });
   it('preserves an explicit scheme with a PR-preview base', () => {
     expect(accountOrigin('http://pr-7.localhost', C)).toBe(
-      `http://${PREVIEW_ALIAS}--pr-7.localhost`,
+      `http://${C.toLowerCase()}--7.localhost`,
     );
   });
 });
 
 describe('preview signing URLs', () => {
-  it('carry the full account id when using a short preview alias', () => {
+  it('use the full account id with the numeric preview suffix', () => {
     const u = new URL(
       signTransactionUrl({
         base: 'pr-100.mysoroban.xyz',
@@ -55,8 +54,8 @@ describe('preview signing URLs', () => {
         returnUrl: `${DAPP}/cb`,
       }),
     );
-    expect(u.host).toBe(`${PREVIEW_ALIAS}--pr-100.mysoroban.xyz`);
-    expect(u.searchParams.get('account')).toBe(C);
+    expect(u.host).toBe(`${C.toLowerCase()}--100.mysoroban.xyz`);
+    expect(u.searchParams.get('account')).toBeNull();
   });
 });
 

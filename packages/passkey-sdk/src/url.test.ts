@@ -9,7 +9,6 @@ import {
 } from './url.js';
 
 const C = 'CCV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XK5LVOV2XMCW';
-const PREVIEW_ALIAS = `c-${C.toLowerCase().slice(0, 32)}`;
 
 describe('accountUrl', () => {
   it('production: joins contract subdomain to host', () => {
@@ -18,39 +17,39 @@ describe('accountUrl', () => {
     );
   });
 
-  it('preview from wallet origin: uses a short alias plus account query', () => {
-    expect(accountUrl(`${PREVIEW_ALIAS}--pr-100.mysoroban.xyz`, C, '/account/')).toBe(
-      `//${PREVIEW_ALIAS}--pr-100.mysoroban.xyz/account/?account=${C}`,
+  it('preview from wallet origin: uses the shorter numeric suffix', () => {
+    expect(accountUrl(`${C.toLowerCase()}--100.mysoroban.xyz`, C, '/account/')).toBe(
+      `//${C.toLowerCase()}--100.mysoroban.xyz/account/`,
     );
   });
 
-  it('preview from bare preview root: uses a short alias plus account query', () => {
+  it('preview from bare preview root: uses the shorter numeric suffix', () => {
     expect(accountUrl('pr-100.mysoroban.xyz', C, '/account/')).toBe(
-      `//${PREVIEW_ALIAS}--pr-100.mysoroban.xyz/account/?account=${C}`,
+      `//${C.toLowerCase()}--100.mysoroban.xyz/account/`,
     );
   });
 
-  // Regression: status-message--pr-24.mysoroban.xyz → the dApp origin in a PR
+  // Regression: status-message--24.mysoroban.xyz → the dApp origin in a PR
   // preview deploy. accountUrl previously produced the wallet hostname with
-  // a duplicated preview prefix (`<acc>--pr-24.pr-24.mysoroban.xyz`)
+  // a duplicated preview prefix (`<acc>--24.pr-24.mysoroban.xyz`)
   // because `stripSubdomain` preserves the prefix as its own segment for
   // wallet-context usage. The fix derives the apex from `host.split('.').slice(1)`
   // instead, dropping the dApp's first label outright.
-  it('preview from a reserved-dApp origin (status-message--pr-N): no duplicate prefix', () => {
-    expect(accountUrl('status-message--pr-100.mysoroban.xyz', C, '/security/delegate/')).toBe(
-      `//${PREVIEW_ALIAS}--pr-100.mysoroban.xyz/security/delegate/?account=${C}`,
+  it('preview from a reserved-dApp origin (status-message--N): no duplicate prefix', () => {
+    expect(accountUrl('status-message--100.mysoroban.xyz', C, '/security/delegate/')).toBe(
+      `//${C.toLowerCase()}--100.mysoroban.xyz/security/delegate/`,
     );
   });
 
-  it('preview preserves existing query and hash while adding account', () => {
+  it('preview preserves existing query and hash', () => {
     expect(accountUrl('pr-100.mysoroban.xyz', C, '/new-account/?salt=abc#salt=abc')).toBe(
-      `//${PREVIEW_ALIAS}--pr-100.mysoroban.xyz/new-account/?salt=abc&account=${C}#salt=abc`,
+      `//${C.toLowerCase()}--100.mysoroban.xyz/new-account/?salt=abc#salt=abc`,
     );
   });
 
   it('preview keeps name-based account URLs readable', () => {
     expect(accountUrl('pr-100.mysoroban.xyz', 'alice', '/account/')).toBe(
-      '//alice--pr-100.mysoroban.xyz/account/',
+      '//alice--100.mysoroban.xyz/account/',
     );
   });
 
@@ -77,6 +76,7 @@ describe('stripSubdomain', () => {
     expect(stripSubdomain('cabc1234.mysoroban.xyz')).toBe('mysoroban.xyz');
   });
   it('preserves preview prefix as its own segment', () => {
+    expect(stripSubdomain('cabc1234--10.mysoroban.xyz')).toBe('pr-10.mysoroban.xyz');
     expect(stripSubdomain('cabc1234--pr-10.mysoroban.xyz')).toBe('pr-10.mysoroban.xyz');
   });
   it('returns the tail when host has no subdomain (no-op on apex is the caller\'s job)', () => {
@@ -94,13 +94,10 @@ describe('contractIdFromHostname', () => {
     expect(contractIdFromHostname(`${C.toLowerCase()}.mysoroban.xyz`)).toBe(C);
   });
   it('strips preview suffix', () => {
+    expect(contractIdFromHostname(`${C.toLowerCase()}--24.mysoroban.xyz`)).toBe(C);
+  });
+  it('still accepts the legacy --pr-N preview suffix', () => {
     expect(contractIdFromHostname(`${C.toLowerCase()}--pr-24.mysoroban.xyz`)).toBe(C);
-  });
-  it('extracts a preview alias contract id from the account query parameter', () => {
-    expect(contractIdFromHostname(`${PREVIEW_ALIAS}--pr-100.mysoroban.xyz`, `?account=${C}`)).toBe(C);
-  });
-  it('does not treat preview aliases as account ids without the account query', () => {
-    expect(contractIdFromHostname(`${PREVIEW_ALIAS}--pr-100.mysoroban.xyz`)).toBe(null);
   });
   it('does not validate — returns the first-label uppercased for any host with >1 label', () => {
     // contractIdFromHostname has no strkey check; isContractId does that.
@@ -117,19 +114,20 @@ describe('nameFromHostname', () => {
     expect(nameFromHostname('alice.mysoroban.xyz')).toBe('alice');
   });
   it('strips preview suffix', () => {
-    expect(nameFromHostname('alice--pr-24.mysoroban.xyz')).toBe('alice');
+    expect(nameFromHostname('alice--24.mysoroban.xyz')).toBe('alice');
   });
   it('returns null for contract subdomains', () => {
     expect(nameFromHostname(`${C.toLowerCase()}.mysoroban.xyz`)).toBe(null);
   });
-  it('returns null for short preview account aliases', () => {
-    expect(nameFromHostname(`${PREVIEW_ALIAS}--pr-100.mysoroban.xyz`)).toBe(null);
+  it('still accepts the legacy --pr-N preview suffix for names', () => {
+    expect(nameFromHostname('alice--pr-24.mysoroban.xyz')).toBe('alice');
   });
   it('returns null for the bare preview root', () => {
     expect(nameFromHostname('pr-24.mysoroban.xyz')).toBe(null);
   });
   it('returns null for reserved dApp subdomains', () => {
     expect(nameFromHostname('status-message.mysoroban.xyz')).toBe(null);
+    expect(nameFromHostname('status-message--24.mysoroban.xyz')).toBe(null);
     expect(nameFromHostname('status-message--pr-24.mysoroban.xyz')).toBe(null);
   });
 });
@@ -146,13 +144,13 @@ describe('dappUrl', () => {
     );
   });
   it('preview: contract subdomain → reserved-dapp subdomain with same prefix', () => {
-    expect(dappUrl('cabc1234--pr-24.mysoroban.xyz', 'status-message', '/?contract=X')).toBe(
-      '//status-message--pr-24.mysoroban.xyz/?contract=X',
+    expect(dappUrl('cabc1234--24.mysoroban.xyz', 'status-message', '/?contract=X')).toBe(
+      '//status-message--24.mysoroban.xyz/?contract=X',
     );
   });
   it('preview: bare preview root → reserved-dapp subdomain', () => {
     expect(dappUrl('pr-24.mysoroban.xyz', 'status-message', '/')).toBe(
-      '//status-message--pr-24.mysoroban.xyz/',
+      '//status-message--24.mysoroban.xyz/',
     );
   });
 });
@@ -162,6 +160,7 @@ describe('dappPathFromHostname', () => {
     expect(dappPathFromHostname('status-message.mysoroban.xyz')).toBe('/status-message/');
   });
   it('handles preview variants', () => {
+    expect(dappPathFromHostname('status-message--24.mysoroban.xyz')).toBe('/status-message/');
     expect(dappPathFromHostname('status-message--pr-24.mysoroban.xyz')).toBe('/status-message/');
   });
   it('returns null for non-reserved hosts', () => {

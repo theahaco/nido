@@ -1,6 +1,4 @@
-const PREVIEW_SEP = "--pr-";
-const PREVIEW_ACCOUNT_ALIAS_PREFIX = "c-";
-const PREVIEW_ACCOUNT_ALIAS_CHARS = 32;
+const PREVIEW_SEP = "--";
 
 /**
  * Reserved subdomains that map to a built-in dApp path on this site.
@@ -13,15 +11,13 @@ export const RESERVED_DAPP_SUBDOMAINS: Record<string, string> = {
 
 /**
  * If `host` is a reserved dApp subdomain, return the path the root should
- * redirect to. Strips any `--pr-N` preview suffix before matching, so
- * `status-message--pr-24.<base>` resolves the same as production.
+ * redirect to. Strips any numeric preview suffix before matching, so
+ * `status-message--24.<base>` resolves the same as production.
  */
 export function dappPathFromHostname(host: string): string | null {
   const parts = host.split(".");
   if (parts.length <= 1) return null;
-  const sub = parts[0];
-  const sepIndex = sub.indexOf(PREVIEW_SEP);
-  const raw = (sepIndex !== -1 ? sub.slice(0, sepIndex) : sub).toLowerCase();
+  const raw = previewSubdomain(parts[0]).raw.toLowerCase();
   return RESERVED_DAPP_SUBDOMAINS[raw] ?? null;
 }
 
@@ -30,8 +26,8 @@ export function dappPathFromHostname(host: string): string | null {
  * preview prefix if the calling page is in a PR preview. Mirrors `accountUrl`
  * but for dApp names rather than contract IDs.
  *
- *   dappUrl("cabc--pr-24.mysoroban.xyz", "status-message", "/?contract=C…")
- *     → "//status-message--pr-24.mysoroban.xyz/?contract=C…"
+ *   dappUrl("cabc--24.mysoroban.xyz", "status-message", "/?contract=C…")
+ *     → "//status-message--24.mysoroban.xyz/?contract=C…"
  *
  *   dappUrl("cabc.mysoroban.xyz", "status-message", "/?contract=C…")
  *     → "//status-message.mysoroban.xyz/?contract=C…"
@@ -66,61 +62,23 @@ export function isContractId(subdomain: string): boolean {
   return subdomain.length === 56 && /^[cC]/i.test(subdomain);
 }
 
-function previewAccountAlias(account: string): string {
-  return `${PREVIEW_ACCOUNT_ALIAS_PREFIX}${account.toLowerCase().slice(0, PREVIEW_ACCOUNT_ALIAS_CHARS)}`;
-}
-
-function isPreviewAccountAlias(raw: string): boolean {
-  return (
-    raw.startsWith(PREVIEW_ACCOUNT_ALIAS_PREFIX) &&
-    raw.length === PREVIEW_ACCOUNT_ALIAS_PREFIX.length + PREVIEW_ACCOUNT_ALIAS_CHARS
-  );
-}
-
-function searchForAccount(search?: string): string {
-  if (typeof search === "string") return search;
-  const g = globalThis as typeof globalThis & {
-    location?: { search?: string };
-  };
-  return typeof g.location?.search === "string" ? g.location.search : "";
-}
-
-function accountParam(search?: string): string | null {
-  const value = new URLSearchParams(searchForAccount(search)).get("account");
-  if (!value || !isContractId(value)) return null;
-  return value.toUpperCase();
-}
-
-function appendAccountParam(path: string, account: string): string {
-  const hashIndex = path.indexOf("#");
-  const beforeHash = hashIndex === -1 ? path : path.slice(0, hashIndex);
-  const hash = hashIndex === -1 ? "" : path.slice(hashIndex);
-  const queryIndex = beforeHash.indexOf("?");
-  const pathname = queryIndex === -1 ? beforeHash : beforeHash.slice(0, queryIndex);
-  const query = queryIndex === -1 ? "" : beforeHash.slice(queryIndex + 1);
-  const params = new URLSearchParams(query);
-  params.set("account", account.toUpperCase());
-  const qs = params.toString();
-  return `${pathname}${qs ? `?${qs}` : ""}${hash}`;
+function previewSubdomain(sub: string): { raw: string; preview: string | null } {
+  const m = sub.match(/^(.*)--(?:pr-)?(\d+)$/);
+  return m ? { raw: m[1], preview: m[2] } : { raw: sub, preview: null };
 }
 
 /**
  * Extract contract ID from a subdomain hostname.
  * Handles both production and preview URLs:
  *   "cabc1234.mysoroban.xyz"             → "CABC1234"
- *   "cabc1234--pr-10.mysoroban.xyz"      → "CABC1234"
+ *   "cabc1234--10.mysoroban.xyz"         → "CABC1234"
  * Returns null if hostname has no subdomain or contract ID.
  */
-export function contractIdFromHostname(hostname: string, search?: string): string | null {
+export function contractIdFromHostname(hostname: string): string | null {
   const parts = hostname.split(".");
   if (parts.length <= 1) return null;
 
-  const sub = parts[0];
-  const sepIndex = sub.indexOf(PREVIEW_SEP);
-  const raw = sepIndex !== -1 ? sub.slice(0, sepIndex) : sub;
-  if (isPreviewAccountAlias(raw)) {
-    return accountParam(search);
-  }
+  const { raw } = previewSubdomain(parts[0]);
   return raw ? raw.toUpperCase() : null;
 }
 
@@ -128,7 +86,7 @@ export function contractIdFromHostname(hostname: string, search?: string): strin
  * Extract a human-readable name from a subdomain hostname.
  * Returns null if the subdomain is a contract ID, empty, or a preview prefix.
  *   "alice.mysoroban.xyz"               → "alice"
- *   "alice--pr-10.mysoroban.xyz"        → "alice"
+ *   "alice--10.mysoroban.xyz"           → "alice"
  *   "cabc1234...mysoroban.xyz"          → null (contract ID)
  *   "pr-10.mysoroban.xyz"              → null (preview root)
  */
@@ -137,11 +95,9 @@ export function nameFromHostname(hostname: string): string | null {
   if (parts.length <= 1) return null;
 
   const sub = parts[0];
-  const sepIndex = sub.indexOf(PREVIEW_SEP);
-  const raw = sepIndex !== -1 ? sub.slice(0, sepIndex) : sub;
+  const { raw } = previewSubdomain(sub);
 
   if (!raw) return null;
-  if (isPreviewAccountAlias(raw)) return null;
   if (isContractId(raw)) return null;
   if (/^pr-\d+$/.test(sub)) return null;
   if (RESERVED_DAPP_SUBDOMAINS[raw.toLowerCase()]) return null;
@@ -151,11 +107,10 @@ export function nameFromHostname(hostname: string): string | null {
 
 /**
  * Build a protocol-relative URL with the contract ID as subdomain.
- * In preview environments (hostname contains --pr-<N>), C-addresses use a
- * short single-label alias plus `?account=<full C-address>` because the full
- * `C...--pr-N` label can exceed DNS's 63-character limit:
+ * In preview environments (hostname contains `--<N>` or is the `pr-<N>` root),
+ * the account gets a short numeric preview suffix:
  *   accountUrl("pr-10.mysoroban.xyz", "CABC", "/account/")
- *     → "//c-cabc...--pr-10.mysoroban.xyz/account/?account=CABC"
+ *     → "//cabc--10.mysoroban.xyz/account/"
  *
  * In production:
  *   accountUrl("mysoroban.xyz", "CABC", "/account/")
@@ -166,16 +121,10 @@ export function nameFromHostname(hostname: string): string | null {
 export function accountUrl(host: string, contractId: string, path: string = "/"): string {
   const preview = previewPrefix(host);
   if (preview) {
-    // Full C-address labels are 56 chars. Appending `--pr-100` would exceed
-    // DNS's 63-character label limit, so preview C-address URLs use a short,
-    // stable alias and carry the full address in `?account=...`.
+    // Full C-address labels are 56 chars. Appending `--pr-100` exceeds DNS's
+    // 63-character label limit, but `--100` keeps PR #100 at 61 chars.
+    // This remains valid through PR #99999; re-evaluate at six digits.
     const apex = host.split(".").slice(1).join(".");
-    if (isContractId(contractId)) {
-      const account = contractId.toUpperCase();
-      return `//${previewAccountAlias(account)}${PREVIEW_SEP}${preview}.${apex}${appendAccountParam(path, account)}`;
-    }
-    // Names stay readable in previews. They are already short enough for the
-    // supported Nido name lengths and do not need the `account` query param.
     return `//${contractId.toLowerCase()}${PREVIEW_SEP}${preview}.${apex}${path}`;
   }
   // The calling host could be the apex (mysoroban.xyz), a contract subdomain
@@ -191,7 +140,7 @@ export function accountUrl(host: string, contractId: string, path: string = "/")
 /**
  * Strip the contract ID from a host string, preserving any preview prefix.
  *   "cabc1234.mysoroban.xyz"            → "mysoroban.xyz"
- *   "cabc1234--pr-10.mysoroban.xyz"     → "pr-10.mysoroban.xyz"
+ *   "cabc1234--10.mysoroban.xyz"        → "pr-10.mysoroban.xyz"
  *   "cabc1234.localhost:3000"           → "localhost:3000"
  */
 export function stripSubdomain(host: string): string {
@@ -200,17 +149,17 @@ export function stripSubdomain(host: string): string {
 
   const sub = parts[0];
   const rest = parts.slice(1).join(".");
-  const sepIndex = sub.indexOf(PREVIEW_SEP);
-  if (sepIndex !== -1) {
-    // Preserve the preview prefix: "contract--pr-10" → "pr-10"
-    return `pr-${sub.slice(sepIndex + PREVIEW_SEP.length)}.${rest}`;
+  const { preview } = previewSubdomain(sub);
+  if (preview) {
+    // Preserve the preview root: "contract--10" → "pr-10"
+    return `pr-${preview}.${rest}`;
   }
   return rest;
 }
 
 /**
- * Extract the preview prefix (e.g. "pr-10") from a hostname, or null if production.
- * Checks the first subdomain segment for the --pr-<N> separator,
+ * Extract the preview number from a hostname, or null if production.
+ * Checks the first subdomain segment for the numeric `--<N>` separator,
  * and also matches bare "pr-<N>" subdomains (the preview root).
  */
 function previewPrefix(host: string): string | null {
@@ -219,11 +168,8 @@ function previewPrefix(host: string): string | null {
 
   const sub = parts[0];
 
-  // Contract subdomain with preview: "cabc1234--pr-10"
-  const sepIndex = sub.indexOf(PREVIEW_SEP);
-  if (sepIndex !== -1) {
-    return sub.slice(sepIndex + PREVIEW_SEP.length);
-  }
+  const { preview } = previewSubdomain(sub);
+  if (preview) return preview;
 
   // Bare preview root: "pr-10"
   const prMatch = sub.match(/^pr-(\d+)$/);

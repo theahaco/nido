@@ -56,6 +56,7 @@ describe("apexHostForHost", () => {
 
   it("preserves PR preview roots", () => {
     expect(apexHostForHost("pr-24.mysoroban.xyz")).toBe("pr-24.mysoroban.xyz");
+    expect(apexHostForHost("alice--24.mysoroban.xyz")).toBe("pr-24.mysoroban.xyz");
     expect(apexHostForHost("alice--pr-24.mysoroban.xyz")).toBe("pr-24.mysoroban.xyz");
   });
 });

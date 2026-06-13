@@ -26,7 +26,7 @@ env:
   PUBLIC_STELLAR_RPC_URL: "https://soroban-testnet.stellar.org"
   PUBLIC_STELLAR_HORIZON_URL: "https://horizon-testnet.stellar.org"
   # Wallet = THIS PR's preview, not production: the kit module's accountOrigin
-  # maps a pr-N base to <account>--pr-N.nido.fyi account origins, so connect,
+  # maps a pr-N base to <account>--N.nido.fyi account origins, so connect,
   # delegation handover, and session signing exercise the PR's wallet build —
   # cross-site (pages.dev is on the Public Suffix List), like the GH Pages
   # production demo. preview.yml also triggers on examples/** so the wallet
