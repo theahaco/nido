@@ -1,4 +1,6 @@
 const PREVIEW_SEP = "--pr-";
+const PREVIEW_ACCOUNT_ALIAS_PREFIX = "c-";
+const PREVIEW_ACCOUNT_ALIAS_CHARS = 32;
 
 /**
  * Reserved subdomains that map to a built-in dApp path on this site.
@@ -64,6 +66,44 @@ export function isContractId(subdomain: string): boolean {
   return subdomain.length === 56 && /^[cC]/i.test(subdomain);
 }
 
+function previewAccountAlias(account: string): string {
+  return `${PREVIEW_ACCOUNT_ALIAS_PREFIX}${account.toLowerCase().slice(0, PREVIEW_ACCOUNT_ALIAS_CHARS)}`;
+}
+
+function isPreviewAccountAlias(raw: string): boolean {
+  return (
+    raw.startsWith(PREVIEW_ACCOUNT_ALIAS_PREFIX) &&
+    raw.length === PREVIEW_ACCOUNT_ALIAS_PREFIX.length + PREVIEW_ACCOUNT_ALIAS_CHARS
+  );
+}
+
+function searchForAccount(search?: string): string {
+  if (typeof search === "string") return search;
+  const g = globalThis as typeof globalThis & {
+    location?: { search?: string };
+  };
+  return typeof g.location?.search === "string" ? g.location.search : "";
+}
+
+function accountParam(search?: string): string | null {
+  const value = new URLSearchParams(searchForAccount(search)).get("account");
+  if (!value || !isContractId(value)) return null;
+  return value.toUpperCase();
+}
+
+function appendAccountParam(path: string, account: string): string {
+  const hashIndex = path.indexOf("#");
+  const beforeHash = hashIndex === -1 ? path : path.slice(0, hashIndex);
+  const hash = hashIndex === -1 ? "" : path.slice(hashIndex);
+  const queryIndex = beforeHash.indexOf("?");
+  const pathname = queryIndex === -1 ? beforeHash : beforeHash.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : beforeHash.slice(queryIndex + 1);
+  const params = new URLSearchParams(query);
+  params.set("account", account.toUpperCase());
+  const qs = params.toString();
+  return `${pathname}${qs ? `?${qs}` : ""}${hash}`;
+}
+
 /**
  * Extract contract ID from a subdomain hostname.
  * Handles both production and preview URLs:
@@ -71,13 +111,16 @@ export function isContractId(subdomain: string): boolean {
  *   "cabc1234--pr-10.mysoroban.xyz"      → "CABC1234"
  * Returns null if hostname has no subdomain or contract ID.
  */
-export function contractIdFromHostname(hostname: string): string | null {
+export function contractIdFromHostname(hostname: string, search?: string): string | null {
   const parts = hostname.split(".");
   if (parts.length <= 1) return null;
 
   const sub = parts[0];
   const sepIndex = sub.indexOf(PREVIEW_SEP);
   const raw = sepIndex !== -1 ? sub.slice(0, sepIndex) : sub;
+  if (isPreviewAccountAlias(raw)) {
+    return accountParam(search);
+  }
   return raw ? raw.toUpperCase() : null;
 }
 
@@ -98,6 +141,7 @@ export function nameFromHostname(hostname: string): string | null {
   const raw = sepIndex !== -1 ? sub.slice(0, sepIndex) : sub;
 
   if (!raw) return null;
+  if (isPreviewAccountAlias(raw)) return null;
   if (isContractId(raw)) return null;
   if (/^pr-\d+$/.test(sub)) return null;
   if (RESERVED_DAPP_SUBDOMAINS[raw.toLowerCase()]) return null;
@@ -107,10 +151,11 @@ export function nameFromHostname(hostname: string): string | null {
 
 /**
  * Build a protocol-relative URL with the contract ID as subdomain.
- * In preview environments (hostname contains --pr-<N>), encodes the
- * contract ID into the same subdomain level:
+ * In preview environments (hostname contains --pr-<N>), C-addresses use a
+ * short single-label alias plus `?account=<full C-address>` because the full
+ * `C...--pr-N` label can exceed DNS's 63-character limit:
  *   accountUrl("pr-10.mysoroban.xyz", "CABC", "/account/")
- *     → "//cabc--pr-10.mysoroban.xyz/account/"
+ *     → "//c-cabc...--pr-10.mysoroban.xyz/account/?account=CABC"
  *
  * In production:
  *   accountUrl("mysoroban.xyz", "CABC", "/account/")
@@ -121,13 +166,16 @@ export function nameFromHostname(hostname: string): string | null {
 export function accountUrl(host: string, contractId: string, path: string = "/"): string {
   const preview = previewPrefix(host);
   if (preview) {
-    // We're about to emit `<acc>--pr-N.<apex>`, so the base we want is the
-    // bare apex — NOT what `stripSubdomain` returns (which preserves the
-    // preview prefix as its own segment for wallet-context usage). Drop
-    // the first label, whether it's a contract+preview subdomain
-    // (`<x>--pr-N`), a bare preview root (`pr-N`), or a reserved-dApp
-    // preview (`status-message--pr-N`).
+    // Full C-address labels are 56 chars. Appending `--pr-100` would exceed
+    // DNS's 63-character label limit, so preview C-address URLs use a short,
+    // stable alias and carry the full address in `?account=...`.
     const apex = host.split(".").slice(1).join(".");
+    if (isContractId(contractId)) {
+      const account = contractId.toUpperCase();
+      return `//${previewAccountAlias(account)}${PREVIEW_SEP}${preview}.${apex}${appendAccountParam(path, account)}`;
+    }
+    // Names stay readable in previews. They are already short enough for the
+    // supported Nido name lengths and do not need the `account` query param.
     return `//${contractId.toLowerCase()}${PREVIEW_SEP}${preview}.${apex}${path}`;
   }
   // The calling host could be the apex (mysoroban.xyz), a contract subdomain

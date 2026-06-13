@@ -15,6 +15,8 @@
 
 import { isContractId } from '@nidohq/passkey-sdk';
 
+const PREVIEW_ACCOUNT_ALIAS_CHARS = 32;
+
 /** Strip a leading scheme if present; returns `[scheme | null, host]`. */
 function splitScheme(base: string): [string | null, string] {
   const m = base.match(/^([a-z]+):\/\/(.+)$/i);
@@ -26,12 +28,10 @@ function splitScheme(base: string): [string | null, string] {
  * If `host` is a Nido PR-preview base (`pr-<N>.<apex>`), return `["<N>", apex]`;
  * otherwise `[null, host]`.
  *
- * Nido encodes preview deployments into a single subdomain level so wildcard
- * TLS still matches: the account page in a preview lives at
- * `<c-address>--pr-<N>.<apex>`, NOT `<c-address>.pr-<N>.<apex>`. The base this
- * module is configured with (derived from the dApp's own host via
- * `stripSubdomain`) collapses to the bare `pr-<N>.<apex>` form in previews, so
- * we have to re-expand it here when building the per-account origin.
+ * Nido encodes preview account URLs into a single subdomain level so wildcard
+ * TLS still matches. Full C-address labels cannot be used directly because
+ * `C...--pr-100` is longer than DNS's 63-character label limit, so previews
+ * use a short account alias plus `?account=<full C-address>`.
  */
 function splitPreview(host: string): [string | null, string] {
   const parts = host.split('.');
@@ -39,6 +39,22 @@ function splitPreview(host: string): [string | null, string] {
   const m = parts[0].match(/^pr-(\d+)$/);
   if (m) return [m[1], parts.slice(1).join('.')];
   return [null, host];
+}
+
+function previewAccountAlias(account: string): string {
+  return `c-${account.toLowerCase().slice(0, PREVIEW_ACCOUNT_ALIAS_CHARS)}`;
+}
+
+function previewForBase(base: string): string | null {
+  const [, host] = splitScheme(base);
+  const [preview] = splitPreview(host);
+  return preview;
+}
+
+function setPreviewAccountParam(u: URL, base: string, account: string): void {
+  if (previewForBase(base)) {
+    u.searchParams.set('account', account.toUpperCase());
+  }
 }
 
 /**
@@ -63,10 +79,10 @@ export function accountOrigin(base: string, account: string): string {
   const [scheme, host] = splitScheme(base);
   const acc = account.toLowerCase();
   const [preview, apex] = splitPreview(host);
-  // In a preview the account lives at `<acc>--pr-<N>.<apex>` (one subdomain
-  // level) so wildcard TLS + the WebAuthn rpId both still match; in production
-  // it's simply `<acc>.<host>`.
-  const accountHost = preview ? `${acc}--pr-${preview}.${apex}` : `${acc}.${host}`;
+  // In a preview the account lives at a short `<alias>--pr-<N>.<apex>` host
+  // (one subdomain level) so wildcard TLS + the WebAuthn rpId both still
+  // match; sign URLs carry the full account id in `?account=...`.
+  const accountHost = preview ? `${previewAccountAlias(acc)}--pr-${preview}.${apex}` : `${acc}.${host}`;
   return `${scheme ?? 'https'}://${accountHost}`;
 }
 
@@ -115,6 +131,7 @@ export interface SignTxUrlParams {
 /** The per-account transaction-signing ceremony URL. */
 export function signTransactionUrl(p: SignTxUrlParams): string {
   const u = new URL('/sign/', accountOrigin(p.base, p.account));
+  setPreviewAccountParam(u, p.base, p.account);
   u.searchParams.set('kind', 'tx');
   u.searchParams.set('xdr', p.xdr);
   if (p.networkPassphrase) u.searchParams.set('network', p.networkPassphrase);
@@ -134,6 +151,7 @@ export interface SignMessageUrlParams {
 /** The per-account arbitrary-message-signing ceremony URL. */
 export function signMessageUrl(p: SignMessageUrlParams): string {
   const u = new URL('/sign/', accountOrigin(p.base, p.account));
+  setPreviewAccountParam(u, p.base, p.account);
   u.searchParams.set('kind', 'message');
   u.searchParams.set('message', p.message);
   u.searchParams.set('dapp', p.dappOrigin);
@@ -154,6 +172,7 @@ export interface SignAuthEntryUrlParams {
 /** The per-account auth-entry-signing ceremony URL. */
 export function signAuthEntryUrl(p: SignAuthEntryUrlParams): string {
   const u = new URL('/sign/', accountOrigin(p.base, p.account));
+  setPreviewAccountParam(u, p.base, p.account);
   u.searchParams.set('kind', 'authEntry');
   u.searchParams.set('authEntry', p.authEntry);
   if (p.networkPassphrase) u.searchParams.set('network', p.networkPassphrase);
